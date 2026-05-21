@@ -1,0 +1,39 @@
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { PageHeader } from "@/components/dashboard/page-header";
+import { CatalogClient } from "./catalog-client";
+
+export const dynamic = "force-dynamic";
+
+export default async function CatalogPage() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return null;
+
+  const [courses, enrollments] = await Promise.all([
+    prisma.course.findMany({
+      where: { isActive: true },
+      include: {
+        teacher: { select: { id: true, name: true } },
+        _count: { select: { enrollments: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.enrollment.findMany({
+      where: { studentId: session.user.id },
+      select: { courseId: true },
+    }),
+  ]);
+
+  const enrolledIds = new Set(enrollments.map((e) => e.courseId));
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Course Catalog"
+        description={`Browse ${courses.length} available courses and enroll`}
+      />
+      <CatalogClient courses={courses} enrolledIds={Array.from(enrolledIds)} />
+    </div>
+  );
+}
