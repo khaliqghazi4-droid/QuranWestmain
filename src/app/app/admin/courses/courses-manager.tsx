@@ -33,6 +33,7 @@ type Course = {
   description: string | null;
   level: string;
   duration: string | null;
+  classDuration: number;
   price: number;
   image: string | null;
   isActive: boolean;
@@ -44,6 +45,7 @@ type Course = {
 type Teacher = { id: string; name: string };
 
 const LEVELS = ["Beginner", "Intermediate", "Advanced", "All Levels"];
+const CLASS_DURATIONS = [30, 45, 60];
 
 export function CoursesManager({
   initialCourses,
@@ -145,6 +147,9 @@ export function CoursesManager({
                 <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
                   {c.level}
                 </span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-[hsl(var(--gold)/0.15)] px-2.5 py-0.5 text-[11px] font-bold text-[hsl(var(--gold))]">
+                  {c.classDuration}m / class
+                </span>
                 {c.duration && (
                   <span className="text-[11px] text-muted-foreground">{c.duration}</span>
                 )}
@@ -239,6 +244,7 @@ function CourseModal({
   const [description, setDescription] = React.useState(course?.description ?? "");
   const [level, setLevel] = React.useState(course?.level ?? "Beginner");
   const [duration, setDuration] = React.useState(course?.duration ?? "");
+  const [classDuration, setClassDuration] = React.useState(course?.classDuration ?? 45);
   const [price, setPrice] = React.useState(course?.price ?? 30);
   const [image, setImage] = React.useState(course?.image ?? "");
   const [selectedTeachers, setSelectedTeachers] = React.useState<Set<string>>(
@@ -268,6 +274,7 @@ function CourseModal({
       description,
       level,
       duration: duration || null,
+      classDuration: Number(classDuration),
       price: Number(price),
       image: image || null,
     };
@@ -357,7 +364,7 @@ function CourseModal({
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Duration</label>
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Course Length</label>
               <input
                 value={duration ?? ""}
                 onChange={(e) => setDuration(e.target.value)}
@@ -365,6 +372,31 @@ function CourseModal({
                 className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+              Class Duration (per session) *
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {CLASS_DURATIONS.map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setClassDuration(d)}
+                  className={`rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all ${
+                    classDuration === d
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                  }`}
+                >
+                  {d} min
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              Each class for this course will be {classDuration} minutes long
+            </p>
           </div>
 
           <div>

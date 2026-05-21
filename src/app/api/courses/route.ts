@@ -27,15 +27,17 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { name, description, level, duration, price, image, teacherId } = body as {
-      name?: string;
-      description?: string;
-      level?: string;
-      duration?: string;
-      price?: number;
-      image?: string;
-      teacherId?: string;
-    };
+    const { name, description, level, duration, classDuration, price, image, teacherId } =
+      body as {
+        name?: string;
+        description?: string;
+        level?: string;
+        duration?: string;
+        classDuration?: number;
+        price?: number;
+        image?: string;
+        teacherId?: string;
+      };
 
     if (!name || !level) {
       return NextResponse.json({ error: "Name and level are required" }, { status: 400 });
@@ -49,6 +51,7 @@ export async function POST(req: Request) {
         description,
         level,
         duration,
+        classDuration: classDuration ?? 45,
         price: price ?? 0,
         image,
         teacherId: teacherId || null,

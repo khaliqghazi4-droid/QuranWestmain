@@ -41,7 +41,7 @@ model User {
   teacherCourses        Course[]        @relation("CoursePrimaryTeacher")
   courseTeacherships    CourseTeacher[] @relation("TeacherCourseTeachers")
   taughtEnrollments     Enrollment[]    @relation("EnrollmentTeacher")
-  availability          TeacherAvailability[]
+  availability          UserAvailability[]
   parentChildren        ParentChild[]   @relation("Parent")
   childOfParents        ParentChild[]   @relation("Child")
   attendanceRecords     Attendance[]
@@ -63,9 +63,10 @@ model Course {
   name        String
   slug        String   @unique
   description String?
-  level       String   // Beginner / Intermediate / Advanced
-  duration    String?  // e.g. "6-8 months"
-  price       Float    @default(0)
+  level         String   // Beginner / Intermediate / Advanced
+  duration      String?  // e.g. "6-8 months" (course length)
+  classDuration Int      @default(45) // single class length in minutes (e.g. 30 or 45)
+  price         Float    @default(0)
   image       String?
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
@@ -196,17 +197,17 @@ model Message {
   receiver   User @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
 }
 
-model TeacherAvailability {
+model UserAvailability {
   id        String   @id @default(cuid())
-  teacherId String
+  userId    String
   dayOfWeek Int      // 0=Sunday, 1=Monday, ..., 6=Saturday
-  startTime String   // "HH:MM" 24-hour format (in teacher's timezone)
+  startTime String   // "HH:MM" 24-hour format (in user's own timezone)
   endTime   String   // "HH:MM"
   createdAt DateTime @default(now())
 
-  teacher   User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([teacherId])
+  @@index([userId])
 }
 
 model PasswordResetToken {

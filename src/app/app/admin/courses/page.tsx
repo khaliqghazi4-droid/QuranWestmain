@@ -42,6 +42,7 @@ export default async function AdminCoursesPage() {
           description: c.description,
           level: c.level,
           duration: c.duration,
+          classDuration: c.classDuration,
           price: c.price,
           image: c.image,
           isActive: c.isActive,

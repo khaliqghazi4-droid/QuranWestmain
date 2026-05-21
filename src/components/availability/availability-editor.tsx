@@ -22,15 +22,19 @@ type Slot = {
 };
 
 export function AvailabilityEditor({
-  teacherId,
+  userId,
   initialTimezone,
   initialSlots,
   canEdit = true,
+  title = "Weekly Availability",
+  description = "Set hours when you can take classes",
 }: {
-  teacherId: string;
+  userId: string;
   initialTimezone: string;
   initialSlots: Slot[];
   canEdit?: boolean;
+  title?: string;
+  description?: string;
 }) {
   const router = useRouter();
   const [timezone, setTimezone] = React.useState(initialTimezone);
@@ -82,7 +86,7 @@ export function AvailabilityEditor({
       }
     }
 
-    const res = await fetch(`/api/teachers/${teacherId}/availability`, {
+    const res = await fetch(`/api/users/${userId}/availability`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ slots, timezone }),
@@ -120,10 +124,10 @@ export function AvailabilityEditor({
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h3 className="text-base font-bold inline-flex items-center gap-2">
-            <Calendar className="h-4 w-4" /> Weekly Availability
+            <Calendar className="h-4 w-4" /> {title}
           </h3>
           <p className="text-xs text-muted-foreground mt-1">
-            Set hours when you can teach. Total:{" "}
+            {description} ·{" "}
             <span className="font-bold text-foreground">{totalHours.toFixed(1)} hours/week</span>
           </p>
         </div>

@@ -51,13 +51,15 @@ export default async function TeacherProfile() {
         }}
       />
       <AvailabilityEditor
-        teacherId={user.id}
+        userId={user.id}
         initialTimezone={user.timezone ?? "UTC"}
         initialSlots={user.availability.map((a) => ({
           dayOfWeek: a.dayOfWeek,
           startTime: a.startTime,
           endTime: a.endTime,
         }))}
+        title="My Teaching Hours"
+        description="Set when you're available to teach"
       />
     </div>
   );
