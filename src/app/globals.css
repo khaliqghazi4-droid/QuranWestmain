@@ -191,6 +191,36 @@
     max-width: 100% !important;
   }
 
+  /* When report modal is open: hide everything except the modal content */
+  body.print-modal-open > div:not(:has(.student-report-modal)) {
+    display: none !important;
+  }
+
+  body.print-modal-open .student-report-modal {
+    position: static !important;
+    box-shadow: none !important;
+    border: 0 !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    width: 100% !important;
+    overflow: visible !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body.print-modal-open .student-report-modal ~ * {
+    display: none !important;
+  }
+
+  body.print-modal-open .fixed.inset-0 {
+    position: static !important;
+    background: white !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    display: block !important;
+  }
+
   /* Force light colors for printing */
   .bg-card,
   .bg-background,

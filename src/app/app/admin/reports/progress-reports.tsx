@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import {
   Search,
   Filter,
@@ -22,6 +21,7 @@ import {
   FileText,
 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
+import { StudentReportModal } from "@/components/admin/student-report-modal";
 
 type Enrollment = {
   id: string;
@@ -74,6 +74,7 @@ export function ProgressReports({
   const [sortBy, setSortBy] = React.useState<SortBy>("joined");
   const [sortDesc, setSortDesc] = React.useState(true);
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
+  const [reportModalId, setReportModalId] = React.useState<string | null>(null);
 
   const filtered = React.useMemo(() => {
     let list = students.filter((s) => {
@@ -319,12 +320,12 @@ export function ProgressReports({
                 {isOpen && (
                   <div className="border-t border-border bg-background/40 p-5 space-y-4">
                     <div className="flex justify-end">
-                      <Link
-                        href={`/app/admin/students/${s.id}`}
+                      <button
+                        onClick={() => setReportModalId(s.id)}
                         className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-accent px-4 py-2 text-xs font-bold text-primary-foreground shadow-md hover:shadow-lg transition-all"
                       >
                         <FileText className="h-3.5 w-3.5" /> View Full Report (Printable)
-                      </Link>
+                      </button>
                     </div>
                     {s.enrollments.length === 0 ? (
                       <div className="text-center py-6">
@@ -406,6 +407,13 @@ export function ProgressReports({
             );
           })}
         </div>
+      )}
+
+      {reportModalId && (
+        <StudentReportModal
+          studentId={reportModalId}
+          onClose={() => setReportModalId(null)}
+        />
       )}
     </div>
   );
