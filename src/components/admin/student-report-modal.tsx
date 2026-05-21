@@ -68,13 +68,7 @@ export function StudentReportModal({
       .catch(() => setError("Failed to load report"));
   }, [studentId]);
 
-  // Prevent background scroll
-  React.useEffect(() => {
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, []);
+  // Note: we don't lock body scroll because the overlay itself scrolls.
 
   // Add print-only class to body when this modal mounts
   React.useEffect(() => {
@@ -86,12 +80,13 @@ export function StudentReportModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/40 backdrop-blur-sm animate-fade-in print:p-0 print:bg-white print:backdrop-blur-none print:items-start"
+      className="fixed inset-0 z-50 overflow-y-auto bg-foreground/40 backdrop-blur-sm animate-fade-in print:overflow-visible print:bg-white print:backdrop-blur-none"
       onClick={onClose}
     >
+      <div className="flex min-h-full items-start sm:items-center justify-center p-4 print:p-0 print:items-start">
       <div
         onClick={(e) => e.stopPropagation()}
-        className="student-report-modal w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl border border-border bg-card shadow-2xl print:max-w-full print:max-h-none print:rounded-none print:border-0 print:shadow-none print:overflow-visible"
+        className="student-report-modal w-full max-w-4xl rounded-3xl border border-border bg-card shadow-2xl print:max-w-full print:rounded-none print:border-0 print:shadow-none my-auto"
       >
         {/* Toolbar (not printed) */}
         <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-card print:hidden">
@@ -149,6 +144,7 @@ export function StudentReportModal({
             Online Quran Academy · Confidential Student Progress Report
           </div>
         )}
+      </div>
       </div>
     </div>
   );
