@@ -23,18 +23,22 @@ type Slot = {
 
 export function AvailabilityEditor({
   userId,
+  saveUrl,
   initialTimezone,
   initialSlots,
   canEdit = true,
   title = "Weekly Availability",
   description = "Set hours when you can take classes",
+  onSaved,
 }: {
-  userId: string;
+  userId?: string;
+  saveUrl?: string; // overrides userId path; e.g. /api/enrollments/abc/availability
   initialTimezone: string;
   initialSlots: Slot[];
   canEdit?: boolean;
   title?: string;
   description?: string;
+  onSaved?: () => void;
 }) {
   const router = useRouter();
   const [timezone, setTimezone] = React.useState(initialTimezone);
@@ -86,7 +90,8 @@ export function AvailabilityEditor({
       }
     }
 
-    const res = await fetch(`/api/users/${userId}/availability`, {
+    const url = saveUrl ?? `/api/users/${userId}/availability`;
+    const res = await fetch(url, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ slots, timezone }),
@@ -101,6 +106,7 @@ export function AvailabilityEditor({
 
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
+    onSaved?.();
     router.refresh();
   }
 

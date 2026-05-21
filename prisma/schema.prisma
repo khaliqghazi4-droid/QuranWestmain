@@ -138,12 +138,25 @@ model Enrollment {
   startedAt DateTime @default(now())
   status    String   @default("active") // active / paused / completed
 
-  student   User    @relation("StudentEnrollments", fields: [studentId], references: [id], onDelete: Cascade)
-  course    Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  teacher   User?   @relation("EnrollmentTeacher", fields: [teacherId], references: [id])
+  student      User                     @relation("StudentEnrollments", fields: [studentId], references: [id], onDelete: Cascade)
+  course       Course                   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  teacher      User?                    @relation("EnrollmentTeacher", fields: [teacherId], references: [id])
+  availability EnrollmentAvailability[]
 
   @@unique([studentId, courseId])
   @@index([teacherId])
+}
+
+model EnrollmentAvailability {
+  id           String @id @default(cuid())
+  enrollmentId String
+  dayOfWeek    Int    // 0=Sun, ..., 6=Sat
+  startTime    String // "HH:MM" 24-hour (in student's timezone)
+  endTime      String // "HH:MM"
+
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@index([enrollmentId])
 }
 
 model Class {
