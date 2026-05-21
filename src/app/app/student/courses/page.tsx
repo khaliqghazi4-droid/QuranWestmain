@@ -109,9 +109,12 @@ export default async function StudentCourses() {
                     <span className="inline-flex items-center gap-1.5 text-muted-foreground">
                       <Clock className="h-3.5 w-3.5" /> {c.duration ?? "Self-paced"}
                     </span>
-                    <button className="inline-flex items-center gap-1.5 font-semibold text-primary hover:text-accent">
+                    <Link
+                      href={`/app/student/courses/${c.id}`}
+                      className="inline-flex items-center gap-1.5 font-semibold text-primary hover:text-accent"
+                    >
                       <PlayCircle className="h-4 w-4" /> Continue
-                    </button>
+                    </Link>
                   </div>
                 </div>
               </div>
