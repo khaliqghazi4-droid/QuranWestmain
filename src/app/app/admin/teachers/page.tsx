@@ -12,6 +12,9 @@ export default async function AdminTeachersPage() {
         teacherCourses: {
           include: { _count: { select: { enrollments: true } } },
         },
+        availability: {
+          orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
+        },
       },
       orderBy: { createdAt: "desc" },
     }),
@@ -42,10 +45,16 @@ export default async function AdminTeachersPage() {
           country: t.country,
           bio: t.bio,
           createdAt: t.createdAt.toISOString(),
+          timezone: t.timezone ?? "UTC",
           courses: t.teacherCourses.map((c) => ({
             id: c.id,
             name: c.name,
             students: c._count.enrollments,
+          })),
+          availability: t.availability.map((a) => ({
+            dayOfWeek: a.dayOfWeek,
+            startTime: a.startTime,
+            endTime: a.endTime,
           })),
         }))}
         allCourses={allCourses.map((c) => ({

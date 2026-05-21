@@ -20,8 +20,18 @@ import {
   CheckCircle2,
   Check,
   GraduationCap,
+  Calendar,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
+import { AvailabilityViewer } from "@/components/availability/availability-viewer";
+
+type AvailabilitySlot = {
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+};
 
 type Teacher = {
   id: string;
@@ -30,7 +40,9 @@ type Teacher = {
   country: string | null;
   bio: string | null;
   createdAt: string;
+  timezone: string;
   courses: { id: string; name: string; students: number }[];
+  availability: AvailabilitySlot[];
 };
 
 type CourseOption = {
@@ -60,6 +72,7 @@ export function TeachersGrid({
   } | null>(null);
   const [inviteOpen, setInviteOpen] = React.useState(false);
   const [assignTarget, setAssignTarget] = React.useState<Teacher | null>(null);
+  const [availabilityOpenId, setAvailabilityOpenId] = React.useState<string | null>(null);
 
   function handleAssignmentSaved(teacherId: string, assigned: CourseOption[]) {
     setTeachers((prev) =>
@@ -214,10 +227,41 @@ export function TeachersGrid({
                 <div className="mt-4 grid grid-cols-2 gap-2">
                   <button
                     onClick={() => setAssignTarget(t)}
-                    className="inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-primary to-accent px-3 py-2 text-[11px] font-bold text-primary-foreground shadow-md hover:shadow-lg col-span-2"
+                    className="inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-primary to-accent px-3 py-2 text-[11px] font-bold text-primary-foreground shadow-md hover:shadow-lg"
                   >
-                    <GraduationCap className="h-3.5 w-3.5" /> Assign Courses ({t.courses.length})
+                    <GraduationCap className="h-3.5 w-3.5" /> Assign ({t.courses.length})
                   </button>
+                  <button
+                    onClick={() =>
+                      setAvailabilityOpenId(availabilityOpenId === t.id ? null : t.id)
+                    }
+                    className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-2 text-[11px] font-bold transition-all ${
+                      availabilityOpenId === t.id
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-card text-foreground hover:border-primary/40"
+                    }`}
+                  >
+                    <Calendar className="h-3.5 w-3.5" />
+                    Schedule ({t.availability.length})
+                    {availabilityOpenId === t.id ? (
+                      <ChevronUp className="h-3 w-3" />
+                    ) : (
+                      <ChevronDown className="h-3 w-3" />
+                    )}
+                  </button>
+                </div>
+
+                {availabilityOpenId === t.id && (
+                  <div className="mt-3 rounded-xl border border-border bg-background p-3">
+                    <AvailabilityViewer
+                      teacherTimezone={t.timezone}
+                      slots={t.availability}
+                      compact
+                    />
+                  </div>
+                )}
+
+                <div className="mt-2 grid grid-cols-2 gap-2">
                   <a
                     href={`mailto:${t.email}`}
                     className="inline-flex items-center justify-center gap-1 rounded-full border border-border px-2 py-1.5 text-[11px] font-semibold hover:bg-muted"
@@ -598,7 +642,9 @@ function InviteTeacherModal({
       country: country || null,
       bio: bio || null,
       createdAt: new Date().toISOString(),
+      timezone: "UTC",
       courses: [],
+      availability: [],
     });
   }
 

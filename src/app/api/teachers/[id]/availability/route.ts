@@ -1,0 +1,112 @@
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+
+// GET /api/teachers/[id]/availability
+export async function GET(_req: Request, { params }: { params: { id: string } }) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const teacher = await prisma.user.findUnique({
+    where: { id: params.id },
+    select: {
+      id: true,
+      name: true,
+      timezone: true,
+      role: true,
+      availability: {
+        orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
+      },
+    },
+  });
+
+  if (!teacher || teacher.role !== "TEACHER") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  return NextResponse.json({
+    id: teacher.id,
+    name: teacher.name,
+    timezone: teacher.timezone ?? "UTC",
+    slots: teacher.availability.map((s) => ({
+      id: s.id,
+      dayOfWeek: s.dayOfWeek,
+      startTime: s.startTime,
+      endTime: s.endTime,
+    })),
+  });
+}
+
+// PUT /api/teachers/[id]/availability - replace all slots
+export async function PUT(req: Request, { params }: { params: { id: string } }) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const isOwn = session.user.id === params.id && session.user.role === "TEACHER";
+  const isAdmin = session.user.role === "ADMIN";
+  if (!isOwn && !isAdmin) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  try {
+    const body = (await req.json()) as {
+      slots: { dayOfWeek: number; startTime: string; endTime: string }[];
+      timezone?: string;
+    };
+
+    if (!Array.isArray(body.slots)) {
+      return NextResponse.json({ error: "slots[] required" }, { status: 400 });
+    }
+
+    // Validate format
+    const timeRe = /^([01]\d|2[0-3]):[0-5]\d$/;
+    for (const s of body.slots) {
+      if (s.dayOfWeek < 0 || s.dayOfWeek > 6) {
+        return NextResponse.json({ error: "Invalid day of week" }, { status: 400 });
+      }
+      if (!timeRe.test(s.startTime) || !timeRe.test(s.endTime)) {
+        return NextResponse.json(
+          { error: "Time must be HH:MM (24-hour)" },
+          { status: 400 }
+        );
+      }
+      if (s.startTime >= s.endTime) {
+        return NextResponse.json(
+          { error: "End time must be after start time" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Replace all in a transaction
+    await prisma.$transaction([
+      prisma.teacherAvailability.deleteMany({ where: { teacherId: params.id } }),
+      ...(body.slots.length > 0
+        ? [
+            prisma.teacherAvailability.createMany({
+              data: body.slots.map((s) => ({
+                teacherId: params.id,
+                dayOfWeek: s.dayOfWeek,
+                startTime: s.startTime,
+                endTime: s.endTime,
+              })),
+            }),
+          ]
+        : []),
+      ...(body.timezone
+        ? [
+            prisma.user.update({
+              where: { id: params.id },
+              data: { timezone: body.timezone },
+            }),
+          ]
+        : []),
+    ]);
+
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Update failed";
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}

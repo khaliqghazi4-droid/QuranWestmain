@@ -41,6 +41,7 @@ model User {
   teacherCourses        Course[]        @relation("CoursePrimaryTeacher")
   courseTeacherships    CourseTeacher[] @relation("TeacherCourseTeachers")
   taughtEnrollments     Enrollment[]    @relation("EnrollmentTeacher")
+  availability          TeacherAvailability[]
   parentChildren        ParentChild[]   @relation("Parent")
   childOfParents        ParentChild[]   @relation("Child")
   attendanceRecords     Attendance[]
@@ -193,6 +194,19 @@ model Message {
 
   sender     User @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
   receiver   User @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+}
+
+model TeacherAvailability {
+  id        String   @id @default(cuid())
+  teacherId String
+  dayOfWeek Int      // 0=Sunday, 1=Monday, ..., 6=Saturday
+  startTime String   // "HH:MM" 24-hour format (in teacher's timezone)
+  endTime   String   // "HH:MM"
+  createdAt DateTime @default(now())
+
+  teacher   User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([teacherId])
 }
 
 model PasswordResetToken {

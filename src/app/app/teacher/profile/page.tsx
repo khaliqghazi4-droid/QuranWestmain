@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { ProfileEditor } from "@/components/profile/profile-editor";
+import { AvailabilityEditor } from "@/components/availability/availability-editor";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,9 @@ export default async function TeacherProfile() {
       bio: true,
       role: true,
       createdAt: true,
+      availability: {
+        orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
+      },
     },
   });
 
@@ -31,13 +35,29 @@ export default async function TeacherProfile() {
     <div className="space-y-6">
       <PageHeader
         title="My Profile"
-        description="Manage your teaching profile and credentials"
+        description="Manage your teaching profile and availability"
       />
       <ProfileEditor
         user={{
-          ...user,
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          country: user.country,
+          timezone: user.timezone,
+          bio: user.bio,
+          role: user.role,
           createdAt: user.createdAt.toISOString(),
         }}
+      />
+      <AvailabilityEditor
+        teacherId={user.id}
+        initialTimezone={user.timezone ?? "UTC"}
+        initialSlots={user.availability.map((a) => ({
+          dayOfWeek: a.dayOfWeek,
+          startTime: a.startTime,
+          endTime: a.endTime,
+        }))}
       />
     </div>
   );
