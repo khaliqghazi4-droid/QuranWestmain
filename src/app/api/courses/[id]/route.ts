@@ -23,10 +23,48 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   try {
     const body = await req.json();
+    const { teacherIds, ...rest } = body as {
+      teacherIds?: string[];
+      [k: string]: unknown;
+    };
+
     const course = await prisma.course.update({
       where: { id: params.id },
-      data: body,
+      data: rest,
     });
+
+    // If teacherIds provided, replace the CourseTeacher set entirely
+    if (Array.isArray(teacherIds)) {
+      await prisma.courseTeacher.deleteMany({ where: { courseId: params.id } });
+      if (teacherIds.length > 0) {
+        await prisma.courseTeacher.createMany({
+          data: teacherIds.map((teacherId) => ({ courseId: params.id, teacherId })),
+          skipDuplicates: true,
+        });
+
+        // If no primary teacher, set the first one as primary
+        if (!course.teacherId && teacherIds[0]) {
+          await prisma.course.update({
+            where: { id: params.id },
+            data: { teacherId: teacherIds[0] },
+          });
+        }
+        // If primary teacher removed from list, change to first in list
+        if (course.teacherId && !teacherIds.includes(course.teacherId)) {
+          await prisma.course.update({
+            where: { id: params.id },
+            data: { teacherId: teacherIds[0] },
+          });
+        }
+      } else {
+        // No teachers
+        await prisma.course.update({
+          where: { id: params.id },
+          data: { teacherId: null },
+        });
+      }
+    }
+
     return NextResponse.json({ course });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Update failed";

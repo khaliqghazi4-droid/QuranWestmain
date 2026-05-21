@@ -13,7 +13,19 @@ import {
   X,
   Loader2,
   AlertCircle,
+  GraduationCap,
+  Check,
+  Star,
+  Mail,
 } from "lucide-react";
+import { Avatar } from "@/components/avatar";
+
+type TeacherWithCount = {
+  id: string;
+  name: string;
+  isPrimary: boolean;
+  studentsCount: number;
+};
 
 type Course = {
   id: string;
@@ -25,8 +37,8 @@ type Course = {
   image: string | null;
   isActive: boolean;
   teacherId: string | null;
-  teacher: { id: string; name: string } | null;
-  _count: { enrollments: number };
+  teachers: TeacherWithCount[];
+  totalEnrollments: number;
 };
 
 type Teacher = { id: string; name: string };
@@ -44,6 +56,10 @@ export function CoursesManager({
   const [courses, setCourses] = React.useState(initialCourses);
   const [modalOpen, setModalOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Course | null>(null);
+  const [studentsModal, setStudentsModal] = React.useState<{
+    course: Course;
+    teacherId: string;
+  } | null>(null);
 
   function openCreate() {
     setEditing(null);
@@ -66,12 +82,7 @@ export function CoursesManager({
     }
   }
 
-  function handleSaved(course: Course) {
-    if (editing) {
-      setCourses(courses.map((c) => (c.id === course.id ? course : c)));
-    } else {
-      setCourses([course, ...courses]);
-    }
+  function handleSaved() {
     setModalOpen(false);
     setEditing(null);
     router.refresh();
@@ -115,12 +126,14 @@ export function CoursesManager({
                   <button
                     onClick={() => openEdit(c)}
                     className="grid h-8 w-8 place-items-center rounded-full hover:bg-muted"
+                    title="Edit"
                   >
                     <Edit2 className="h-3.5 w-3.5 text-muted-foreground" />
                   </button>
                   <button
                     onClick={() => handleDelete(c.id)}
-                    className="grid h-8 w-8 place-items-center rounded-full hover:bg-destructive/10 hover:text-destructive"
+                    className="grid h-8 w-8 place-items-center rounded-full hover:bg-destructive/10"
+                    title="Delete"
                   >
                     <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
                   </button>
@@ -136,16 +149,45 @@ export function CoursesManager({
                   <span className="text-[11px] text-muted-foreground">{c.duration}</span>
                 )}
               </div>
-              {c.teacher && (
-                <p className="text-[11px] text-muted-foreground mt-2">by {c.teacher.name}</p>
+
+              {/* Teachers section - clickable */}
+              {c.teachers.length > 0 ? (
+                <div className="mt-3 space-y-1.5">
+                  <p className="text-[10px] uppercase font-semibold text-muted-foreground">
+                    Teachers
+                  </p>
+                  {c.teachers.map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => setStudentsModal({ course: c, teacherId: t.id })}
+                      className="w-full flex items-center gap-2 rounded-lg border border-border bg-background px-2.5 py-1.5 text-left hover:border-primary/40 hover:bg-primary/5 transition-all group/teacher"
+                    >
+                      <Avatar name={t.name} size={24} style="micah" />
+                      <span className="text-xs font-semibold flex-1 truncate group-hover/teacher:text-primary">
+                        {t.name}
+                      </span>
+                      {t.isPrimary && (
+                        <Star className="h-3 w-3 text-[hsl(var(--gold))] fill-[hsl(var(--gold))]" />
+                      )}
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary inline-flex items-center gap-1">
+                        <Users className="h-2.5 w-2.5" />
+                        {t.studentsCount}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-3 text-[11px] text-[hsl(var(--gold))] italic">
+                  No teacher assigned
+                </p>
               )}
 
               <div className="mt-4 pt-4 border-t border-border grid grid-cols-2 gap-3">
                 <div>
                   <p className="text-[10px] uppercase font-semibold text-muted-foreground inline-flex items-center gap-1">
-                    <Users className="h-3 w-3" /> Students
+                    <Users className="h-3 w-3" /> Total Students
                   </p>
-                  <p className="text-base font-bold mt-0.5">{c._count.enrollments}</p>
+                  <p className="text-base font-bold mt-0.5">{c.totalEnrollments}</p>
                 </div>
                 <div>
                   <p className="text-[10px] uppercase font-semibold text-muted-foreground inline-flex items-center gap-1">
@@ -170,6 +212,14 @@ export function CoursesManager({
           onSaved={handleSaved}
         />
       )}
+
+      {studentsModal && (
+        <TeacherStudentsModal
+          course={studentsModal.course}
+          teacherId={studentsModal.teacherId}
+          onClose={() => setStudentsModal(null)}
+        />
+      )}
     </div>
   );
 }
@@ -183,7 +233,7 @@ function CourseModal({
   course: Course | null;
   teachers: Teacher[];
   onClose: () => void;
-  onSaved: (c: Course) => void;
+  onSaved: () => void;
 }) {
   const [name, setName] = React.useState(course?.name ?? "");
   const [description, setDescription] = React.useState(course?.description ?? "");
@@ -191,9 +241,18 @@ function CourseModal({
   const [duration, setDuration] = React.useState(course?.duration ?? "");
   const [price, setPrice] = React.useState(course?.price ?? 30);
   const [image, setImage] = React.useState(course?.image ?? "");
-  const [teacherId, setTeacherId] = React.useState(course?.teacherId ?? "");
+  const [selectedTeachers, setSelectedTeachers] = React.useState<Set<string>>(
+    new Set(course?.teachers.map((t) => t.id) ?? [])
+  );
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  function toggleTeacher(id: string) {
+    const next = new Set(selectedTeachers);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedTeachers(next);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -203,47 +262,54 @@ function CourseModal({
     const url = course ? `/api/courses/${course.id}` : "/api/courses";
     const method = course ? "PATCH" : "POST";
 
+    const teacherIds = Array.from(selectedTeachers);
+    const body: Record<string, unknown> = {
+      name,
+      description,
+      level,
+      duration: duration || null,
+      price: Number(price),
+      image: image || null,
+    };
+    if (course) {
+      body.teacherIds = teacherIds; // multi-teacher for updates
+    } else {
+      body.teacherId = teacherIds[0] || null; // create accepts single primary
+    }
+
     const res = await fetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name,
-        description,
-        level,
-        duration: duration || null,
-        price: Number(price),
-        image: image || null,
-        teacherId: teacherId || null,
-      }),
+      body: JSON.stringify(body),
     });
 
-    setLoading(false);
-    const data = await res.json();
-
     if (!res.ok) {
+      const data = await res.json();
       setError(data.error ?? "Save failed");
+      setLoading(false);
       return;
     }
 
-    const teacher = teachers.find((t) => t.id === teacherId) ?? null;
-    onSaved({
-      ...data.course,
-      teacher,
-      _count: course?._count ?? { enrollments: 0 },
-    });
+    // For new course, attach additional teachers
+    if (!course && teacherIds.length > 1) {
+      const data = await res.json();
+      await fetch(`/api/courses/${data.course.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teacherIds }),
+      });
+    }
+
+    setLoading(false);
+    onSaved();
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/40 backdrop-blur-sm animate-fade-in">
       <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl border border-border bg-card shadow-2xl">
-        <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-card">
-          <h2 className="text-lg font-bold">
-            {course ? "Edit Course" : "Create New Course"}
-          </h2>
-          <button
-            onClick={onClose}
-            className="grid h-9 w-9 place-items-center rounded-full hover:bg-muted"
-          >
+        <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-card z-10">
+          <h2 className="text-lg font-bold">{course ? "Edit Course" : "Create New Course"}</h2>
+          <button onClick={onClose} className="grid h-9 w-9 place-items-center rounded-full hover:bg-muted">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -256,9 +322,7 @@ function CourseModal({
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-              Course Name *
-            </label>
+            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Course Name *</label>
             <input
               required
               value={name}
@@ -269,9 +333,7 @@ function CourseModal({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-              Description
-            </label>
+            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Description</label>
             <textarea
               value={description ?? ""}
               onChange={(e) => setDescription(e.target.value)}
@@ -283,9 +345,7 @@ function CourseModal({
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-                Level *
-              </label>
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Level *</label>
               <select
                 value={level}
                 onChange={(e) => setLevel(e.target.value)}
@@ -297,9 +357,7 @@ function CourseModal({
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-                Duration
-              </label>
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Duration</label>
               <input
                 value={duration ?? ""}
                 onChange={(e) => setDuration(e.target.value)}
@@ -309,43 +367,66 @@ function CourseModal({
             </div>
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-                Price (USD/month)
-              </label>
-              <input
-                type="number"
-                min={0}
-                step="0.01"
-                value={price}
-                onChange={(e) => setPrice(Number(e.target.value))}
-                className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-                Assign Teacher
-              </label>
-              <select
-                value={teacherId}
-                onChange={(e) => setTeacherId(e.target.value)}
-                className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              >
-                <option value="">— No teacher —</option>
-                {teachers.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div>
+            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Price (USD/month)</label>
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={price}
+              onChange={(e) => setPrice(Number(e.target.value))}
+              className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-              Image URL
+            <label className="block text-xs font-semibold text-muted-foreground mb-2 inline-flex items-center gap-1">
+              <GraduationCap className="h-3.5 w-3.5" /> Assign Teachers (select one or more)
             </label>
+            <div className="space-y-1.5 max-h-48 overflow-y-auto rounded-xl border border-border bg-background p-2">
+              {teachers.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">
+                  No teachers yet. Invite teachers from Teachers page first.
+                </p>
+              ) : (
+                teachers.map((t) => {
+                  const isSelected = selectedTeachers.has(t.id);
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => toggleTeacher(t.id)}
+                      className={`w-full flex items-center gap-3 rounded-lg border px-3 py-2 text-left transition-all ${
+                        isSelected
+                          ? "border-primary bg-primary/5"
+                          : "border-transparent hover:border-primary/30 hover:bg-muted/30"
+                      }`}
+                    >
+                      <div
+                        className={`grid h-5 w-5 place-items-center rounded border-2 shrink-0 ${
+                          isSelected
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border"
+                        }`}
+                      >
+                        {isSelected && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
+                      </div>
+                      <Avatar name={t.name} size={28} style="micah" />
+                      <span className="text-sm flex-1">{t.name}</span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              {selectedTeachers.size === 0
+                ? "No teachers selected"
+                : `${selectedTeachers.size} teacher${selectedTeachers.size === 1 ? "" : "s"} selected`}
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Image URL</label>
             <input
               value={image ?? ""}
               onChange={(e) => setImage(e.target.value)}
@@ -355,11 +436,7 @@ function CourseModal({
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-full border border-border px-5 py-2 text-sm font-semibold hover:bg-muted"
-            >
+            <button type="button" onClick={onClose} className="rounded-full border border-border px-5 py-2 text-sm font-semibold hover:bg-muted">
               Cancel
             </button>
             <button
@@ -372,6 +449,131 @@ function CourseModal({
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+type StudentRow = {
+  id: string;
+  progress: number;
+  startedAt: string;
+  student: { id: string; name: string; email: string; country: string | null };
+};
+
+function TeacherStudentsModal({
+  course,
+  teacherId,
+  onClose,
+}: {
+  course: Course;
+  teacherId: string;
+  onClose: () => void;
+}) {
+  const [data, setData] = React.useState<{
+    teachers: Array<{ id: string; name: string; students: StudentRow[] }>;
+  } | null>(null);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    fetch(`/api/courses/${course.id}/teachers`)
+      .then((r) => r.json())
+      .then((d) => {
+        setData(d);
+        setLoading(false);
+      });
+  }, [course.id]);
+
+  const teacher = data?.teachers.find((t) => t.id === teacherId);
+  const students: StudentRow[] = teacher?.students ?? [];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/40 backdrop-blur-sm animate-fade-in">
+      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-border bg-card shadow-2xl">
+        <div className="bg-gradient-to-br from-primary to-accent p-6 text-primary-foreground rounded-t-3xl relative">
+          <button
+            onClick={onClose}
+            className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full bg-primary-foreground/10 backdrop-blur-md hover:bg-primary-foreground/20"
+          >
+            <X className="h-4 w-4" />
+          </button>
+          <div className="flex items-center gap-3">
+            <Avatar name={teacher?.name ?? "Teacher"} size={56} style="micah" className="border-2 border-primary-foreground/30" />
+            <div>
+              <p className="text-xs text-primary-foreground/80 uppercase font-semibold tracking-wide">
+                {course.name}
+              </p>
+              <h2 className="text-xl font-bold mt-0.5">{teacher?.name ?? "—"}</h2>
+              <p className="text-sm text-primary-foreground/80 mt-1 inline-flex items-center gap-1">
+                <Users className="h-3.5 w-3.5" /> {students.length} {students.length === 1 ? "student" : "students"} assigned
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-6">
+          {loading ? (
+            <div className="text-center py-12">
+              <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
+              <p className="mt-3 text-sm text-muted-foreground">Loading students...</p>
+            </div>
+          ) : students.length === 0 ? (
+            <div className="text-center py-12">
+              <Users className="mx-auto h-12 w-12 text-muted-foreground/30" />
+              <h3 className="mt-3 text-base font-bold">No students yet</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                No students are currently assigned to this teacher for this course.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {students.map((e, i) => (
+                <div
+                  key={e.id}
+                  className="flex items-center gap-3 rounded-xl border border-border bg-background p-4 hover:border-primary/40 transition-all stagger-item"
+                  style={{ animationDelay: `${i * 40}ms` }}
+                >
+                  <Avatar name={e.student.name} size={44} style="avataaars" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold">{e.student.name}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      {e.student.email}
+                    </p>
+                    <div className="flex items-center gap-3 mt-1 text-[11px] text-muted-foreground flex-wrap">
+                      {e.student.country && <span>{e.student.country}</span>}
+                      <span>
+                        Joined{" "}
+                        {new Date(e.startedAt).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-primary to-accent"
+                          style={{ width: `${e.progress}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-bold text-primary shrink-0">
+                        {e.progress}%
+                      </span>
+                    </div>
+                  </div>
+                  <a
+                    href={`mailto:${e.student.email}`}
+                    className="grid h-8 w-8 place-items-center rounded-full hover:bg-muted shrink-0"
+                    title="Email"
+                  >
+                    <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                  </a>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
