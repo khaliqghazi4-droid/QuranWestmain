@@ -212,48 +212,37 @@ export function StudentsTable({
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 align-top">
                       {s.courses.length === 0 ? (
                         <span className="text-xs text-muted-foreground italic">
                           Not enrolled
                         </span>
                       ) : (
-                        <div className="flex flex-wrap gap-1">
-                          {s.courses.slice(0, 2).map((c) => (
-                            <span
-                              key={c.id}
-                              className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary"
-                            >
-                              {c.name}
-                            </span>
+                        <div className="space-y-1.5">
+                          {s.courses.map((c) => (
+                            <div key={c.id} className="h-6 flex items-center">
+                              <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
+                                {c.name}
+                              </span>
+                            </div>
                           ))}
-                          {s.courses.length > 2 && (
-                            <span className="text-[11px] text-muted-foreground self-center">
-                              +{s.courses.length - 2}
-                            </span>
-                          )}
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 align-top">
                       {s.courses.length === 0 ? (
                         <span className="text-xs text-muted-foreground">—</span>
                       ) : (
-                        <div className="space-y-1">
-                          {s.courses.slice(0, 2).map((c) => (
+                        <div className="space-y-1.5">
+                          {s.courses.map((c) => (
                             <div
                               key={c.id}
-                              className="inline-flex items-center gap-1 text-xs text-foreground"
+                              className="h-6 flex items-center gap-1 text-xs text-foreground"
                             >
-                              <Clock className="h-3 w-3 text-muted-foreground" />
+                              <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
                               {c.duration ?? "Self-paced"}
                             </div>
                           ))}
-                          {s.courses.length > 2 && (
-                            <p className="text-[11px] text-muted-foreground">
-                              +{s.courses.length - 2} more
-                            </p>
-                          )}
                         </div>
                       )}
                     </td>
