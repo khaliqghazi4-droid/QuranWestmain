@@ -5,15 +5,28 @@ import { TeachersGrid } from "./teachers-grid";
 export const dynamic = "force-dynamic";
 
 export default async function AdminTeachersPage() {
-  const teachers = await prisma.user.findMany({
-    where: { role: "TEACHER" },
-    include: {
-      teacherCourses: {
-        include: { _count: { select: { enrollments: true } } },
+  const [teachers, allCourses] = await Promise.all([
+    prisma.user.findMany({
+      where: { role: "TEACHER" },
+      include: {
+        teacherCourses: {
+          include: { _count: { select: { enrollments: true } } },
+        },
       },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.course.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        name: true,
+        level: true,
+        teacherId: true,
+        teacher: { select: { id: true, name: true } },
+      },
+      orderBy: { name: "asc" },
+    }),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -30,9 +43,17 @@ export default async function AdminTeachersPage() {
           bio: t.bio,
           createdAt: t.createdAt.toISOString(),
           courses: t.teacherCourses.map((c) => ({
+            id: c.id,
             name: c.name,
             students: c._count.enrollments,
           })),
+        }))}
+        allCourses={allCourses.map((c) => ({
+          id: c.id,
+          name: c.name,
+          level: c.level,
+          assignedTeacherId: c.teacherId,
+          assignedTeacherName: c.teacher?.name ?? null,
         }))}
       />
     </div>

@@ -18,6 +18,8 @@ import {
   KeyRound,
   Copy,
   CheckCircle2,
+  Check,
+  GraduationCap,
 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 
@@ -28,10 +30,24 @@ type Teacher = {
   country: string | null;
   bio: string | null;
   createdAt: string;
-  courses: { name: string; students: number }[];
+  courses: { id: string; name: string; students: number }[];
 };
 
-export function TeachersGrid({ initialTeachers }: { initialTeachers: Teacher[] }) {
+type CourseOption = {
+  id: string;
+  name: string;
+  level: string;
+  assignedTeacherId: string | null;
+  assignedTeacherName: string | null;
+};
+
+export function TeachersGrid({
+  initialTeachers,
+  allCourses,
+}: {
+  initialTeachers: Teacher[];
+  allCourses: CourseOption[];
+}) {
   const router = useRouter();
   const [teachers, setTeachers] = React.useState(initialTeachers);
   const [query, setQuery] = React.useState("");
@@ -43,6 +59,27 @@ export function TeachersGrid({ initialTeachers }: { initialTeachers: Teacher[] }
     password: string;
   } | null>(null);
   const [inviteOpen, setInviteOpen] = React.useState(false);
+  const [assignTarget, setAssignTarget] = React.useState<Teacher | null>(null);
+
+  function handleAssignmentSaved(teacherId: string, assigned: CourseOption[]) {
+    setTeachers((prev) =>
+      prev.map((t) =>
+        t.id === teacherId
+          ? {
+              ...t,
+              courses: assigned.map((c) => ({
+                id: c.id,
+                name: c.name,
+                students:
+                  t.courses.find((tc) => tc.id === c.id)?.students ?? 0,
+              })),
+            }
+          : t
+      )
+    );
+    setAssignTarget(null);
+    router.refresh();
+  }
 
   async function handleResetPassword(id: string, name: string, email: string) {
     if (!confirm(`Reset password for ${name}? A new random password will be generated.`)) return;
@@ -174,18 +211,24 @@ export function TeachersGrid({ initialTeachers }: { initialTeachers: Teacher[] }
                   </div>
                 </div>
 
-                <div className="mt-4 flex items-center justify-between gap-2">
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setAssignTarget(t)}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-primary to-accent px-3 py-2 text-[11px] font-bold text-primary-foreground shadow-md hover:shadow-lg col-span-2"
+                  >
+                    <GraduationCap className="h-3.5 w-3.5" /> Assign Courses ({t.courses.length})
+                  </button>
                   <a
                     href={`mailto:${t.email}`}
-                    className="grid h-8 w-8 place-items-center rounded-full border border-border hover:bg-muted shrink-0"
+                    className="inline-flex items-center justify-center gap-1 rounded-full border border-border px-2 py-1.5 text-[11px] font-semibold hover:bg-muted"
                     title="Email"
                   >
-                    <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                    <Mail className="h-3 w-3" /> Email
                   </a>
                   <button
                     onClick={() => handleResetPassword(t.id, t.name, t.email)}
                     disabled={resetting === t.id}
-                    className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-[11px] font-semibold text-muted-foreground hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-colors disabled:opacity-50"
+                    className="inline-flex items-center justify-center gap-1 rounded-full border border-border px-2 py-1.5 text-[11px] font-semibold text-muted-foreground hover:bg-primary/10 hover:text-primary hover:border-primary/30 disabled:opacity-50"
                   >
                     {resetting === t.id ? (
                       <Loader2 className="h-3 w-3 animate-spin" />
@@ -197,14 +240,14 @@ export function TeachersGrid({ initialTeachers }: { initialTeachers: Teacher[] }
                   <button
                     onClick={() => handleDelete(t.id, t.name)}
                     disabled={deleting === t.id}
-                    className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-[11px] font-semibold text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors disabled:opacity-50"
+                    className="inline-flex items-center justify-center gap-1 rounded-full border border-border px-2 py-1.5 text-[11px] font-semibold text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 disabled:opacity-50 col-span-2"
                   >
                     {deleting === t.id ? (
                       <Loader2 className="h-3 w-3 animate-spin" />
                     ) : (
                       <UserX className="h-3 w-3" />
                     )}
-                    Remove
+                    Remove Teacher
                   </button>
                 </div>
               </div>
@@ -227,6 +270,205 @@ export function TeachersGrid({ initialTeachers }: { initialTeachers: Teacher[] }
           onClose={() => setResetResult(null)}
         />
       )}
+      {assignTarget && (
+        <AssignCoursesModal
+          teacher={assignTarget}
+          allCourses={allCourses}
+          onClose={() => setAssignTarget(null)}
+          onSaved={handleAssignmentSaved}
+        />
+      )}
+    </div>
+  );
+}
+
+function AssignCoursesModal({
+  teacher,
+  allCourses,
+  onClose,
+  onSaved,
+}: {
+  teacher: Teacher;
+  allCourses: CourseOption[];
+  onClose: () => void;
+  onSaved: (teacherId: string, assigned: CourseOption[]) => void;
+}) {
+  const initialAssigned = new Set(
+    allCourses.filter((c) => c.assignedTeacherId === teacher.id).map((c) => c.id)
+  );
+  const [selected, setSelected] = React.useState<Set<string>>(initialAssigned);
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  function toggle(courseId: string) {
+    const next = new Set(selected);
+    if (next.has(courseId)) next.delete(courseId);
+    else next.add(courseId);
+    setSelected(next);
+  }
+
+  async function handleSave() {
+    setError(null);
+    setSaving(true);
+
+    // Diff: courses to assign (newly selected) and unassign (deselected)
+    const toAssign: string[] = [];
+    const toUnassign: string[] = [];
+    for (const c of allCourses) {
+      const wasAssigned = c.assignedTeacherId === teacher.id;
+      const isAssigned = selected.has(c.id);
+      if (!wasAssigned && isAssigned) toAssign.push(c.id);
+      if (wasAssigned && !isAssigned) toUnassign.push(c.id);
+    }
+
+    try {
+      // Assign new ones (overwrites any existing teacher)
+      for (const id of toAssign) {
+        const res = await fetch(`/api/courses/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ teacherId: teacher.id }),
+        });
+        if (!res.ok) throw new Error("Failed to assign");
+      }
+      // Unassign deselected ones
+      for (const id of toUnassign) {
+        const res = await fetch(`/api/courses/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ teacherId: null }),
+        });
+        if (!res.ok) throw new Error("Failed to unassign");
+      }
+
+      setSaving(false);
+      onSaved(
+        teacher.id,
+        allCourses.filter((c) => selected.has(c.id))
+      );
+    } catch (e) {
+      setSaving(false);
+      setError(e instanceof Error ? e.message : "Save failed");
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/40 backdrop-blur-sm animate-fade-in">
+      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-border bg-card shadow-2xl">
+        <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-card z-10">
+          <div className="flex items-center gap-3">
+            <Avatar name={teacher.name} size={40} style="micah" />
+            <div>
+              <h2 className="text-lg font-bold inline-flex items-center gap-2">
+                <GraduationCap className="h-5 w-5" /> Assign Courses
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Select which courses <span className="font-semibold text-foreground">{teacher.name}</span> will teach
+              </p>
+            </div>
+          </div>
+          <button onClick={onClose} className="grid h-9 w-9 place-items-center rounded-full hover:bg-muted">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          {error && (
+            <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" /> {error}
+            </div>
+          )}
+
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
+            <p className="text-xs text-foreground">
+              <span className="font-semibold">💡 Note:</span> Assigning a course will move it
+              from its current teacher (if any) to this teacher. Students remain enrolled.
+            </p>
+          </div>
+
+          {allCourses.length === 0 ? (
+            <div className="text-center py-8">
+              <BookOpen className="mx-auto h-10 w-10 text-muted-foreground/30" />
+              <p className="mt-3 text-sm text-muted-foreground">
+                No courses created yet. Go to Courses page to add some first.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {allCourses.map((c) => {
+                const isSelected = selected.has(c.id);
+                const otherTeacher =
+                  c.assignedTeacherId &&
+                  c.assignedTeacherId !== teacher.id
+                    ? c.assignedTeacherName
+                    : null;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => toggle(c.id)}
+                    className={`w-full flex items-center gap-3 rounded-xl border p-4 text-left transition-all ${
+                      isSelected
+                        ? "border-primary bg-primary/5"
+                        : "border-border bg-background hover:border-primary/40"
+                    }`}
+                  >
+                    <div
+                      className={`grid h-6 w-6 place-items-center rounded-md border-2 transition-all shrink-0 ${
+                        isSelected
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-card"
+                      }`}
+                    >
+                      {isSelected && <Check className="h-4 w-4" strokeWidth={3} />}
+                    </div>
+                    <div className="grid h-10 w-10 place-items-center rounded-lg bg-gradient-to-br from-primary/15 to-accent/15 text-primary shrink-0">
+                      <BookOpen className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold">{c.name}</p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <span className="text-[10px] uppercase font-semibold text-primary">
+                          {c.level}
+                        </span>
+                        {otherTeacher && (
+                          <span className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
+                            <Users className="h-3 w-3" /> Currently: {otherTeacher}
+                          </span>
+                        )}
+                        {!c.assignedTeacherId && (
+                          <span className="text-[11px] text-[hsl(var(--gold))] font-semibold">
+                            Unassigned
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-border">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full border border-border px-5 py-2 text-sm font-semibold hover:bg-muted"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-accent px-6 py-2 text-sm font-semibold text-primary-foreground shadow-md disabled:opacity-60"
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+              Save Assignments ({selected.size})
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
