@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Search,
@@ -15,6 +16,7 @@ import {
   BookOpen,
   Clock,
   Filter,
+  FileText,
 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 
@@ -204,13 +206,16 @@ export function StudentsTable({
                     style={{ animationDelay: `${Math.min(i * 30, 400)}ms` }}
                   >
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
+                      <Link
+                        href={`/app/admin/students/${s.id}`}
+                        className="flex items-center gap-3 group"
+                      >
                         <Avatar name={s.name} size={36} style="micah" />
                         <div>
-                          <p className="text-sm font-semibold">{s.name}</p>
+                          <p className="text-sm font-semibold group-hover:text-primary transition-colors">{s.name}</p>
                           <p className="text-[11px] text-muted-foreground">{s.email}</p>
                         </div>
-                      </div>
+                      </Link>
                     </td>
                     <td className="px-6 py-4 align-top">
                       {s.courses.length === 0 ? (
@@ -258,6 +263,13 @@ export function StudentsTable({
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-1">
+                        <Link
+                          href={`/app/admin/students/${s.id}`}
+                          className="grid h-8 w-8 place-items-center rounded-full hover:bg-primary/10 hover:text-primary"
+                          title="View progress report"
+                        >
+                          <FileText className="h-3.5 w-3.5 text-muted-foreground hover:text-primary" />
+                        </Link>
                         <a
                           href={`mailto:${s.email}`}
                           className="grid h-8 w-8 place-items-center rounded-full hover:bg-muted"

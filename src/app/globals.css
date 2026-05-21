@@ -170,3 +170,50 @@
     transform: scale(1);
   }
 }
+
+@media print {
+  /* Hide sidebar, header, and other dashboard chrome */
+  aside,
+  header,
+  nav,
+  [class*="sidebar"],
+  .print\:hidden {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  main {
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* Force light colors for printing */
+  .bg-card,
+  .bg-background,
+  .bg-muted {
+    background: white !important;
+  }
+
+  .text-muted-foreground {
+    color: #555 !important;
+  }
+
+  .text-foreground {
+    color: #000 !important;
+  }
+
+  /* Avoid breaking inside elements */
+  .rounded-2xl,
+  table {
+    page-break-inside: avoid;
+  }
+
+  /* Ensure proper margins */
+  @page {
+    margin: 1.5cm;
+  }
+}
