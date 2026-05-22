@@ -50,6 +50,7 @@ export const navConfig: Record<Role, NavItem[]> = {
     { href: "/app/admin", label: "Dashboard", icon: LayoutDashboard },
     { href: "/app/admin/students", label: "Students", icon: GraduationCap },
     { href: "/app/admin/teachers", label: "Teachers", icon: Users },
+    { href: "/app/admin/availability", label: "Scheduling", icon: Calendar },
     { href: "/app/admin/courses", label: "Courses", icon: BookOpen },
     { href: "/app/admin/payments", label: "Payments", icon: DollarSign },
     { href: "/app/admin/reports", label: "Reports", icon: LineChart },

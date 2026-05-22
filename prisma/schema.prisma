@@ -21,6 +21,11 @@ enum AttendanceStatus {
   LATE
 }
 
+enum TeacherShift {
+  DAY   // 1 PM - 9 PM PKT
+  NIGHT // 9 PM - 4 AM PKT
+}
+
 model User {
   id            String   @id @default(cuid())
   email         String   @unique
@@ -28,6 +33,7 @@ model User {
   name          String
   password      String
   role          Role     @default(STUDENT)
+  shift         TeacherShift? // for teachers: DAY or NIGHT
   image         String?
   country       String?
   timezone      String?
@@ -42,12 +48,31 @@ model User {
   courseTeacherships    CourseTeacher[] @relation("TeacherCourseTeachers")
   taughtEnrollments     Enrollment[]    @relation("EnrollmentTeacher")
   availability          UserAvailability[]
+  teacherBookings       BookingSlot[]   @relation("TeacherBookings")
   parentChildren        ParentChild[]   @relation("Parent")
   childOfParents        ParentChild[]   @relation("Child")
   attendanceRecords     Attendance[]
   sentMessages          Message[]       @relation("MessageSender")
   receivedMessages      Message[]       @relation("MessageReceiver")
   sessions              Session[]
+}
+
+model BookingSlot {
+  id           String   @id @default(cuid())
+  enrollmentId String
+  teacherId    String
+  dayOfWeek    Int      // 0=Sun ... 6=Sat
+  startTime    String   // "HH:MM" in PKT (Asia/Karachi)
+  duration     Int      @default(30) // minutes
+  createdAt    DateTime @default(now())
+
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  teacher      User       @relation("TeacherBookings", fields: [teacherId], references: [id], onDelete: Cascade)
+
+  // A teacher can't be double-booked at the same day+time
+  @@unique([teacherId, dayOfWeek, startTime])
+  @@index([enrollmentId])
+  @@index([teacherId])
 }
 
 model Session {
@@ -142,6 +167,7 @@ model Enrollment {
   course       Course                   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   teacher      User?                    @relation("EnrollmentTeacher", fields: [teacherId], references: [id])
   availability EnrollmentAvailability[]
+  bookings     BookingSlot[]
 
   @@unique([studentId, courseId])
   @@index([teacherId])

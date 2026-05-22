@@ -30,10 +30,19 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   try {
     const body = await req.json();
+    // Whitelist editable fields only
+    const data: Record<string, unknown> = {};
+    if (body.name !== undefined) data.name = body.name;
+    if (body.country !== undefined) data.country = body.country;
+    if (body.bio !== undefined) data.bio = body.bio;
+    if (body.phone !== undefined) data.phone = body.phone;
+    if (body.timezone !== undefined) data.timezone = body.timezone;
+    if (body.shift !== undefined) data.shift = body.shift; // "DAY" | "NIGHT" | null
+
     const user = await prisma.user.update({
       where: { id: params.id },
-      data: body,
-      select: { id: true, name: true, email: true, role: true, country: true },
+      data,
+      select: { id: true, name: true, email: true, role: true, country: true, shift: true },
     });
     return NextResponse.json({ user });
   } catch (e) {

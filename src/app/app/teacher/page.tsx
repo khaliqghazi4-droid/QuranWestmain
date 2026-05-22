@@ -9,9 +9,15 @@ import {
   ArrowRight,
   Star,
   Award,
+  Calendar,
+  Clock,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { CountUp } from "@/components/count-up";
 import { Avatar } from "@/components/avatar";
+import { DAYS } from "@/lib/timezones";
+import { formatSlotRange, SHIFT_RANGES, type Shift } from "@/lib/shifts";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +28,8 @@ export default async function TeacherDashboard() {
   const teacherId = session.user.id;
   const teacherName = session.user.name ?? "Teacher";
 
-  const [courses, enrollments] = await Promise.all([
+  const [me, courses, enrollments, bookings] = await Promise.all([
+    prisma.user.findUnique({ where: { id: teacherId }, select: { shift: true } }),
     prisma.course.findMany({
       where: { teacherId },
       include: { _count: { select: { enrollments: true } } },
@@ -36,10 +43,29 @@ export default async function TeacherDashboard() {
       orderBy: { startedAt: "desc" },
       take: 10,
     }),
+    prisma.bookingSlot.findMany({
+      where: { teacherId },
+      include: {
+        enrollment: {
+          include: {
+            student: { select: { name: true, country: true } },
+            course: { select: { name: true } },
+          },
+        },
+      },
+      orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
+    }),
   ]);
 
   const totalStudents = new Set(enrollments.map((e) => e.student.id)).size;
   const totalCourses = courses.length;
+  const shift = me?.shift as Shift | null;
+
+  // Group bookings by day for the weekly schedule
+  const bookingsByDay = DAYS.map((d) => ({
+    day: d,
+    slots: bookings.filter((b) => b.dayOfWeek === d.id),
+  }));
 
   const stats = [
     { icon: Users, label: "Active Students", value: totalStudents, trend: totalStudents > 0 ? "Currently teaching" : "No students yet" },
@@ -62,7 +88,15 @@ export default async function TeacherDashboard() {
           }}
         />
         <div className="relative">
-          <p className="text-sm text-primary-foreground/80">Assalamu Alaikum,</p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm text-primary-foreground/80">Assalamu Alaikum,</p>
+            {shift && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary-foreground/15 backdrop-blur-md border border-primary-foreground/20 px-2.5 py-0.5 text-[11px] font-semibold text-primary-foreground">
+                {shift === "DAY" ? <Sun className="h-3 w-3" /> : <Moon className="h-3 w-3" />}
+                {SHIFT_RANGES[shift].label}
+              </span>
+            )}
+          </div>
           <h1 className="mt-1 text-2xl sm:text-3xl font-bold text-primary-foreground">
             {teacherName} 👋
           </h1>
@@ -111,6 +145,70 @@ export default async function TeacherDashboard() {
             <p className="text-[11px] text-primary mt-2 font-medium">{s.trend}</p>
           </div>
         ))}
+      </div>
+
+      {/* Weekly booked schedule */}
+      <div className="rounded-2xl border border-border bg-card p-6">
+        <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
+          <div>
+            <h2 className="text-lg font-bold inline-flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-primary" /> My Weekly Schedule
+            </h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {bookings.length === 0
+                ? "No classes booked yet — the admin assigns students to your slots"
+                : `${bookings.length} recurring 30-min ${bookings.length === 1 ? "class" : "classes"} per week · all times PKT`}
+            </p>
+          </div>
+          {!shift && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-[hsl(var(--gold)/0.12)] px-3 py-1 text-[11px] font-semibold text-[hsl(var(--gold))]">
+              No shift assigned yet
+            </span>
+          )}
+        </div>
+
+        {bookings.length === 0 ? (
+          <div className="text-center py-10">
+            <Calendar className="mx-auto h-12 w-12 text-muted-foreground/30" />
+            <p className="mt-4 text-sm text-muted-foreground">
+              When the admin books a student into one of your time slots, it will appear here.
+            </p>
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+            {bookingsByDay.map(({ day, slots }) => (
+              <div
+                key={day.id}
+                className="rounded-xl border border-border bg-background p-3 min-h-[80px]"
+              >
+                <p className="text-xs font-bold text-foreground mb-2">{day.short}</p>
+                {slots.length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground italic">Free</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {slots.map((b) => (
+                      <div
+                        key={b.id}
+                        className="rounded-lg bg-primary/5 border border-primary/20 p-2"
+                      >
+                        <p className="text-[11px] font-bold text-primary inline-flex items-center gap-1">
+                          <Clock className="h-2.5 w-2.5" />
+                          {formatSlotRange(b.startTime)}
+                        </p>
+                        <p className="text-[11px] font-semibold mt-1 truncate">
+                          {b.enrollment.student.name}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground truncate">
+                          {b.enrollment.course.name}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">

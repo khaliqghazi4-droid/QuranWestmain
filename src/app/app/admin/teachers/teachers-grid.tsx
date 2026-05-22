@@ -6,7 +6,6 @@ import {
   Plus,
   Star,
   UserX,
-  MoreVertical,
   Mail,
   Award,
   Users,
@@ -41,6 +40,7 @@ type Teacher = {
   bio: string | null;
   createdAt: string;
   timezone: string;
+  shift: "DAY" | "NIGHT" | null;
   courses: { id: string; name: string; students: number }[];
   availability: AvailabilitySlot[];
 };
@@ -83,8 +83,7 @@ export function TeachersGrid({
               courses: assigned.map((c) => ({
                 id: c.id,
                 name: c.name,
-                students:
-                  t.courses.find((tc) => tc.id === c.id)?.students ?? 0,
+                students: t.courses.find((tc) => tc.id === c.id)?.students ?? 0,
               })),
             }
           : t
@@ -112,15 +111,6 @@ export function TeachersGrid({
     }
   }
 
-  const filtered = teachers.filter((t) => {
-    const q = query.toLowerCase();
-    return (
-      t.name.toLowerCase().includes(q) ||
-      t.email.toLowerCase().includes(q) ||
-      (t.country?.toLowerCase().includes(q) ?? false)
-    );
-  });
-
   async function handleDelete(id: string, name: string) {
     if (!confirm(`Remove ${name}? Their assigned courses will be unassigned.`)) return;
     setDeleting(id);
@@ -141,8 +131,194 @@ export function TeachersGrid({
     router.refresh();
   }
 
+  async function handleSetShift(id: string, shift: "DAY" | "NIGHT" | null) {
+    setTeachers((prev) => prev.map((t) => (t.id === id ? { ...t, shift } : t)));
+    const res = await fetch(`/api/users/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ shift }),
+    });
+    if (!res.ok) alert("Failed to update shift");
+    router.refresh();
+  }
+
+  const filtered = teachers.filter((t) => {
+    const q = query.toLowerCase();
+    return (
+      t.name.toLowerCase().includes(q) ||
+      t.email.toLowerCase().includes(q) ||
+      (t.country?.toLowerCase().includes(q) ?? false)
+    );
+  });
+
+  const dayTeachers = filtered.filter((t) => t.shift === "DAY");
+  const nightTeachers = filtered.filter((t) => t.shift === "NIGHT");
+  const unassignedTeachers = filtered.filter((t) => !t.shift);
+
+  function renderCard(t: Teacher, i: number) {
+    const totalStudents = t.courses.reduce((s, c) => s + c.students, 0);
+    return (
+      <div
+        key={t.id}
+        className="group rounded-2xl border border-border bg-card p-5 hover:border-primary/40 hover:shadow-lg hover:-translate-y-0.5 transition-all stagger-item"
+        style={{ animationDelay: `${i * 60}ms` }}
+      >
+        <div className="flex items-start gap-3">
+          <Avatar name={t.name} size={56} style="micah" className="rounded-2xl" />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm font-bold truncate">{t.name}</p>
+              <Award className="h-3.5 w-3.5 text-[hsl(var(--gold))] shrink-0" />
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{t.email}</p>
+            {t.country && <p className="text-[11px] text-muted-foreground">{t.country}</p>}
+          </div>
+        </div>
+
+        {/* Shift selector */}
+        <div className="mt-3">
+          <p className="text-[10px] uppercase font-semibold text-muted-foreground mb-1.5">Shift</p>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => handleSetShift(t.id, t.shift === "DAY" ? null : "DAY")}
+              className={`inline-flex items-center justify-center gap-1 rounded-lg border px-2 py-1.5 text-[11px] font-bold transition-all ${
+                t.shift === "DAY"
+                  ? "border-amber-500 bg-amber-500/10 text-amber-600"
+                  : "border-border bg-background text-muted-foreground hover:border-amber-500/40"
+              }`}
+            >
+              ☀️ Day (1-9 PM)
+            </button>
+            <button
+              onClick={() => handleSetShift(t.id, t.shift === "NIGHT" ? null : "NIGHT")}
+              className={`inline-flex items-center justify-center gap-1 rounded-lg border px-2 py-1.5 text-[11px] font-bold transition-all ${
+                t.shift === "NIGHT"
+                  ? "border-indigo-500 bg-indigo-500/10 text-indigo-500"
+                  : "border-border bg-background text-muted-foreground hover:border-indigo-500/40"
+              }`}
+            >
+              🌙 Night (9-4 AM)
+            </button>
+          </div>
+        </div>
+
+        {t.bio && (
+          <p className="mt-3 text-xs text-muted-foreground leading-relaxed line-clamp-2">
+            {t.bio}
+          </p>
+        )}
+
+        <div className="mt-4 pt-4 border-t border-border grid grid-cols-3 gap-2">
+          <div>
+            <p className="text-[10px] uppercase font-semibold text-muted-foreground">Courses</p>
+            <p className="text-base font-bold mt-0.5 inline-flex items-center gap-1">
+              <BookOpen className="h-3 w-3" /> {t.courses.length}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase font-semibold text-muted-foreground">Students</p>
+            <p className="text-base font-bold mt-0.5 inline-flex items-center gap-1">
+              <Users className="h-3 w-3" /> {totalStudents}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase font-semibold text-muted-foreground">Rating</p>
+            <p className="text-base font-bold mt-0.5 inline-flex items-center gap-1">
+              <Star className="h-3 w-3 fill-[hsl(var(--gold))] text-[hsl(var(--gold))]" />
+              —
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button
+            onClick={() => setAssignTarget(t)}
+            className="inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-primary to-accent px-3 py-2 text-[11px] font-bold text-primary-foreground shadow-md hover:shadow-lg"
+          >
+            <GraduationCap className="h-3.5 w-3.5" /> Assign ({t.courses.length})
+          </button>
+          <button
+            onClick={() => setAvailabilityOpenId(availabilityOpenId === t.id ? null : t.id)}
+            className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-2 text-[11px] font-bold transition-all ${
+              availabilityOpenId === t.id
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border bg-card text-foreground hover:border-primary/40"
+            }`}
+          >
+            <Calendar className="h-3.5 w-3.5" />
+            Schedule ({t.availability.length})
+            {availabilityOpenId === t.id ? (
+              <ChevronUp className="h-3 w-3" />
+            ) : (
+              <ChevronDown className="h-3 w-3" />
+            )}
+          </button>
+        </div>
+
+        {availabilityOpenId === t.id && (
+          <div className="mt-3 rounded-xl border border-border bg-background p-3">
+            <AvailabilityViewer teacherTimezone={t.timezone} slots={t.availability} compact />
+          </div>
+        )}
+
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <a
+            href={`mailto:${t.email}`}
+            className="inline-flex items-center justify-center gap-1 rounded-full border border-border px-2 py-1.5 text-[11px] font-semibold hover:bg-muted"
+            title="Email"
+          >
+            <Mail className="h-3 w-3" /> Email
+          </a>
+          <button
+            onClick={() => handleResetPassword(t.id, t.name, t.email)}
+            disabled={resetting === t.id}
+            className="inline-flex items-center justify-center gap-1 rounded-full border border-border px-2 py-1.5 text-[11px] font-semibold text-muted-foreground hover:bg-primary/10 hover:text-primary hover:border-primary/30 disabled:opacity-50"
+          >
+            {resetting === t.id ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <KeyRound className="h-3 w-3" />
+            )}
+            Reset
+          </button>
+          <button
+            onClick={() => handleDelete(t.id, t.name)}
+            disabled={deleting === t.id}
+            className="inline-flex items-center justify-center gap-1 rounded-full border border-border px-2 py-1.5 text-[11px] font-semibold text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 disabled:opacity-50 col-span-2"
+          >
+            {deleting === t.id ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <UserX className="h-3 w-3" />
+            )}
+            Remove Teacher
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  function renderSection(label: string, list: Teacher[], badgeClass: string) {
+    if (list.length === 0) return null;
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${badgeClass}`}>
+            {label}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {list.length} teacher{list.length === 1 ? "" : "s"}
+          </span>
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {list.map((t, i) => renderCard(t, i))}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex flex-wrap gap-3 justify-between items-center">
         <div className="relative max-w-sm w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -170,141 +346,15 @@ export function TeachersGrid({
           </p>
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((t, i) => {
-            const totalStudents = t.courses.reduce((s, c) => s + c.students, 0);
-            return (
-              <div
-                key={t.id}
-                className="group rounded-2xl border border-border bg-card p-5 hover:border-primary/40 hover:shadow-lg hover:-translate-y-0.5 transition-all stagger-item"
-                style={{ animationDelay: `${i * 60}ms` }}
-              >
-                <div className="flex items-start gap-3">
-                  <Avatar name={t.name} size={56} style="micah" className="rounded-2xl" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <p className="text-sm font-bold truncate">{t.name}</p>
-                      <Award className="h-3.5 w-3.5 text-[hsl(var(--gold))] shrink-0" />
-                    </div>
-                    <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{t.email}</p>
-                    {t.country && (
-                      <p className="text-[11px] text-muted-foreground">{t.country}</p>
-                    )}
-                  </div>
-                  <button className="grid h-8 w-8 place-items-center rounded-full hover:bg-muted">
-                    <MoreVertical className="h-4 w-4 text-muted-foreground" />
-                  </button>
-                </div>
-
-                {t.bio && (
-                  <p className="mt-3 text-xs text-muted-foreground leading-relaxed line-clamp-2">
-                    {t.bio}
-                  </p>
-                )}
-
-                <div className="mt-4 pt-4 border-t border-border grid grid-cols-3 gap-2">
-                  <div>
-                    <p className="text-[10px] uppercase font-semibold text-muted-foreground">Courses</p>
-                    <p className="text-base font-bold mt-0.5 inline-flex items-center gap-1">
-                      <BookOpen className="h-3 w-3" /> {t.courses.length}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] uppercase font-semibold text-muted-foreground">Students</p>
-                    <p className="text-base font-bold mt-0.5 inline-flex items-center gap-1">
-                      <Users className="h-3 w-3" /> {totalStudents}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] uppercase font-semibold text-muted-foreground">Rating</p>
-                    <p className="text-base font-bold mt-0.5 inline-flex items-center gap-1">
-                      <Star className="h-3 w-3 fill-[hsl(var(--gold))] text-[hsl(var(--gold))]" />
-                      —
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-4 grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => setAssignTarget(t)}
-                    className="inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-primary to-accent px-3 py-2 text-[11px] font-bold text-primary-foreground shadow-md hover:shadow-lg"
-                  >
-                    <GraduationCap className="h-3.5 w-3.5" /> Assign ({t.courses.length})
-                  </button>
-                  <button
-                    onClick={() =>
-                      setAvailabilityOpenId(availabilityOpenId === t.id ? null : t.id)
-                    }
-                    className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-2 text-[11px] font-bold transition-all ${
-                      availabilityOpenId === t.id
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border bg-card text-foreground hover:border-primary/40"
-                    }`}
-                  >
-                    <Calendar className="h-3.5 w-3.5" />
-                    Schedule ({t.availability.length})
-                    {availabilityOpenId === t.id ? (
-                      <ChevronUp className="h-3 w-3" />
-                    ) : (
-                      <ChevronDown className="h-3 w-3" />
-                    )}
-                  </button>
-                </div>
-
-                {availabilityOpenId === t.id && (
-                  <div className="mt-3 rounded-xl border border-border bg-background p-3">
-                    <AvailabilityViewer
-                      teacherTimezone={t.timezone}
-                      slots={t.availability}
-                      compact
-                    />
-                  </div>
-                )}
-
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  <a
-                    href={`mailto:${t.email}`}
-                    className="inline-flex items-center justify-center gap-1 rounded-full border border-border px-2 py-1.5 text-[11px] font-semibold hover:bg-muted"
-                    title="Email"
-                  >
-                    <Mail className="h-3 w-3" /> Email
-                  </a>
-                  <button
-                    onClick={() => handleResetPassword(t.id, t.name, t.email)}
-                    disabled={resetting === t.id}
-                    className="inline-flex items-center justify-center gap-1 rounded-full border border-border px-2 py-1.5 text-[11px] font-semibold text-muted-foreground hover:bg-primary/10 hover:text-primary hover:border-primary/30 disabled:opacity-50"
-                  >
-                    {resetting === t.id ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <KeyRound className="h-3 w-3" />
-                    )}
-                    Reset
-                  </button>
-                  <button
-                    onClick={() => handleDelete(t.id, t.name)}
-                    disabled={deleting === t.id}
-                    className="inline-flex items-center justify-center gap-1 rounded-full border border-border px-2 py-1.5 text-[11px] font-semibold text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 disabled:opacity-50 col-span-2"
-                  >
-                    {deleting === t.id ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <UserX className="h-3 w-3" />
-                    )}
-                    Remove Teacher
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+        <div className="space-y-8">
+          {renderSection("☀️ Day Teachers", dayTeachers, "bg-amber-500/10 text-amber-600")}
+          {renderSection("🌙 Night Teachers", nightTeachers, "bg-indigo-500/10 text-indigo-500")}
+          {renderSection("⚠️ Unassigned (no shift)", unassignedTeachers, "bg-[hsl(var(--gold)/0.15)] text-[hsl(var(--gold))]")}
         </div>
       )}
 
       {inviteOpen && (
-        <InviteTeacherModal
-          onClose={() => setInviteOpen(false)}
-          onInvited={handleInvited}
-        />
+        <InviteTeacherModal onClose={() => setInviteOpen(false)} onInvited={handleInvited} />
       )}
       {resetResult && (
         <PasswordRevealModal
@@ -355,7 +405,6 @@ function AssignCoursesModal({
     setError(null);
     setSaving(true);
 
-    // Diff: courses to assign (newly selected) and unassign (deselected)
     const toAssign: string[] = [];
     const toUnassign: string[] = [];
     for (const c of allCourses) {
@@ -366,7 +415,6 @@ function AssignCoursesModal({
     }
 
     try {
-      // Assign new ones (overwrites any existing teacher)
       for (const id of toAssign) {
         const res = await fetch(`/api/courses/${id}`, {
           method: "PATCH",
@@ -375,7 +423,6 @@ function AssignCoursesModal({
         });
         if (!res.ok) throw new Error("Failed to assign");
       }
-      // Unassign deselected ones
       for (const id of toUnassign) {
         const res = await fetch(`/api/courses/${id}`, {
           method: "PATCH",
@@ -407,7 +454,8 @@ function AssignCoursesModal({
                 <GraduationCap className="h-5 w-5" /> Assign Courses
               </h2>
               <p className="text-xs text-muted-foreground">
-                Select which courses <span className="font-semibold text-foreground">{teacher.name}</span> will teach
+                Select which courses{" "}
+                <span className="font-semibold text-foreground">{teacher.name}</span> will teach
               </p>
             </div>
           </div>
@@ -442,8 +490,7 @@ function AssignCoursesModal({
               {allCourses.map((c) => {
                 const isSelected = selected.has(c.id);
                 const otherTeacher =
-                  c.assignedTeacherId &&
-                  c.assignedTeacherId !== teacher.id
+                  c.assignedTeacherId && c.assignedTeacherId !== teacher.id
                     ? c.assignedTeacherName
                     : null;
                 return (
@@ -472,18 +519,14 @@ function AssignCoursesModal({
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold">{c.name}</p>
                       <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        <span className="text-[10px] uppercase font-semibold text-primary">
-                          {c.level}
-                        </span>
+                        <span className="text-[10px] uppercase font-semibold text-primary">{c.level}</span>
                         {otherTeacher && (
                           <span className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
                             <Users className="h-3 w-3" /> Currently: {otherTeacher}
                           </span>
                         )}
                         {!c.assignedTeacherId && (
-                          <span className="text-[11px] text-[hsl(var(--gold))] font-semibold">
-                            Unassigned
-                          </span>
+                          <span className="text-[11px] text-[hsl(var(--gold))] font-semibold">Unassigned</span>
                         )}
                       </div>
                     </div>
@@ -567,8 +610,8 @@ function PasswordRevealModal({
 
           <div className="rounded-xl border border-[hsl(var(--gold))]/30 bg-[hsl(var(--gold)/0.08)] p-3">
             <p className="text-xs text-foreground">
-              ⚠️ <span className="font-semibold">Share this securely!</span> The password
-              will not be shown again. Teacher should change it after first login.
+              ⚠️ <span className="font-semibold">Share this securely!</span> The password will not
+              be shown again. Teacher should change it after first login.
             </p>
           </div>
 
@@ -625,7 +668,6 @@ function InviteTeacherModal({
       return;
     }
 
-    // Optionally update country/bio
     if (country || bio) {
       await fetch(`/api/users/${data.user.id}`, {
         method: "PATCH",
@@ -643,6 +685,7 @@ function InviteTeacherModal({
       bio: bio || null,
       createdAt: new Date().toISOString(),
       timezone: "UTC",
+      shift: null,
       courses: [],
       availability: [],
     });
@@ -666,9 +709,7 @@ function InviteTeacherModal({
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-              Full Name *
-            </label>
+            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Full Name *</label>
             <input
               required
               value={name}
@@ -680,9 +721,7 @@ function InviteTeacherModal({
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-                Email *
-              </label>
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Email *</label>
               <input
                 required
                 type="email"
@@ -693,9 +732,7 @@ function InviteTeacherModal({
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-                Country
-              </label>
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Country</label>
               <input
                 value={country}
                 onChange={(e) => setCountry(e.target.value)}
@@ -706,9 +743,7 @@ function InviteTeacherModal({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-              Temporary Password *
-            </label>
+            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Temporary Password *</label>
             <input
               required
               type="text"
@@ -721,9 +756,7 @@ function InviteTeacherModal({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-              Bio (optional)
-            </label>
+            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Bio (optional)</label>
             <textarea
               value={bio}
               onChange={(e) => setBio(e.target.value)}

@@ -46,6 +46,7 @@ export default async function AdminTeachersPage() {
           bio: t.bio,
           createdAt: t.createdAt.toISOString(),
           timezone: t.timezone ?? "UTC",
+          shift: t.shift,
           courses: t.teacherCourses.map((c) => ({
             id: c.id,
             name: c.name,
