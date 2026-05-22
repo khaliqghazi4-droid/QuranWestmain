@@ -95,3 +95,39 @@ export function formatSlotRange(slotStart: string): string {
   const end = addMinutes(slotStart, SLOT_MINUTES);
   return `${formatTime12h(slotStart)} - ${formatTime12h(end)}`;
 }
+
+// Pakistan is a fixed UTC+5 offset (no daylight saving).
+const PKT_OFFSET_MS = 5 * 60 * 60 * 1000;
+
+// Given a recurring weekly slot (dayOfWeek + PKT start time), compute the next
+// occurrence as a real UTC instant, plus whether it's currently live.
+export function bookingTiming(
+  dayOfWeek: number,
+  startTime: string,
+  durationMin: number = SLOT_MINUTES,
+  nowMs: number = Date.now()
+): { startUTC: number; isLive: boolean; minutesUntil: number; isToday: boolean } {
+  const [h, m] = startTime.split(":").map(Number);
+
+  // Work in "PKT wall clock" by shifting now into a UTC-based clock.
+  const pktNow = new Date(nowMs + PKT_OFFSET_MS);
+  const base = new Date(pktNow);
+  base.setUTCHours(h, m, 0, 0);
+
+  const dayDiff = (dayOfWeek - base.getUTCDay() + 7) % 7;
+  base.setUTCDate(base.getUTCDate() + dayDiff);
+
+  // PKT wall clock -> real UTC instant
+  let startUTC = base.getTime() - PKT_OFFSET_MS;
+
+  // If today's occurrence already finished, roll to next week.
+  if (dayDiff === 0 && nowMs > startUTC + durationMin * 60_000) {
+    startUTC += 7 * 24 * 60 * 60_000;
+  }
+
+  const isLive = nowMs >= startUTC && nowMs <= startUTC + durationMin * 60_000;
+  const minutesUntil = Math.round((startUTC - nowMs) / 60_000);
+  const isToday = minutesUntil >= -durationMin && minutesUntil < 24 * 60 && dayDiff === 0;
+
+  return { startUTC, isLive, minutesUntil, isToday };
+}

@@ -93,6 +93,7 @@ model Course {
   classDuration Int      @default(45) // single class length in minutes (e.g. 30 or 45)
   price         Float    @default(0)
   image       String?
+  meetingUrl  String?  // one persistent meeting link for this course (admin override; auto-generated if empty)
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
