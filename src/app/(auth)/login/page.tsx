@@ -3,26 +3,17 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import {
   Mail,
   Lock,
   ArrowRight,
   Eye,
   EyeOff,
-  GraduationCap,
-  Users2,
-  ShieldCheck,
   AlertCircle,
   Loader2,
+  BookOpen,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-
-const roles = [
-  { id: "student", label: "Student", icon: GraduationCap },
-  { id: "teacher", label: "Teacher", icon: Users2 },
-  { id: "admin", label: "Admin", icon: ShieldCheck },
-];
 
 export default function LoginPage() {
   return (
@@ -32,12 +23,24 @@ export default function LoginPage() {
   );
 }
 
+function roleHome(role?: string) {
+  switch ((role ?? "").toUpperCase()) {
+    case "ADMIN":
+      return "/app/admin";
+    case "TEACHER":
+      return "/app/teacher";
+    case "STUDENT":
+      return "/app/student";
+    default:
+      return "/app/student";
+  }
+}
+
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const callbackUrl = params.get("callbackUrl") ?? undefined;
 
-  const [role, setRole] = React.useState("student");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [showPw, setShowPw] = React.useState(false);
@@ -55,15 +58,16 @@ function LoginForm() {
       redirect: false,
     });
 
-    setLoading(false);
-
     if (!res || res.error) {
+      setLoading(false);
       setError("Invalid email or password");
       return;
     }
 
-    const fallback = `/app/${role}`;
-    router.push(callbackUrl ?? fallback);
+    // Detect the actual role from the session and redirect accordingly
+    const session = await getSession();
+    const target = callbackUrl ?? roleHome(session?.user?.role);
+    router.push(target);
     router.refresh();
   }
 
@@ -71,36 +75,15 @@ function LoginForm() {
     <div className="w-full max-w-md animate-fade-in">
       <div className="glass-card rounded-3xl p-8 shadow-2xl">
         <div className="text-center mb-7">
+          <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-primary to-accent shadow-lg shadow-primary/20">
+            <BookOpen className="h-7 w-7 text-primary-foreground" />
+          </div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-            Welcome <span className="text-gradient-primary">Back</span>
+            Online Quran <span className="text-gradient-primary">Academy</span>
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Sign in to continue your Quran learning journey
+            Sign in to your account to continue
           </p>
-        </div>
-
-        <div className="mb-6">
-          <label className="block text-xs font-semibold text-muted-foreground mb-2">
-            I am a
-          </label>
-          <div className="grid grid-cols-3 gap-2">
-            {roles.map((r) => (
-              <button
-                key={r.id}
-                type="button"
-                onClick={() => setRole(r.id)}
-                className={cn(
-                  "flex flex-col items-center gap-1.5 rounded-xl border p-3 text-xs font-medium transition-all",
-                  role === r.id
-                    ? "border-primary bg-primary/10 text-primary shadow-sm"
-                    : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground"
-                )}
-              >
-                <r.icon className="h-4 w-4" />
-                {r.label}
-              </button>
-            ))}
-          </div>
         </div>
 
         {error && (
