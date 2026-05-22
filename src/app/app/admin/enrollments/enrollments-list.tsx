@@ -6,14 +6,9 @@ import {
   Filter,
   Mail,
   MessageCircle,
-  MapPin,
-  CalendarClock,
-  BookOpen,
-  User,
   Baby,
-  Users,
+  User,
   Inbox,
-  GraduationCap,
 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import type { WebsiteEnrollment } from "@/lib/enroll-source";
@@ -32,6 +27,18 @@ function fmtDate(iso: string | null, withTime = false) {
     ...(withTime ? { hour: "numeric", minute: "2-digit", hour12: true } : {}),
   });
 }
+
+const COLUMNS = [
+  "Applicant",
+  "For",
+  "Course",
+  "Tutor",
+  "Contact",
+  "Location",
+  "Trial Time",
+  "Submitted",
+  "Actions",
+];
 
 export function EnrollmentsList({ enrollments }: { enrollments: WebsiteEnrollment[] }) {
   const [query, setQuery] = React.useState("");
@@ -84,136 +91,148 @@ export function EnrollmentsList({ enrollments }: { enrollments: WebsiteEnrollmen
         </div>
       </div>
 
-      {enrollments.length === 0 ? (
-        <div className="rounded-2xl border-2 border-dashed border-border bg-card/50 p-12 text-center">
-          <Inbox className="mx-auto h-12 w-12 text-muted-foreground/50" />
-          <p className="mt-4 text-sm font-semibold">No enrollment requests yet</p>
-          <p className="mt-1 text-xs text-muted-foreground max-w-md mx-auto">
-            When someone submits the &quot;Enroll Now&quot; form on the academy website, their
-            request will appear here automatically with all their details.
-          </p>
+      {/* Table — columns always visible */}
+      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-muted/40">
+              <tr className="text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+                {COLUMNS.map((c) => (
+                  <th
+                    key={c}
+                    className={`px-4 py-3 font-semibold whitespace-nowrap ${
+                      c === "Actions" ? "text-right" : ""
+                    }`}
+                  >
+                    {c}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={COLUMNS.length} className="px-4 py-16 text-center">
+                    <Inbox className="mx-auto h-10 w-10 text-muted-foreground/40" />
+                    <p className="mt-3 text-sm font-semibold">
+                      {enrollments.length === 0
+                        ? "No enrollment requests yet"
+                        : "No requests match your filter"}
+                    </p>
+                    {enrollments.length === 0 && (
+                      <p className="mt-1 text-xs text-muted-foreground max-w-md mx-auto">
+                        When someone submits the &quot;Enroll Now&quot; form on the academy website,
+                        their request appears here automatically.
+                      </p>
+                    )}
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((e) => <EnrollmentRow key={e.id} e={e} />)
+              )}
+            </tbody>
+          </table>
         </div>
-      ) : filtered.length === 0 ? (
-        <div className="rounded-2xl border-2 border-dashed border-border bg-card/50 p-12 text-center">
-          <Search className="mx-auto h-12 w-12 text-muted-foreground/50" />
-          <p className="mt-4 text-sm text-muted-foreground">No requests match your filter</p>
-        </div>
-      ) : (
-        <div className="grid gap-3 lg:grid-cols-2">
-          {filtered.map((e) => (
-            <EnrollmentCard key={e.id} e={e} />
-          ))}
-        </div>
-      )}
+        {filtered.length > 0 && (
+          <div className="border-t border-border p-3 text-xs text-muted-foreground">
+            Showing {filtered.length} of {enrollments.length} request
+            {enrollments.length === 1 ? "" : "s"}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-function EnrollmentCard({ e }: { e: WebsiteEnrollment }) {
+function EnrollmentRow({ e }: { e: WebsiteEnrollment }) {
   const isKid = e.courseFor === "kid";
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 hover:border-primary/30 transition-colors">
-      <div className="flex items-start gap-3">
-        <Avatar name={e.fullName} size={44} style="micah" />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-sm font-bold truncate">{e.fullName}</p>
-            <span
-              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                isKid
-                  ? "bg-[hsl(var(--gold)/0.15)] text-[hsl(var(--gold))]"
-                  : "bg-primary/10 text-primary"
-              }`}
-            >
-              {isKid ? <Baby className="h-2.5 w-2.5" /> : <User className="h-2.5 w-2.5" />}
-              {isKid ? "Kids" : "Adult"}
-            </span>
-          </div>
-          <p className="text-[11px] text-muted-foreground mt-0.5">
-            Submitted {fmtDate(e.createdAt, true)}
-          </p>
-        </div>
-      </div>
-
-      {/* Course + preferences */}
-      <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px]">
-        <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 font-semibold text-primary">
-          <BookOpen className="h-3 w-3" /> {e.course}
-        </span>
-        {e.tutorGender && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 font-medium">
-            <GraduationCap className="h-3 w-3" /> {e.tutorGender === "male" ? "Male" : "Female"} tutor
-          </span>
-        )}
-        {!isKid && e.gender && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 font-medium">
-            <User className="h-3 w-3" /> {e.gender === "male" ? "Male" : "Female"}
-          </span>
-        )}
-      </div>
-
-      {/* Contact + location + trial */}
-      <div className="mt-3 grid sm:grid-cols-2 gap-2 text-[11px] text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5 truncate">
-          <Mail className="h-3 w-3 shrink-0" /> {e.email || "—"}
-        </span>
-        <span className="inline-flex items-center gap-1.5 truncate">
-          <MapPin className="h-3 w-3 shrink-0" /> {[e.city, e.country].filter(Boolean).join(", ") || "—"}
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <CalendarClock className="h-3 w-3 shrink-0" /> Trial: {fmtDate(e.trialTime, true)}
-        </span>
-        <span className="inline-flex items-center gap-1.5 truncate">
-          <MessageCircle className="h-3 w-3 shrink-0" /> {e.whatsapp || "—"}
-        </span>
-      </div>
-
-      {/* Children (kids) */}
-      {isKid && e.children.length > 0 && (
-        <div className="mt-3 rounded-xl border border-border bg-background p-3">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground inline-flex items-center gap-1 mb-2">
-            <Users className="h-3 w-3" /> {e.children.length} child
-            {e.children.length === 1 ? "" : "ren"}
-          </p>
-          <div className="space-y-1.5">
-            {e.children.map((c, i) => (
-              <div key={i} className="flex items-center gap-2 text-[11px]">
-                <Baby className="h-3 w-3 text-[hsl(var(--gold))] shrink-0" />
-                <span className="font-semibold">{c.name || "—"}</span>
-                {c.age != null && <span className="text-muted-foreground">· {c.age} yrs</span>}
-                {c.gender && (
-                  <span className="text-muted-foreground">· {c.gender === "male" ? "Boy" : "Girl"}</span>
-                )}
-              </div>
-            ))}
+    <tr className="hover:bg-muted/20 transition-colors align-top">
+      {/* Applicant */}
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-2.5">
+          <Avatar name={e.fullName} size={34} style="micah" />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold truncate">{e.fullName || "—"}</p>
+            {isKid && e.children.length > 0 && (
+              <p className="text-[10px] text-muted-foreground">
+                {e.children
+                  .map((c) => `${c.name}${c.age != null ? ` (${c.age})` : ""}`)
+                  .join(", ")}
+              </p>
+            )}
           </div>
         </div>
-      )}
+      </td>
+
+      {/* For */}
+      <td className="px-4 py-3">
+        <span
+          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+            isKid
+              ? "bg-[hsl(var(--gold)/0.15)] text-[hsl(var(--gold))]"
+              : "bg-primary/10 text-primary"
+          }`}
+        >
+          {isKid ? <Baby className="h-2.5 w-2.5" /> : <User className="h-2.5 w-2.5" />}
+          {isKid ? `Kids · ${e.children.length}` : "Adult"}
+        </span>
+      </td>
+
+      {/* Course */}
+      <td className="px-4 py-3 text-xs font-medium whitespace-nowrap">{e.course || "—"}</td>
+
+      {/* Tutor */}
+      <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+        {e.tutorGender ? (e.tutorGender === "male" ? "Male" : "Female") : "—"}
+        {!isKid && e.gender ? ` · ${e.gender === "male" ? "M" : "F"}` : ""}
+      </td>
+
+      {/* Contact */}
+      <td className="px-4 py-3 text-xs">
+        <p className="truncate max-w-[180px]">{e.email || "—"}</p>
+        <p className="text-muted-foreground">{e.whatsapp || "—"}</p>
+      </td>
+
+      {/* Location */}
+      <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+        {[e.city, e.country].filter(Boolean).join(", ") || "—"}
+      </td>
+
+      {/* Trial Time */}
+      <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+        {fmtDate(e.trialTime, true)}
+      </td>
+
+      {/* Submitted */}
+      <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+        {fmtDate(e.createdAt)}
+      </td>
 
       {/* Actions */}
-      <div className="mt-4 grid grid-cols-2 gap-2">
-        {e.whatsapp ? (
+      <td className="px-4 py-3">
+        <div className="flex items-center justify-end gap-1">
+          {e.whatsapp && (
+            <a
+              href={waLink(e.whatsapp)}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="WhatsApp"
+              className="grid h-8 w-8 place-items-center rounded-full hover:bg-emerald-500/10 hover:text-emerald-600 text-muted-foreground"
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+            </a>
+          )}
           <a
-            href={waLink(e.whatsapp)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-3 py-2 text-xs font-bold text-white shadow-md"
+            href={`mailto:${e.email}`}
+            title="Email"
+            className="grid h-8 w-8 place-items-center rounded-full hover:bg-primary/10 hover:text-primary text-muted-foreground"
           >
-            <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+            <Mail className="h-3.5 w-3.5" />
           </a>
-        ) : (
-          <span className="inline-flex items-center justify-center gap-1.5 rounded-full bg-muted px-3 py-2 text-xs font-bold text-muted-foreground">
-            No WhatsApp
-          </span>
-        )}
-        <a
-          href={`mailto:${e.email}`}
-          className="inline-flex items-center justify-center gap-1.5 rounded-full border border-border bg-card px-3 py-2 text-xs font-bold text-foreground hover:bg-muted"
-        >
-          <Mail className="h-3.5 w-3.5" /> Email
-        </a>
-      </div>
-    </div>
+        </div>
+      </td>
+    </tr>
   );
 }
