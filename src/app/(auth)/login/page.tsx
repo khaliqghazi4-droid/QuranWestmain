@@ -169,11 +169,8 @@ function LoginForm() {
           </button>
         </form>
 
-        <div className="mt-6 text-center text-sm text-muted-foreground">
-          Don&apos;t have an account?{" "}
-          <Link href="/signup" className="font-semibold text-primary hover:text-accent">
-            Sign up free
-          </Link>
+        <div className="mt-6 text-center text-xs text-muted-foreground">
+          Accounts are created by the academy. Contact the admin if you need access.
         </div>
       </div>
     </div>

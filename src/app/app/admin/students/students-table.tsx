@@ -12,7 +12,6 @@ import {
   KeyRound,
   Copy,
   X,
-  CheckCircle2,
   BookOpen,
   Clock,
   Filter,
@@ -36,6 +35,7 @@ type Student = {
   email: string;
   phone: string | null;
   country: string | null;
+  loginPassword: string | null;
   createdAt: string;
   courses: CourseEnrollment[];
 };
@@ -44,11 +44,12 @@ type CourseOption = { id: string; name: string };
 
 type Prefill = { name: string; email: string; phone: string; country: string } | null;
 
-export type CredentialResult = {
+type LoginTarget = {
+  id: string;
   name: string;
   email: string;
   phone: string | null;
-  password: string;
+  password: string | null;
 };
 
 export function StudentsTable({
@@ -65,39 +66,8 @@ export function StudentsTable({
   const [query, setQuery] = React.useState("");
   const [courseFilter, setCourseFilter] = React.useState<string>("all"); // "all" | courseId | "none"
   const [deleting, setDeleting] = React.useState<string | null>(null);
-  const [resetting, setResetting] = React.useState<string | null>(null);
   const [addOpen, setAddOpen] = React.useState<boolean>(!!prefill);
-  const [credResult, setCredResult] = React.useState<CredentialResult | null>(null);
-  const [credIsReset, setCredIsReset] = React.useState(false);
-
-  async function handleResetPassword(student: Student) {
-    if (
-      !confirm(
-        `Generate a new password for ${student.name}? You'll get a ready-to-send login message to share.`
-      )
-    )
-      return;
-    setResetting(student.id);
-    const res = await fetch(`/api/users/${student.id}/reset-password`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    });
-    setResetting(null);
-    if (res.ok) {
-      const data = await res.json();
-      setCredIsReset(true);
-      setCredResult({
-        name: student.name,
-        email: student.email,
-        phone: student.phone,
-        password: data.newPassword,
-      });
-    } else {
-      const data = await res.json();
-      alert(data.error ?? "Reset failed");
-    }
-  }
+  const [loginTarget, setLoginTarget] = React.useState<LoginTarget | null>(null);
 
   const filtered = students.filter((s) => {
     const q = query.toLowerCase();
@@ -309,16 +279,19 @@ export function StudentsTable({
                           <Mail className="h-3.5 w-3.5 text-muted-foreground" />
                         </a>
                         <button
-                          onClick={() => handleResetPassword(s)}
-                          disabled={resetting === s.id}
-                          className="grid h-8 w-8 place-items-center rounded-full hover:bg-primary/10 hover:text-primary disabled:opacity-50"
-                          title="Reset password & get login message"
+                          onClick={() =>
+                            setLoginTarget({
+                              id: s.id,
+                              name: s.name,
+                              email: s.email,
+                              phone: s.phone,
+                              password: s.loginPassword,
+                            })
+                          }
+                          className="grid h-8 w-8 place-items-center rounded-full hover:bg-primary/10 hover:text-primary"
+                          title="View / share login credentials"
                         >
-                          {resetting === s.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <KeyRound className="h-3.5 w-3.5" />
-                          )}
+                          <KeyRound className="h-3.5 w-3.5" />
                         </button>
                         <button
                           onClick={() => handleDelete(s.id, s.name)}
@@ -361,14 +334,15 @@ export function StudentsTable({
                 email: student.email,
                 phone: student.phone,
                 country: student.country,
+                loginPassword: password,
                 createdAt: new Date().toISOString(),
                 courses: [],
               },
               ...prev,
             ]);
             setAddOpen(false);
-            setCredIsReset(false);
-            setCredResult({
+            setLoginTarget({
+              id: student.id,
               name: student.name,
               email: student.email,
               phone: student.phone,
@@ -379,13 +353,17 @@ export function StudentsTable({
         />
       )}
 
-      {credResult && (
-        <CredentialsModal
-          result={credResult}
-          isReset={credIsReset}
-          onClose={() => {
-            setCredResult(null);
-            setCredIsReset(false);
+      {loginTarget && (
+        <LoginModal
+          target={loginTarget}
+          onClose={() => setLoginTarget(null)}
+          onUpdated={(newPw) => {
+            setLoginTarget((cur) => (cur ? { ...cur, password: newPw } : cur));
+            setStudents((prev) =>
+              prev.map((s) =>
+                s.id === loginTarget.id ? { ...s, loginPassword: newPw } : s
+              )
+            );
           }}
         />
       )}
@@ -594,26 +572,30 @@ function AddStudentModal({
   );
 }
 
-function CredentialsModal({
-  result,
-  isReset = false,
+function LoginModal({
+  target,
   onClose,
+  onUpdated,
 }: {
-  result: CredentialResult;
-  isReset?: boolean;
+  target: LoginTarget;
   onClose: () => void;
+  onUpdated: (newPassword: string) => void;
 }) {
   const [copied, setCopied] = React.useState(false);
+  const [generating, setGenerating] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const password = target.password;
 
   const loginUrl =
     typeof window !== "undefined" ? `${window.location.origin}/login` : "/login";
 
   const message =
-    `Assalamu Alaikum ${result.name},\n\n` +
+    `Assalamu Alaikum ${target.name},\n\n` +
     `Your Online Quran Academy account is ready. Login details:\n\n` +
     `Login page: ${loginUrl}\n` +
-    `Email: ${result.email}\n` +
-    `Password: ${result.password}\n\n` +
+    `Email: ${target.email}\n` +
+    `Password: ${password ?? ""}\n\n` +
     `Please change your password after your first login. JazakAllah Khair.`;
 
   function copyAll() {
@@ -622,9 +604,34 @@ function CredentialsModal({
     setTimeout(() => setCopied(false), 2000);
   }
 
-  const waDigits = (result.phone ?? "").replace(/[^\d]/g, "");
+  async function generate() {
+    if (
+      password &&
+      !confirm(
+        `Generate a NEW password for ${target.name}? Their current password will stop working.`
+      )
+    )
+      return;
+    setError(null);
+    setGenerating(true);
+    const res = await fetch(`/api/users/${target.id}/reset-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    setGenerating(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? "Failed to generate password");
+      return;
+    }
+    const data = await res.json();
+    onUpdated(data.newPassword);
+  }
+
+  const waDigits = (target.phone ?? "").replace(/[^\d]/g, "");
   const waHref = `https://wa.me/${waDigits}?text=${encodeURIComponent(message)}`;
-  const mailHref = `mailto:${result.email}?subject=${encodeURIComponent(
+  const mailHref = `mailto:${target.email}?subject=${encodeURIComponent(
     "Your Online Quran Academy Login"
   )}&body=${encodeURIComponent(message)}`;
 
@@ -639,65 +646,84 @@ function CredentialsModal({
             <X className="h-4 w-4" />
           </button>
           <div className="grid h-12 w-12 place-items-center rounded-full bg-white/20 backdrop-blur-md mb-3">
-            <CheckCircle2 className="h-6 w-6" />
+            <KeyRound className="h-6 w-6" />
           </div>
-          <h2 className="text-xl font-bold">
-            {isReset ? "New Login Generated" : "Student Account Created"}
-          </h2>
+          <h2 className="text-xl font-bold">Login Credentials</h2>
           <p className="text-sm text-white/80 mt-1">
-            Share these login details with <span className="font-semibold">{result.name}</span>
+            Share these with <span className="font-semibold">{target.name}</span>
           </p>
         </div>
 
         <div className="p-6 space-y-3">
+          {error && (
+            <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" /> {error}
+            </div>
+          )}
+
           <div className="rounded-xl border border-border bg-background p-3">
             <p className="text-[10px] uppercase font-semibold text-muted-foreground">Email</p>
-            <p className="text-sm font-mono mt-1 break-all">{result.email}</p>
-          </div>
-          <div className="rounded-xl border border-border bg-background p-3">
-            <p className="text-[10px] uppercase font-semibold text-muted-foreground">Password</p>
-            <p className="text-base font-mono mt-1 font-bold tracking-wider">{result.password}</p>
+            <p className="text-sm font-mono mt-1 break-all">{target.email}</p>
           </div>
 
-          <div className="rounded-xl border border-[hsl(var(--gold))]/30 bg-[hsl(var(--gold)/0.08)] p-3">
-            <p className="text-xs text-foreground">
-              ⚠️ <span className="font-semibold">Save this now!</span> The password won&apos;t be
-              shown again. The student should change it after first login.
-            </p>
-          </div>
+          {password ? (
+            <div className="rounded-xl border border-border bg-background p-3">
+              <p className="text-[10px] uppercase font-semibold text-muted-foreground">Password</p>
+              <p className="text-base font-mono mt-1 font-bold tracking-wider">{password}</p>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-[hsl(var(--gold))]/30 bg-[hsl(var(--gold)/0.08)] p-3 text-xs text-foreground">
+              No saved password for this student yet. Click{" "}
+              <span className="font-semibold">Generate password</span> below to create one you can
+              share.
+            </div>
+          )}
 
-          <div className="grid grid-cols-2 gap-2 pt-1">
-            {waDigits && (
+          {password && (
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              {waDigits && (
+                <a
+                  href={waHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-2 text-sm font-bold text-white shadow-md"
+                >
+                  <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+                </a>
+              )}
               <a
-                href={waHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-2 text-sm font-bold text-white shadow-md"
+                href={mailHref}
+                className="inline-flex items-center justify-center gap-1.5 rounded-full border border-border px-4 py-2 text-sm font-bold hover:bg-muted"
               >
-                <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+                <Mail className="h-3.5 w-3.5" /> Email
               </a>
+              <button
+                onClick={copyAll}
+                className={`inline-flex items-center justify-center gap-1.5 rounded-full border border-border px-4 py-2 text-sm font-bold hover:bg-muted ${
+                  waDigits ? "col-span-2" : ""
+                }`}
+              >
+                <Copy className="h-3.5 w-3.5" /> {copied ? "Copied message!" : "Copy message"}
+              </button>
+            </div>
+          )}
+
+          <button
+            onClick={generate}
+            disabled={generating}
+            className="w-full inline-flex items-center justify-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-muted disabled:opacity-60"
+          >
+            {generating ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
             )}
-            <a
-              href={mailHref}
-              className={`inline-flex items-center justify-center gap-1.5 rounded-full border border-border px-4 py-2 text-sm font-bold hover:bg-muted ${
-                waDigits ? "" : "col-span-1"
-              }`}
-            >
-              <Mail className="h-3.5 w-3.5" /> Email
-            </a>
-            <button
-              onClick={copyAll}
-              className={`inline-flex items-center justify-center gap-1.5 rounded-full border border-border px-4 py-2 text-sm font-bold hover:bg-muted ${
-                waDigits ? "col-span-2" : "col-span-1"
-              }`}
-            >
-              <Copy className="h-3.5 w-3.5" /> {copied ? "Copied message!" : "Copy message"}
-            </button>
-          </div>
+            {password ? "Generate new password" : "Generate password"}
+          </button>
 
           <button
             onClick={onClose}
-            className="w-full mt-1 rounded-full bg-gradient-to-r from-primary to-accent px-4 py-2 text-sm font-semibold text-primary-foreground shadow-md"
+            className="w-full rounded-full bg-gradient-to-r from-primary to-accent px-4 py-2 text-sm font-semibold text-primary-foreground shadow-md"
           >
             Done
           </button>

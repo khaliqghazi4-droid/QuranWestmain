@@ -40,7 +40,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const hash = await bcrypt.hash(newPassword, 10);
     const user = await prisma.user.update({
       where: { id: params.id },
-      data: { password: hash },
+      data: { password: hash, loginPassword: newPassword },
       select: { id: true, name: true, email: true },
     });
 

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { BookOpen } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { IslamicPattern } from "@/components/islamic-pattern";
@@ -12,7 +11,13 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
       <header className="relative z-10">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 group">
+          <a
+            href="https://fe-quran-academy.vercel.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Visit the academy website"
+            className="flex items-center gap-2 group"
+          >
             <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-primary to-accent shadow-md shadow-primary/20 transition-transform group-hover:scale-105">
               <BookOpen className="h-5 w-5 text-primary-foreground" />
             </div>
@@ -22,7 +27,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
                 Academy
               </span>
             </div>
-          </Link>
+          </a>
           <ThemeToggle />
         </div>
       </header>

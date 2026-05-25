@@ -69,6 +69,7 @@ export async function POST(req: Request) {
         phone: body.phone?.trim() || null,
         country: body.country?.trim() || null,
         password: hash,
+        loginPassword: password,
         role: "STUDENT",
       },
       select: { id: true, name: true, email: true, phone: true, country: true },

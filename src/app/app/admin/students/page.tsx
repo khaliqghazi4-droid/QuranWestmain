@@ -50,6 +50,7 @@ export default async function AdminStudentsPage({
           email: s.email,
           phone: s.phone,
           country: s.country,
+          loginPassword: s.loginPassword,
           createdAt: s.createdAt.toISOString(),
           courses: s.studentEnrollments.map((e) => ({
             id: e.course.id,

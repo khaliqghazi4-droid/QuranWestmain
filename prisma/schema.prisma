@@ -32,6 +32,7 @@ model User {
   phone         String?
   name          String
   password      String
+  loginPassword String?  // admin-visible plaintext copy of the issued login password (internal academy use)
   role          Role     @default(STUDENT)
   shift         TeacherShift? // for teachers: DAY or NIGHT
   image         String?
