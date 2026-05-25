@@ -38,7 +38,13 @@ export function Sidebar({
         )}
       >
         <div className="flex items-center justify-between px-6 py-5 border-b border-border">
-          <Link href="/" className="flex items-center gap-2 group">
+          <a
+            href="https://fe-quran-academy.vercel.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Visit the academy website"
+            className="flex items-center gap-2 group"
+          >
             <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-primary to-accent shadow-md shadow-primary/20 transition-transform group-hover:scale-105">
               <BookOpen className="h-5 w-5 text-primary-foreground" />
             </div>
@@ -48,7 +54,7 @@ export function Sidebar({
                 Academy
               </span>
             </div>
-          </Link>
+          </a>
           <button
             onClick={onClose}
             className="lg:hidden grid h-9 w-9 place-items-center rounded-full border border-border hover:bg-muted"
