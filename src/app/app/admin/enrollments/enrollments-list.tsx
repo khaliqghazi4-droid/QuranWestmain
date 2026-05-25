@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import {
   Search,
   Filter,
@@ -9,9 +10,20 @@ import {
   Baby,
   User,
   Inbox,
+  UserPlus,
 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import type { WebsiteEnrollment } from "@/lib/enroll-source";
+
+function addStudentHref(e: WebsiteEnrollment) {
+  const params = new URLSearchParams({
+    addName: e.fullName,
+    addEmail: e.email,
+    addPhone: e.whatsapp,
+    addCountry: e.country,
+  });
+  return `/app/admin/students?${params.toString()}`;
+}
 
 function waLink(num: string) {
   const digits = num.replace(/[^\d]/g, "");
@@ -231,6 +243,13 @@ function EnrollmentRow({ e }: { e: WebsiteEnrollment }) {
           >
             <Mail className="h-3.5 w-3.5" />
           </a>
+          <Link
+            href={addStudentHref(e)}
+            title="Add as student"
+            className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-primary to-accent px-3 py-1.5 text-[11px] font-bold text-primary-foreground shadow-sm whitespace-nowrap"
+          >
+            <UserPlus className="h-3 w-3" /> Add
+          </Link>
         </div>
       </td>
     </tr>

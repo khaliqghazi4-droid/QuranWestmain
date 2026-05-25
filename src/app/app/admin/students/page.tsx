@@ -4,7 +4,22 @@ import { StudentsTable } from "./students-table";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminStudentsPage() {
+export default async function AdminStudentsPage({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string | string[] | undefined };
+}) {
+  const str = (v: string | string[] | undefined) => (typeof v === "string" ? v : undefined);
+  const prefill =
+    str(searchParams.addName) || str(searchParams.addEmail) || str(searchParams.addPhone)
+      ? {
+          name: str(searchParams.addName) ?? "",
+          email: str(searchParams.addEmail) ?? "",
+          phone: str(searchParams.addPhone) ?? "",
+          country: str(searchParams.addCountry) ?? "",
+        }
+      : null;
+
   const [students, allCourses] = await Promise.all([
     prisma.user.findMany({
       where: { role: "STUDENT" },
@@ -43,6 +58,7 @@ export default async function AdminStudentsPage() {
           })),
         }))}
         allCourses={allCourses}
+        prefill={prefill}
       />
     </div>
   );

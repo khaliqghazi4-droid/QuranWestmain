@@ -17,6 +17,10 @@ import {
   Clock,
   Filter,
   FileText,
+  UserPlus,
+  MessageCircle,
+  RefreshCw,
+  AlertCircle,
 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 
@@ -38,12 +42,23 @@ type Student = {
 
 type CourseOption = { id: string; name: string };
 
+type Prefill = { name: string; email: string; phone: string; country: string } | null;
+
+export type CredentialResult = {
+  name: string;
+  email: string;
+  phone: string | null;
+  password: string;
+};
+
 export function StudentsTable({
   initialStudents,
   allCourses,
+  prefill = null,
 }: {
   initialStudents: Student[];
   allCourses: CourseOption[];
+  prefill?: Prefill;
 }) {
   const router = useRouter();
   const [students, setStudents] = React.useState(initialStudents);
@@ -51,6 +66,8 @@ export function StudentsTable({
   const [courseFilter, setCourseFilter] = React.useState<string>("all"); // "all" | courseId | "none"
   const [deleting, setDeleting] = React.useState<string | null>(null);
   const [resetting, setResetting] = React.useState<string | null>(null);
+  const [addOpen, setAddOpen] = React.useState<boolean>(!!prefill);
+  const [credResult, setCredResult] = React.useState<CredentialResult | null>(null);
   const [resetResult, setResetResult] = React.useState<{
     name: string;
     email: string;
@@ -157,6 +174,13 @@ export function StudentsTable({
             className="w-full sm:w-72 rounded-full border border-border bg-background pl-10 pr-4 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
+
+        <button
+          onClick={() => setAddOpen(true)}
+          className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-accent px-4 py-2 text-sm font-semibold text-primary-foreground shadow-md hover:shadow-lg transition-all shrink-0"
+        >
+          <UserPlus className="h-4 w-4" /> Add Student
+        </button>
       </div>
 
       {selectedCourseName && (
@@ -317,6 +341,40 @@ export function StudentsTable({
         </div>
       )}
 
+      {addOpen && (
+        <AddStudentModal
+          allCourses={allCourses}
+          prefill={prefill}
+          onClose={() => setAddOpen(false)}
+          onCreated={(student, password) => {
+            setStudents((prev) => [
+              {
+                id: student.id,
+                name: student.name,
+                email: student.email,
+                phone: student.phone,
+                country: student.country,
+                createdAt: new Date().toISOString(),
+                courses: [],
+              },
+              ...prev,
+            ]);
+            setAddOpen(false);
+            setCredResult({
+              name: student.name,
+              email: student.email,
+              phone: student.phone,
+              password,
+            });
+            router.refresh();
+          }}
+        />
+      )}
+
+      {credResult && (
+        <CredentialsModal result={credResult} onClose={() => setCredResult(null)} />
+      )}
+
       {resetResult && (
         <PasswordRevealModal
           name={resetResult.name}
@@ -398,6 +456,315 @@ function PasswordRevealModal({
               Done
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function genPassword(length = 10) {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+  let out = "";
+  for (let i = 0; i < length; i++) {
+    out += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return out;
+}
+
+function AddStudentModal({
+  allCourses,
+  prefill,
+  onClose,
+  onCreated,
+}: {
+  allCourses: CourseOption[];
+  prefill: Prefill;
+  onClose: () => void;
+  onCreated: (
+    student: { id: string; name: string; email: string; phone: string | null; country: string | null },
+    password: string
+  ) => void;
+}) {
+  const [name, setName] = React.useState(prefill?.name ?? "");
+  const [email, setEmail] = React.useState(prefill?.email ?? "");
+  const [phone, setPhone] = React.useState(prefill?.phone ?? "");
+  const [country, setCountry] = React.useState(prefill?.country ?? "");
+  const [courseId, setCourseId] = React.useState("");
+  const [password, setPassword] = React.useState(() => genPassword(10));
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    const res = await fetch("/api/admin/students", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name,
+        email,
+        phone: phone || undefined,
+        country: country || undefined,
+        courseId: courseId || undefined,
+        password,
+      }),
+    });
+    const data = await res.json();
+    setLoading(false);
+
+    if (!res.ok) {
+      setError(data.error ?? "Failed to add student");
+      return;
+    }
+    onCreated(data.student, data.password);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/40 backdrop-blur-sm animate-fade-in">
+      <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl border border-border bg-card shadow-2xl">
+        <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-card z-10">
+          <div>
+            <h2 className="text-lg font-bold">Add Student</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Create the account, then share the login with the student
+            </p>
+          </div>
+          <button onClick={onClose} className="grid h-9 w-9 place-items-center rounded-full hover:bg-muted">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {error && (
+            <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" /> {error}
+            </div>
+          )}
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+                Full Name *
+              </label>
+              <input
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Hina Ahmed"
+                className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+                Email *
+              </label>
+              <input
+                required
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="student@email.com"
+                className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+                WhatsApp / Phone
+              </label>
+              <input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+44 7700 900000"
+                className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+                Country
+              </label>
+              <input
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                placeholder="United Kingdom"
+                className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+              Enroll in course (optional)
+            </label>
+            <select
+              value={courseId}
+              onChange={(e) => setCourseId(e.target.value)}
+              className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            >
+              <option value="">No course yet</option>
+              {allCourses.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+              Login Password *
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="flex-1 rounded-xl border border-border bg-background px-4 py-2.5 text-sm font-mono focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+              <button
+                type="button"
+                onClick={() => setPassword(genPassword(10))}
+                title="Generate new password"
+                className="grid h-10 w-10 place-items-center rounded-xl border border-border hover:bg-muted shrink-0"
+              >
+                <RefreshCw className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Auto-generated. You can edit it. Min 8 characters.
+            </p>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full border border-border px-5 py-2 text-sm font-semibold hover:bg-muted"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-accent px-6 py-2 text-sm font-semibold text-primary-foreground shadow-md disabled:opacity-60"
+            >
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+              Create & Get Login
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function CredentialsModal({
+  result,
+  onClose,
+}: {
+  result: CredentialResult;
+  onClose: () => void;
+}) {
+  const [copied, setCopied] = React.useState(false);
+
+  const loginUrl =
+    typeof window !== "undefined" ? `${window.location.origin}/login` : "/login";
+
+  const message =
+    `Assalamu Alaikum ${result.name},\n\n` +
+    `Your Online Quran Academy account is ready. Login details:\n\n` +
+    `Login page: ${loginUrl}\n` +
+    `Email: ${result.email}\n` +
+    `Password: ${result.password}\n\n` +
+    `Please change your password after your first login. JazakAllah Khair.`;
+
+  function copyAll() {
+    navigator.clipboard.writeText(message);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  const waDigits = (result.phone ?? "").replace(/[^\d]/g, "");
+  const waHref = `https://wa.me/${waDigits}?text=${encodeURIComponent(message)}`;
+  const mailHref = `mailto:${result.email}?subject=${encodeURIComponent(
+    "Your Online Quran Academy Login"
+  )}&body=${encodeURIComponent(message)}`;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/40 backdrop-blur-sm animate-fade-in">
+      <div className="w-full max-w-md rounded-3xl border border-border bg-card shadow-2xl">
+        <div className="bg-gradient-to-br from-emerald-500 to-teal-500 p-6 text-white rounded-t-3xl relative">
+          <button
+            onClick={onClose}
+            className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full bg-white/15 backdrop-blur-md hover:bg-white/25"
+          >
+            <X className="h-4 w-4" />
+          </button>
+          <div className="grid h-12 w-12 place-items-center rounded-full bg-white/20 backdrop-blur-md mb-3">
+            <CheckCircle2 className="h-6 w-6" />
+          </div>
+          <h2 className="text-xl font-bold">Student Account Created</h2>
+          <p className="text-sm text-white/80 mt-1">
+            Share these login details with <span className="font-semibold">{result.name}</span>
+          </p>
+        </div>
+
+        <div className="p-6 space-y-3">
+          <div className="rounded-xl border border-border bg-background p-3">
+            <p className="text-[10px] uppercase font-semibold text-muted-foreground">Email</p>
+            <p className="text-sm font-mono mt-1 break-all">{result.email}</p>
+          </div>
+          <div className="rounded-xl border border-border bg-background p-3">
+            <p className="text-[10px] uppercase font-semibold text-muted-foreground">Password</p>
+            <p className="text-base font-mono mt-1 font-bold tracking-wider">{result.password}</p>
+          </div>
+
+          <div className="rounded-xl border border-[hsl(var(--gold))]/30 bg-[hsl(var(--gold)/0.08)] p-3">
+            <p className="text-xs text-foreground">
+              ⚠️ <span className="font-semibold">Save this now!</span> The password won&apos;t be
+              shown again. The student should change it after first login.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            {waDigits && (
+              <a
+                href={waHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-2 text-sm font-bold text-white shadow-md"
+              >
+                <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+              </a>
+            )}
+            <a
+              href={mailHref}
+              className={`inline-flex items-center justify-center gap-1.5 rounded-full border border-border px-4 py-2 text-sm font-bold hover:bg-muted ${
+                waDigits ? "" : "col-span-1"
+              }`}
+            >
+              <Mail className="h-3.5 w-3.5" /> Email
+            </a>
+            <button
+              onClick={copyAll}
+              className={`inline-flex items-center justify-center gap-1.5 rounded-full border border-border px-4 py-2 text-sm font-bold hover:bg-muted ${
+                waDigits ? "col-span-2" : "col-span-1"
+              }`}
+            >
+              <Copy className="h-3.5 w-3.5" /> {copied ? "Copied message!" : "Copy message"}
+            </button>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="w-full mt-1 rounded-full bg-gradient-to-r from-primary to-accent px-4 py-2 text-sm font-semibold text-primary-foreground shadow-md"
+          >
+            Done
+          </button>
         </div>
       </div>
     </div>
