@@ -14,6 +14,7 @@ import {
   DollarSign,
   BookMarked,
   Inbox,
+  CalendarCheck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -50,6 +51,7 @@ export const navConfig: Record<Role, NavItem[]> = {
   admin: [
     { href: "/app/admin", label: "Dashboard", icon: LayoutDashboard },
     { href: "/app/admin/enrollments", label: "Enroll Requests", icon: Inbox },
+    { href: "/app/admin/trials", label: "Free Trials", icon: CalendarCheck },
     { href: "/app/admin/students", label: "Students", icon: GraduationCap },
     { href: "/app/admin/teachers", label: "Teachers", icon: Users },
     { href: "/app/admin/availability", label: "Scheduling", icon: Calendar },

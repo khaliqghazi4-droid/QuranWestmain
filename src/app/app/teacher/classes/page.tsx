@@ -2,13 +2,30 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/dashboard/page-header";
-import { Calendar, Clock, Video, Info, User, BookOpen } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  Video,
+  Info,
+  User,
+  BookOpen,
+  CalendarCheck,
+} from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { DAYS } from "@/lib/timezones";
 import { formatSlotRange, bookingTiming, SHIFT_RANGES, type Shift } from "@/lib/shifts";
 import { courseMeetingLink } from "@/lib/meeting";
+import { getWebsiteEnrollments } from "@/lib/enroll-source";
 
 export const dynamic = "force-dynamic";
+
+type TrialItem = {
+  id: string;
+  student: string;
+  courseName: string;
+  trialTime: string | null;
+  meetingLink: string;
+};
 
 export default async function TeacherClassesPage() {
   const session = await getServerSession(authOptions);
@@ -16,7 +33,7 @@ export default async function TeacherClassesPage() {
 
   const teacherId = session.user.id;
 
-  const [me, bookings] = await Promise.all([
+  const [me, bookings, myCourses] = await Promise.all([
     prisma.user.findUnique({ where: { id: teacherId }, select: { shift: true } }),
     prisma.bookingSlot.findMany({
       where: { teacherId },
@@ -29,9 +46,47 @@ export default async function TeacherClassesPage() {
         },
       },
     }),
+    prisma.course.findMany({
+      where: { teacherId },
+      select: { id: true, name: true, slug: true, meetingUrl: true },
+    }),
   ]);
 
   const shift = me?.shift as Shift | null;
+
+  // Free-trial sessions for the courses this teacher leads (from the website)
+  let trials: TrialItem[] = [];
+  try {
+    const courseByName = new Map(myCourses.map((c) => [c.name.trim().toLowerCase(), c]));
+    if (courseByName.size > 0) {
+      const enrollments = await getWebsiteEnrollments();
+      trials = enrollments
+        .map((e) => {
+          const course = courseByName.get(e.course.trim().toLowerCase());
+          if (!course) return null;
+          return {
+            id: e.id,
+            student: e.fullName,
+            courseName: e.course,
+            trialTime: e.trialTime,
+            meetingLink: courseMeetingLink(course),
+          };
+        })
+        .filter((x): x is TrialItem => x !== null)
+        .filter((x) => {
+          if (!x.trialTime) return true;
+          // keep upcoming + recent (last 12h)
+          return new Date(x.trialTime).getTime() >= Date.now() - 12 * 60 * 60 * 1000;
+        })
+        .sort(
+          (a, b) =>
+            (a.trialTime ? new Date(a.trialTime).getTime() : 0) -
+            (b.trialTime ? new Date(b.trialTime).getTime() : 0)
+        );
+    }
+  } catch {
+    trials = [];
+  }
 
   // Compute next occurrence for each booking and sort soonest-first.
   const classes = bookings
@@ -76,6 +131,64 @@ export default async function TeacherClassesPage() {
           </p>
         </div>
       </div>
+
+      {/* Free trial sessions */}
+      {trials.length > 0 && (
+        <div className="rounded-2xl border border-[hsl(var(--gold))]/40 bg-[hsl(var(--gold)/0.06)] p-6">
+          <h2 className="text-lg font-bold mb-1 inline-flex items-center gap-2">
+            <CalendarCheck className="h-5 w-5 text-[hsl(var(--gold))]" /> Free Trial Sessions
+          </h2>
+          <p className="text-xs text-muted-foreground mb-4">
+            Trial classes for your courses, requested from the website. Click Start Class at the
+            scheduled time.
+          </p>
+          <div className="space-y-3">
+            {trials.map((t) => (
+              <div
+                key={t.id}
+                className="flex items-center gap-4 rounded-xl border border-border bg-card p-4"
+              >
+                <div className="grid h-12 w-12 place-items-center rounded-xl bg-gradient-to-br from-[hsl(var(--gold))] to-amber-500 text-white shadow-md shrink-0">
+                  <CalendarCheck className="h-5 w-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold truncate inline-flex items-center gap-1.5">
+                    <User className="h-3.5 w-3.5 text-muted-foreground" /> {t.student}
+                    <span className="rounded-full bg-[hsl(var(--gold)/0.15)] px-2 py-0.5 text-[10px] font-bold text-[hsl(var(--gold))]">
+                      TRIAL
+                    </span>
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5 inline-flex items-center gap-1">
+                    <BookOpen className="h-3 w-3" /> {t.courseName}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-1 inline-flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {t.trialTime
+                      ? new Date(t.trialTime).toLocaleString("en-US", {
+                          timeZone: "Asia/Karachi",
+                          weekday: "short",
+                          month: "short",
+                          day: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                          hour12: true,
+                        }) + " PKT"
+                      : "Time not set"}
+                  </p>
+                </div>
+                <a
+                  href={t.meetingLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[hsl(var(--gold))] to-amber-500 px-5 py-2 text-sm font-bold text-white shadow-md hover:shadow-lg transition-all shrink-0"
+                >
+                  <Video className="h-4 w-4" /> Start Class
+                </a>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Live now */}
       {liveNow.length > 0 && (
