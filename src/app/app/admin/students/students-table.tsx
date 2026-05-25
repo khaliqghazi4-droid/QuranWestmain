@@ -68,16 +68,17 @@ export function StudentsTable({
   const [resetting, setResetting] = React.useState<string | null>(null);
   const [addOpen, setAddOpen] = React.useState<boolean>(!!prefill);
   const [credResult, setCredResult] = React.useState<CredentialResult | null>(null);
-  const [resetResult, setResetResult] = React.useState<{
-    name: string;
-    email: string;
-    password: string;
-  } | null>(null);
+  const [credIsReset, setCredIsReset] = React.useState(false);
 
-  async function handleResetPassword(id: string, name: string, email: string) {
-    if (!confirm(`Reset password for ${name}? A new random password will be generated.`)) return;
-    setResetting(id);
-    const res = await fetch(`/api/users/${id}/reset-password`, {
+  async function handleResetPassword(student: Student) {
+    if (
+      !confirm(
+        `Generate a new password for ${student.name}? You'll get a ready-to-send login message to share.`
+      )
+    )
+      return;
+    setResetting(student.id);
+    const res = await fetch(`/api/users/${student.id}/reset-password`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
@@ -85,7 +86,13 @@ export function StudentsTable({
     setResetting(null);
     if (res.ok) {
       const data = await res.json();
-      setResetResult({ name, email, password: data.newPassword });
+      setCredIsReset(true);
+      setCredResult({
+        name: student.name,
+        email: student.email,
+        phone: student.phone,
+        password: data.newPassword,
+      });
     } else {
       const data = await res.json();
       alert(data.error ?? "Reset failed");
@@ -302,10 +309,10 @@ export function StudentsTable({
                           <Mail className="h-3.5 w-3.5 text-muted-foreground" />
                         </a>
                         <button
-                          onClick={() => handleResetPassword(s.id, s.name, s.email)}
+                          onClick={() => handleResetPassword(s)}
                           disabled={resetting === s.id}
                           className="grid h-8 w-8 place-items-center rounded-full hover:bg-primary/10 hover:text-primary disabled:opacity-50"
-                          title="Reset password"
+                          title="Reset password & get login message"
                         >
                           {resetting === s.id ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -360,6 +367,7 @@ export function StudentsTable({
               ...prev,
             ]);
             setAddOpen(false);
+            setCredIsReset(false);
             setCredResult({
               name: student.name,
               email: student.email,
@@ -372,95 +380,19 @@ export function StudentsTable({
       )}
 
       {credResult && (
-        <CredentialsModal result={credResult} onClose={() => setCredResult(null)} />
-      )}
-
-      {resetResult && (
-        <PasswordRevealModal
-          name={resetResult.name}
-          email={resetResult.email}
-          password={resetResult.password}
-          onClose={() => setResetResult(null)}
+        <CredentialsModal
+          result={credResult}
+          isReset={credIsReset}
+          onClose={() => {
+            setCredResult(null);
+            setCredIsReset(false);
+          }}
         />
       )}
     </div>
   );
 }
 
-function PasswordRevealModal({
-  name,
-  email,
-  password,
-  onClose,
-}: {
-  name: string;
-  email: string;
-  password: string;
-  onClose: () => void;
-}) {
-  const [copied, setCopied] = React.useState(false);
-
-  function copyAll() {
-    navigator.clipboard.writeText(`Email: ${email}\nPassword: ${password}`);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/40 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-md rounded-3xl border border-border bg-card shadow-2xl">
-        <div className="bg-gradient-to-br from-primary to-accent p-6 text-primary-foreground rounded-t-3xl relative">
-          <button
-            onClick={onClose}
-            className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full bg-primary-foreground/10 backdrop-blur-md hover:bg-primary-foreground/20"
-          >
-            <X className="h-4 w-4" />
-          </button>
-          <div className="grid h-12 w-12 place-items-center rounded-full bg-primary-foreground/20 backdrop-blur-md mb-3">
-            <CheckCircle2 className="h-6 w-6" />
-          </div>
-          <h2 className="text-xl font-bold">Password Reset</h2>
-          <p className="text-sm text-primary-foreground/80 mt-1">
-            New password generated for <span className="font-semibold">{name}</span>
-          </p>
-        </div>
-
-        <div className="p-6 space-y-3">
-          <div className="rounded-xl border border-border bg-background p-3">
-            <p className="text-[10px] uppercase font-semibold text-muted-foreground">Email</p>
-            <p className="text-sm font-mono mt-1 break-all">{email}</p>
-          </div>
-          <div className="rounded-xl border border-border bg-background p-3">
-            <p className="text-[10px] uppercase font-semibold text-muted-foreground">New Password</p>
-            <p className="text-base font-mono mt-1 font-bold tracking-wider">{password}</p>
-          </div>
-
-          <div className="rounded-xl border border-[hsl(var(--gold))]/30 bg-[hsl(var(--gold)/0.08)] p-3">
-            <p className="text-xs text-foreground">
-              ⚠️ <span className="font-semibold">Share this securely with the user!</span> The password
-              will not be shown again. They should change it after first login.
-            </p>
-          </div>
-
-          <div className="flex gap-2 pt-2">
-            <button
-              onClick={copyAll}
-              className="flex-1 inline-flex items-center justify-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-muted"
-            >
-              <Copy className="h-3.5 w-3.5" /> {copied ? "Copied!" : "Copy"}
-            </button>
-            <button
-              onClick={onClose}
-              className="flex-1 rounded-full bg-gradient-to-r from-primary to-accent px-4 py-2 text-sm font-semibold text-primary-foreground shadow-md"
-            >
-              Done
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function genPassword(length = 10) {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
@@ -664,9 +596,11 @@ function AddStudentModal({
 
 function CredentialsModal({
   result,
+  isReset = false,
   onClose,
 }: {
   result: CredentialResult;
+  isReset?: boolean;
   onClose: () => void;
 }) {
   const [copied, setCopied] = React.useState(false);
@@ -707,7 +641,9 @@ function CredentialsModal({
           <div className="grid h-12 w-12 place-items-center rounded-full bg-white/20 backdrop-blur-md mb-3">
             <CheckCircle2 className="h-6 w-6" />
           </div>
-          <h2 className="text-xl font-bold">Student Account Created</h2>
+          <h2 className="text-xl font-bold">
+            {isReset ? "New Login Generated" : "Student Account Created"}
+          </h2>
           <p className="text-sm text-white/80 mt-1">
             Share these login details with <span className="font-semibold">{result.name}</span>
           </p>
