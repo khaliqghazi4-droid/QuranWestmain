@@ -38,11 +38,20 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (body.phone !== undefined) data.phone = body.phone;
     if (body.timezone !== undefined) data.timezone = body.timezone;
     if (body.shift !== undefined) data.shift = body.shift; // "DAY" | "NIGHT" | null
+    if (body.gender !== undefined) data.gender = body.gender; // "MALE" | "FEMALE" | null
 
     const user = await prisma.user.update({
       where: { id: params.id },
       data,
-      select: { id: true, name: true, email: true, role: true, country: true, shift: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        country: true,
+        shift: true,
+        gender: true,
+      },
     });
     return NextResponse.json({ user });
   } catch (e) {

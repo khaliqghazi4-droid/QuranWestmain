@@ -41,6 +41,7 @@ type Teacher = {
   createdAt: string;
   timezone: string;
   shift: "DAY" | "NIGHT" | null;
+  gender: "MALE" | "FEMALE" | null;
   courses: { id: string; name: string; students: number }[];
   availability: AvailabilitySlot[];
 };
@@ -63,6 +64,7 @@ export function TeachersGrid({
   const router = useRouter();
   const [teachers, setTeachers] = React.useState(initialTeachers);
   const [query, setQuery] = React.useState("");
+  const [genderFilter, setGenderFilter] = React.useState<"all" | "MALE" | "FEMALE">("all");
   const [deleting, setDeleting] = React.useState<string | null>(null);
   const [resetting, setResetting] = React.useState<string | null>(null);
   const [resetResult, setResetResult] = React.useState<{
@@ -142,13 +144,25 @@ export function TeachersGrid({
     router.refresh();
   }
 
+  async function handleSetGender(id: string, gender: "MALE" | "FEMALE" | null) {
+    setTeachers((prev) => prev.map((t) => (t.id === id ? { ...t, gender } : t)));
+    const res = await fetch(`/api/users/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ gender }),
+    });
+    if (!res.ok) alert("Failed to update gender");
+    router.refresh();
+  }
+
   const filtered = teachers.filter((t) => {
     const q = query.toLowerCase();
-    return (
+    const matchesQuery =
       t.name.toLowerCase().includes(q) ||
       t.email.toLowerCase().includes(q) ||
-      (t.country?.toLowerCase().includes(q) ?? false)
-    );
+      (t.country?.toLowerCase().includes(q) ?? false);
+    const matchesGender = genderFilter === "all" || t.gender === genderFilter;
+    return matchesQuery && matchesGender;
   });
 
   const dayTeachers = filtered.filter((t) => t.shift === "DAY");
@@ -169,6 +183,17 @@ export function TeachersGrid({
             <div className="flex items-center gap-1.5">
               <p className="text-sm font-bold truncate">{t.name}</p>
               <Award className="h-3.5 w-3.5 text-[hsl(var(--gold))] shrink-0" />
+              {t.gender && (
+                <span
+                  className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold ${
+                    t.gender === "MALE"
+                      ? "bg-sky-500/10 text-sky-600"
+                      : "bg-pink-500/10 text-pink-600"
+                  }`}
+                >
+                  {t.gender === "MALE" ? "♂ Male" : "♀ Female"}
+                </span>
+              )}
             </div>
             <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{t.email}</p>
             {t.country && <p className="text-[11px] text-muted-foreground">{t.country}</p>}
@@ -198,6 +223,33 @@ export function TeachersGrid({
               }`}
             >
               🌙 Night (9-4 AM)
+            </button>
+          </div>
+        </div>
+
+        {/* Gender selector */}
+        <div className="mt-3">
+          <p className="text-[10px] uppercase font-semibold text-muted-foreground mb-1.5">Category</p>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => handleSetGender(t.id, t.gender === "MALE" ? null : "MALE")}
+              className={`inline-flex items-center justify-center gap-1 rounded-lg border px-2 py-1.5 text-[11px] font-bold transition-all ${
+                t.gender === "MALE"
+                  ? "border-sky-500 bg-sky-500/10 text-sky-600"
+                  : "border-border bg-background text-muted-foreground hover:border-sky-500/40"
+              }`}
+            >
+              ♂ Male
+            </button>
+            <button
+              onClick={() => handleSetGender(t.id, t.gender === "FEMALE" ? null : "FEMALE")}
+              className={`inline-flex items-center justify-center gap-1 rounded-lg border px-2 py-1.5 text-[11px] font-bold transition-all ${
+                t.gender === "FEMALE"
+                  ? "border-pink-500 bg-pink-500/10 text-pink-600"
+                  : "border-border bg-background text-muted-foreground hover:border-pink-500/40"
+              }`}
+            >
+              ♀ Female
             </button>
           </div>
         </div>
@@ -320,15 +372,32 @@ export function TeachersGrid({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-3 justify-between items-center">
-        <div className="relative max-w-sm w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search teachers..."
-            className="w-full rounded-full border border-border bg-card pl-10 pr-4 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
+        <div className="flex items-center gap-3 flex-1">
+          <div className="relative max-w-sm w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search teachers..."
+              className="w-full rounded-full border border-border bg-card pl-10 pr-4 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+          </div>
+          <div className="inline-flex rounded-full border border-border bg-card p-0.5 shrink-0">
+            {(["all", "MALE", "FEMALE"] as const).map((g) => (
+              <button
+                key={g}
+                onClick={() => setGenderFilter(g)}
+                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-all ${
+                  genderFilter === g
+                    ? "bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {g === "all" ? "All" : g === "MALE" ? "♂ Male" : "♀ Female"}
+              </button>
+            ))}
+          </div>
         </div>
         <button
           onClick={() => setInviteOpen(true)}
@@ -342,7 +411,9 @@ export function TeachersGrid({
         <div className="rounded-2xl border-2 border-dashed border-border bg-card/50 p-12 text-center">
           <Users className="mx-auto h-12 w-12 text-muted-foreground/50" />
           <p className="mt-4 text-sm text-muted-foreground">
-            {query ? "No teachers match your search" : "No teachers yet. Invite your first one!"}
+            {query || genderFilter !== "all"
+              ? "No teachers match your filter"
+              : "No teachers yet. Invite your first one!"}
           </p>
         </div>
       ) : (
@@ -647,6 +718,7 @@ function InviteTeacherModal({
   const [password, setPassword] = React.useState("");
   const [country, setCountry] = React.useState("");
   const [bio, setBio] = React.useState("");
+  const [gender, setGender] = React.useState<"MALE" | "FEMALE" | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -668,11 +740,11 @@ function InviteTeacherModal({
       return;
     }
 
-    if (country || bio) {
+    if (country || bio || gender) {
       await fetch(`/api/users/${data.user.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ country: country || null, bio: bio || null }),
+        body: JSON.stringify({ country: country || null, bio: bio || null, gender }),
       });
     }
 
@@ -686,6 +758,7 @@ function InviteTeacherModal({
       createdAt: new Date().toISOString(),
       timezone: "UTC",
       shift: null,
+      gender,
       courses: [],
       availability: [],
     });
@@ -753,6 +826,34 @@ function InviteTeacherModal({
               placeholder="Min 8 characters (share with teacher securely)"
               className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Category</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setGender(gender === "MALE" ? null : "MALE")}
+                className={`inline-flex items-center justify-center gap-1 rounded-xl border px-3 py-2.5 text-sm font-bold transition-all ${
+                  gender === "MALE"
+                    ? "border-sky-500 bg-sky-500/10 text-sky-600"
+                    : "border-border bg-background text-muted-foreground hover:border-sky-500/40"
+                }`}
+              >
+                ♂ Male Teacher
+              </button>
+              <button
+                type="button"
+                onClick={() => setGender(gender === "FEMALE" ? null : "FEMALE")}
+                className={`inline-flex items-center justify-center gap-1 rounded-xl border px-3 py-2.5 text-sm font-bold transition-all ${
+                  gender === "FEMALE"
+                    ? "border-pink-500 bg-pink-500/10 text-pink-600"
+                    : "border-border bg-background text-muted-foreground hover:border-pink-500/40"
+                }`}
+              >
+                ♀ Female Teacher
+              </button>
+            </div>
           </div>
 
           <div>
