@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { CoursesManager } from "./courses-manager";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 30;
 
 export default async function AdminCoursesPage() {
   const [courses, teachers] = await Promise.all([

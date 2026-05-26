@@ -3,7 +3,7 @@ import { getWebsiteEnrollments, type WebsiteEnrollment } from "@/lib/enroll-sour
 import { EnrollmentsList } from "./enrollments-list";
 import { AlertCircle } from "lucide-react";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 30;
 
 export default async function AdminEnrollmentsPage() {
   let enrollments: WebsiteEnrollment[] = [];

@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { ProfileEditor } from "@/components/profile/profile-editor";
 import { AvailabilityEditor } from "@/components/availability/availability-editor";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 30;
 
 export default async function TeacherProfile() {
   const session = await getServerSession(authOptions);

@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { CountUp } from "@/components/count-up";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 30;
 
 export default async function StudentDashboard() {
   const session = await getServerSession(authOptions);

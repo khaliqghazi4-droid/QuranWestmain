@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { BookOpen, Filter } from "lucide-react";
 import { CoursesList } from "./courses-list";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 30;
 
 export default async function StudentCourses() {
   const session = await getServerSession(authOptions);

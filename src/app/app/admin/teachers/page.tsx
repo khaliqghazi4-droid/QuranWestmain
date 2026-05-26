@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { TeachersGrid } from "./teachers-grid";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 30;
 
 export default async function AdminTeachersPage() {
   const [teachers, allCourses] = await Promise.all([

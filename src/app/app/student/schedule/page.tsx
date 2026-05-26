@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Video, Clock, Calendar, ExternalLink, BookOpen } from "lucide-react";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 30;
 
 export default async function StudentSchedule() {
   const session = await getServerSession(authOptions);

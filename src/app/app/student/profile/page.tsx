@@ -6,7 +6,7 @@ import { ProfileEditor } from "@/components/profile/profile-editor";
 import Link from "next/link";
 import { Calendar, BookOpen } from "lucide-react";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 30;
 
 export default async function StudentProfile() {
   const session = await getServerSession(authOptions);

@@ -13,7 +13,7 @@ import {
 import { CountUp } from "@/components/count-up";
 import { Avatar } from "@/components/avatar";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 30;
 
 export default async function AdminDashboard() {
   const [

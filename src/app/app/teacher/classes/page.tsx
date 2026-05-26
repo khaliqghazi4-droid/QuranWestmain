@@ -17,7 +17,7 @@ import { formatSlotRange, bookingTiming, SHIFT_RANGES, type Shift } from "@/lib/
 import { courseMeetingLink } from "@/lib/meeting";
 import { getWebsiteEnrollments } from "@/lib/enroll-source";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 30;
 
 type TrialItem = {
   id: string;

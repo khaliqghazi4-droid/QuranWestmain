@@ -5,7 +5,7 @@ import { courseMeetingLink } from "@/lib/meeting";
 import { TrialsList, type TrialSession } from "./trials-list";
 import { AlertCircle } from "lucide-react";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 30;
 
 export default async function AdminTrialsPage() {
   let trials: TrialSession[] = [];

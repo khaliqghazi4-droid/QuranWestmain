@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { StudentsTable } from "./students-table";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 30;
 
 export default async function AdminStudentsPage({
   searchParams,

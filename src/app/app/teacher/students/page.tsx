@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { StudentsManager } from "./students-manager";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 30;
 
 export default async function TeacherStudents() {
   const session = await getServerSession(authOptions);

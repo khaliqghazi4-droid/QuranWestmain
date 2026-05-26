@@ -19,7 +19,7 @@ import { Avatar } from "@/components/avatar";
 import { DAYS } from "@/lib/timezones";
 import { formatSlotRange, SHIFT_RANGES, type Shift } from "@/lib/shifts";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 30;
 
 export default async function TeacherDashboard() {
   const session = await getServerSession(authOptions);
