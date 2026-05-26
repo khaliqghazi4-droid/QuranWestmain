@@ -19,6 +19,17 @@ function getClient(): Promise<MongoClient> {
   return globalForMongo.enrollMongo;
 }
 
+// Lightweight ping used by /api/health to keep the Atlas connection warm.
+export async function pingEnrollDb(): Promise<boolean> {
+  try {
+    const client = await getClient();
+    await client.db(dbName).command({ ping: 1 });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export type EnrollChild = {
   name: string;
   age: number | null;
