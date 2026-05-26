@@ -2,16 +2,22 @@
 
 import * as React from "react";
 import { Bell, Menu, Search } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { cn } from "@/lib/utils";
 
-export function DashboardHeader({
-  onMenuClick,
-  user = { name: "Muhammad Ali", initials: "MA" },
-}: {
-  onMenuClick: () => void;
-  user?: { name: string; initials: string };
-}) {
+function initialsOf(name: string) {
+  return name
+    .split(" ")
+    .slice(0, 2)
+    .map((w) => w.charAt(0))
+    .join("")
+    .toUpperCase();
+}
+
+export function DashboardHeader({ onMenuClick }: { onMenuClick: () => void }) {
+  const { data: session } = useSession();
+  const name = session?.user?.name ?? "—";
+  const initials = name === "—" ? "•" : initialsOf(name);
   return (
     <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-xl border-b border-border">
       <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8 gap-3">
@@ -47,11 +53,11 @@ export function DashboardHeader({
 
           <div className="flex items-center gap-2 pl-2">
             <div className="hidden sm:block text-right leading-tight">
-              <p className="text-sm font-semibold">{user.name}</p>
+              <p className="text-sm font-semibold">{name}</p>
               <p className="text-[11px] text-muted-foreground">Premium Member</p>
             </div>
             <div className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-primary to-accent text-primary-foreground font-bold text-sm shadow-md shadow-primary/20">
-              {user.initials}
+              {initials}
             </div>
           </div>
         </div>

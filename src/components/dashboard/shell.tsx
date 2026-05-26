@@ -7,11 +7,9 @@ import type { Role } from "@/lib/nav-config";
 
 export function DashboardShell({
   role,
-  user,
   children,
 }: {
   role: Role;
-  user?: { name: string; initials: string };
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
@@ -24,10 +22,7 @@ export function DashboardShell({
         onClose={() => setSidebarOpen(false)}
       />
       <div className="flex-1 flex flex-col min-w-0">
-        <DashboardHeader
-          onMenuClick={() => setSidebarOpen(true)}
-          user={user}
-        />
+        <DashboardHeader onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 lg:py-8 animate-fade-in">
           {children}
         </main>
