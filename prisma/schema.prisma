@@ -56,6 +56,7 @@ model User {
   taughtEnrollments     Enrollment[]    @relation("EnrollmentTeacher")
   availability          UserAvailability[]
   teacherBookings       BookingSlot[]   @relation("TeacherBookings")
+  trialAssignments      TrialAssignment[] @relation("TrialTeacher")
   parentChildren        ParentChild[]   @relation("Parent")
   childOfParents        ParentChild[]   @relation("Child")
   attendanceRecords     Attendance[]
@@ -255,6 +256,21 @@ model UserAvailability {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// Admin's manual assignment of a website trial request to a specific teacher.
+// The trial itself lives in MongoDB (developer's backend); we key by its _id.
+model TrialAssignment {
+  id                String   @id @default(cuid())
+  mongoEnrollmentId String   @unique
+  teacherId         String
+  trialTime         DateTime // copy of MongoDB trialTime for fast conflict checks
+  assignedAt        DateTime @default(now())
+
+  teacher User @relation("TrialTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([teacherId])
+  @@index([trialTime])
 }
 
 model PasswordResetToken {

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import {
   Search,
   Filter,
@@ -15,8 +16,20 @@ import {
   Copy,
   AlertCircle,
   CalendarCheck,
+  CheckCircle2,
+  Loader2,
+  X,
 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
+
+export type TeacherChoice = {
+  id: string;
+  name: string;
+  gender: "MALE" | "FEMALE" | null;
+  shift: "DAY" | "NIGHT" | null;
+  free: boolean;
+  reason: string | null;
+};
 
 export type TrialSession = {
   id: string;
@@ -32,8 +45,9 @@ export type TrialSession = {
   children: { name: string; age: number | null; gender: "male" | "female" | null }[];
   createdAt: string | null;
   courseMatched: boolean;
-  teacherName: string | null;
-  teacherGender: "MALE" | "FEMALE" | null;
+  teacherChoices: TeacherChoice[];
+  assignedTeacherId: string | null;
+  assignedTeacherName: string | null;
   meetingLink: string | null;
 };
 
@@ -52,7 +66,9 @@ function fmt(iso: string | null) {
 
 export function TrialsList({ trials }: { trials: TrialSession[] }) {
   const [query, setQuery] = React.useState("");
-  const [filter, setFilter] = React.useState<"all" | "upcoming" | "past">("upcoming");
+  const [filter, setFilter] = React.useState<"all" | "upcoming" | "past" | "needs-assign">(
+    "upcoming"
+  );
 
   const now = Date.now();
   const filtered = trials.filter((t) => {
@@ -65,7 +81,8 @@ export function TrialsList({ trials }: { trials: TrialSession[] }) {
     const matchesFilter =
       filter === "all" ||
       (filter === "upcoming" && ts >= now) ||
-      (filter === "past" && ts < now);
+      (filter === "past" && ts < now) ||
+      (filter === "needs-assign" && !t.assignedTeacherId && ts >= now);
     return matchesQuery && matchesFilter;
   });
 
@@ -82,6 +99,7 @@ export function TrialsList({ trials }: { trials: TrialSession[] }) {
             className="rounded-full border border-border bg-background px-4 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
             <option value="upcoming">Upcoming</option>
+            <option value="needs-assign">Needs teacher</option>
             <option value="past">Past</option>
             <option value="all">All ({trials.length})</option>
           </select>
@@ -103,10 +121,6 @@ export function TrialsList({ trials }: { trials: TrialSession[] }) {
         <div className="rounded-2xl border-2 border-dashed border-border bg-card/50 p-12 text-center">
           <CalendarCheck className="mx-auto h-12 w-12 text-muted-foreground/50" />
           <p className="mt-4 text-sm font-semibold">No trial sessions</p>
-          <p className="mt-1 text-xs text-muted-foreground max-w-md mx-auto">
-            Free trial requests submitted on the academy website appear here with the course&apos;s
-            teacher and a class link to share.
-          </p>
         </div>
       ) : (
         <div className="grid gap-3 lg:grid-cols-2">
@@ -120,14 +134,51 @@ export function TrialsList({ trials }: { trials: TrialSession[] }) {
 }
 
 function TrialCard({ t }: { t: TrialSession }) {
+  const router = useRouter();
   const [copied, setCopied] = React.useState(false);
+  const [picker, setPicker] = React.useState(false);
+  const [busy, setBusy] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
   const isKid = t.courseFor === "kid";
+
+  async function assign(teacherId: string) {
+    if (!t.trialTime) return;
+    setError(null);
+    setBusy(teacherId);
+    const res = await fetch(`/api/trials/${t.id}/assign`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ teacherId, trialTime: t.trialTime }),
+    });
+    setBusy(null);
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      setError(d.error ?? "Assign failed");
+      return;
+    }
+    setPicker(false);
+    router.refresh();
+  }
+
+  async function unassign() {
+    if (!confirm("Remove the assigned teacher from this trial?")) return;
+    setError(null);
+    setBusy("unassign");
+    const res = await fetch(`/api/trials/${t.id}/assign`, { method: "DELETE" });
+    setBusy(null);
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      setError(d.error ?? "Remove failed");
+      return;
+    }
+    router.refresh();
+  }
 
   const message =
     `Assalamu Alaikum ${t.fullName},\n\n` +
     `Your FREE trial class for "${t.course}" is confirmed.\n\n` +
     `When: ${fmt(t.trialTime)} (PKT)\n` +
-    (t.teacherName ? `Teacher: ${t.teacherName}\n` : "") +
+    (t.assignedTeacherName ? `Teacher: ${t.assignedTeacherName}\n` : "") +
     (t.meetingLink ? `Join link: ${t.meetingLink}\n` : "") +
     `\nPlease join 5 minutes early. JazakAllah Khair.`;
 
@@ -142,11 +193,6 @@ function TrialCard({ t }: { t: TrialSession }) {
   const mailHref = `mailto:${t.email}?subject=${encodeURIComponent(
     `Your free trial class — ${t.course}`
   )}&body=${encodeURIComponent(message)}`;
-
-  const genderMatch =
-    t.tutorGender && t.teacherGender
-      ? t.tutorGender.toUpperCase() === t.teacherGender
-      : null;
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5 hover:border-primary/30 transition-colors">
@@ -186,32 +232,11 @@ function TrialCard({ t }: { t: TrialSession }) {
           <span className="font-semibold text-foreground">{fmt(t.trialTime)}</span>
           <span className="text-muted-foreground">PKT</span>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <GraduationCap className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-          {t.teacherName ? (
-            <>
-              <span>
-                Teacher: <span className="font-semibold text-foreground">{t.teacherName}</span>
-              </span>
-              {t.tutorGender && (
-                <span
-                  className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${
-                    genderMatch === false
-                      ? "bg-destructive/10 text-destructive"
-                      : "bg-emerald-500/10 text-emerald-600"
-                  }`}
-                  title={`Requested ${t.tutorGender} tutor`}
-                >
-                  wants {t.tutorGender} {genderMatch === false ? "⚠" : "✓"}
-                </span>
-              )}
-            </>
-          ) : (
-            <span className="text-[hsl(var(--gold))] inline-flex items-center gap-1">
-              <AlertCircle className="h-3 w-3" /> No teacher assigned to this course
-            </span>
-          )}
-        </div>
+        {t.tutorGender && (
+          <div className="text-muted-foreground">
+            Wants <span className="font-semibold text-foreground">{t.tutorGender}</span> tutor
+          </div>
+        )}
         {t.whatsapp && (
           <div className="flex items-center gap-2">
             <MessageCircle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -232,6 +257,115 @@ function TrialCard({ t }: { t: TrialSession }) {
           ))}
         </div>
       )}
+
+      {/* Assigned teacher OR picker */}
+      <div className="mt-3 rounded-xl border border-border bg-background p-3">
+        {error && (
+          <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-2 text-[11px] text-destructive mb-2">
+            <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" /> {error}
+          </div>
+        )}
+
+        {t.assignedTeacherId && !picker ? (
+          <div className="flex items-center gap-2 flex-wrap">
+            <GraduationCap className="h-3.5 w-3.5 text-emerald-600" />
+            <span className="text-[12px] font-semibold">
+              Assigned: <span className="text-foreground">{t.assignedTeacherName}</span>
+            </span>
+            <span className="ml-auto flex gap-2">
+              <button
+                onClick={() => setPicker(true)}
+                className="text-[11px] font-semibold text-primary hover:text-accent"
+              >
+                Change
+              </button>
+              <button
+                onClick={unassign}
+                disabled={busy === "unassign"}
+                className="text-[11px] font-semibold text-destructive hover:opacity-80 disabled:opacity-50"
+              >
+                {busy === "unassign" ? "..." : "Remove"}
+              </button>
+            </span>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                {t.assignedTeacherId ? "Change teacher" : "Assign teacher"}
+              </p>
+              {picker && t.assignedTeacherId && (
+                <button onClick={() => setPicker(false)} className="text-muted-foreground hover:text-foreground">
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+            {t.teacherChoices.length === 0 ? (
+              <p className="text-[11px] text-[hsl(var(--gold))]">
+                ⚠ No teachers on this course. Assign teachers in the Courses tab first.
+              </p>
+            ) : (
+              <div className="space-y-1.5">
+                {t.teacherChoices.map((ch) => {
+                  const isCurrent = ch.id === t.assignedTeacherId;
+                  const wantMatch =
+                    t.tutorGender && ch.gender
+                      ? t.tutorGender.toUpperCase() === ch.gender
+                      : null;
+                  return (
+                    <button
+                      key={ch.id}
+                      onClick={() => assign(ch.id)}
+                      disabled={busy === ch.id || isCurrent}
+                      className={`w-full flex items-center gap-2 rounded-lg border px-2.5 py-2 text-[11px] text-left transition-all disabled:opacity-60 ${
+                        isCurrent
+                          ? "border-emerald-500/40 bg-emerald-500/5"
+                          : ch.free
+                          ? "border-border hover:border-primary/40 hover:bg-primary/5"
+                          : "border-border bg-muted/30"
+                      }`}
+                    >
+                      <span className="font-semibold">{ch.name}</span>
+                      {ch.gender && (
+                        <span
+                          className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${
+                            ch.gender === "MALE"
+                              ? "bg-sky-500/10 text-sky-600"
+                              : "bg-pink-500/10 text-pink-600"
+                          }`}
+                        >
+                          {ch.gender === "MALE" ? "♂" : "♀"}
+                        </span>
+                      )}
+                      {ch.shift && (
+                        <span className="text-muted-foreground">{ch.shift.toLowerCase()}</span>
+                      )}
+                      {wantMatch === false && (
+                        <span className="text-[hsl(var(--gold))]">≠ tutor pref</span>
+                      )}
+                      <span className="ml-auto inline-flex items-center gap-1">
+                        {ch.free ? (
+                          <span className="inline-flex items-center gap-0.5 text-emerald-600 font-bold">
+                            <CheckCircle2 className="h-3 w-3" /> Free
+                          </span>
+                        ) : (
+                          <span
+                            className="inline-flex items-center gap-0.5 text-destructive font-bold"
+                            title={ch.reason ?? "Conflict"}
+                          >
+                            <AlertCircle className="h-3 w-3" /> {ch.reason ?? "Conflict"}
+                          </span>
+                        )}
+                        {busy === ch.id && <Loader2 className="h-3 w-3 animate-spin ml-1" />}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       {/* Meeting link */}
       {t.meetingLink && (
