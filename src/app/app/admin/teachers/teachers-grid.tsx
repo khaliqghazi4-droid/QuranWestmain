@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { AvailabilityViewer } from "@/components/availability/availability-viewer";
+import { AvailabilityEditor } from "@/components/availability/availability-editor";
 
 type AvailabilitySlot = {
   dayOfWeek: number;
@@ -75,6 +76,7 @@ export function TeachersGrid({
   const [inviteOpen, setInviteOpen] = React.useState(false);
   const [assignTarget, setAssignTarget] = React.useState<Teacher | null>(null);
   const [availabilityOpenId, setAvailabilityOpenId] = React.useState<string | null>(null);
+  const [editAvailabilityFor, setEditAvailabilityFor] = React.useState<Teacher | null>(null);
 
   function handleAssignmentSaved(teacherId: string, assigned: CourseOption[]) {
     setTeachers((prev) =>
@@ -298,7 +300,7 @@ export function TeachersGrid({
             }`}
           >
             <Calendar className="h-3.5 w-3.5" />
-            Schedule ({t.availability.length})
+            Availability ({t.availability.length})
             {availabilityOpenId === t.id ? (
               <ChevronUp className="h-3 w-3" />
             ) : (
@@ -308,8 +310,21 @@ export function TeachersGrid({
         </div>
 
         {availabilityOpenId === t.id && (
-          <div className="mt-3 rounded-xl border border-border bg-background p-3">
-            <AvailabilityViewer teacherTimezone={t.timezone} slots={t.availability} compact />
+          <div className="mt-3 rounded-xl border border-border bg-background p-3 space-y-2">
+            {t.availability.length === 0 ? (
+              <p className="text-[11px] text-muted-foreground italic">
+                No availability set. Use Edit to add the hours this teacher is available.
+              </p>
+            ) : (
+              <AvailabilityViewer teacherTimezone={t.timezone} slots={t.availability} compact />
+            )}
+            <button
+              onClick={() => setEditAvailabilityFor(t)}
+              className="w-full inline-flex items-center justify-center gap-1.5 rounded-full border border-primary/40 bg-primary/5 px-3 py-1.5 text-[11px] font-bold text-primary hover:bg-primary/10"
+            >
+              <Calendar className="h-3.5 w-3.5" />
+              {t.availability.length === 0 ? "Set availability" : "Edit availability"}
+            </button>
           </div>
         )}
 
@@ -441,6 +456,16 @@ export function TeachersGrid({
           allCourses={allCourses}
           onClose={() => setAssignTarget(null)}
           onSaved={handleAssignmentSaved}
+        />
+      )}
+      {editAvailabilityFor && (
+        <EditAvailabilityModal
+          teacher={editAvailabilityFor}
+          onClose={() => setEditAvailabilityFor(null)}
+          onSaved={() => {
+            setEditAvailabilityFor(null);
+            router.refresh();
+          }}
         />
       )}
     </div>
@@ -885,6 +910,56 @@ function InviteTeacherModal({
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+function EditAvailabilityModal({
+  teacher,
+  onClose,
+  onSaved,
+}: {
+  teacher: Teacher;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 overflow-y-auto bg-foreground/40 backdrop-blur-sm animate-fade-in"
+      onClick={onClose}
+    >
+      <div className="flex min-h-full items-start sm:items-center justify-center p-4">
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="w-full max-w-2xl rounded-3xl border border-border bg-card shadow-2xl my-auto"
+        >
+          <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-card">
+            <div>
+              <h2 className="text-base font-bold">Set Teacher Availability</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Hours <span className="font-semibold text-foreground">{teacher.name}</span> is
+                available for classes (teacher&apos;s local time)
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="grid h-9 w-9 place-items-center rounded-full hover:bg-muted"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="p-4">
+            <AvailabilityEditor
+              saveUrl={`/api/users/${teacher.id}/availability`}
+              initialTimezone={teacher.timezone}
+              initialSlots={teacher.availability}
+              title={`${teacher.name}'s availability`}
+              description="Set the weekly hours this teacher is available for classes"
+              onSaved={onSaved}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

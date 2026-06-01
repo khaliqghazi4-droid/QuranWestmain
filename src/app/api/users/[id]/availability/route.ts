@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -100,6 +101,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         : []),
     ]);
 
+    revalidatePath("/app/admin/teachers");
+    revalidatePath("/app/admin/availability");
+    revalidatePath("/app/admin/trials");
     return NextResponse.json({ ok: true });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Update failed";
