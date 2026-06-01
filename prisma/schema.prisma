@@ -60,6 +60,7 @@ model User {
   trialAssignments      TrialAssignment[] @relation("TrialTeacher")
   files                 TeacherFile[]
   lessonAssignments     LessonAssignment[] @relation("LessonAssignedTo")
+  bookingAttendance     BookingAttendance[] @relation("BookingAttendanceStudent")
   parentChildren        ParentChild[]   @relation("Parent")
   childOfParents        ParentChild[]   @relation("Child")
   attendanceRecords     Attendance[]
@@ -79,11 +80,31 @@ model BookingSlot {
 
   enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   teacher      User       @relation("TeacherBookings", fields: [teacherId], references: [id], onDelete: Cascade)
+  attendance   BookingAttendance[]
 
   // A teacher can't be double-booked at the same day+time
   @@unique([teacherId, dayOfWeek, startTime])
   @@index([enrollmentId])
   @@index([teacherId])
+}
+
+// Per-date attendance for a recurring BookingSlot occurrence.
+// Date is stored as midnight UTC for the PKT calendar day (to keep
+// one record per (booking, day)).
+model BookingAttendance {
+  id            String           @id @default(cuid())
+  bookingSlotId String
+  studentId     String
+  date          DateTime         // PKT calendar day at 00:00 UTC
+  status        AttendanceStatus
+  markedAt      DateTime         @default(now())
+
+  bookingSlot BookingSlot @relation(fields: [bookingSlotId], references: [id], onDelete: Cascade)
+  student     User        @relation("BookingAttendanceStudent", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([bookingSlotId, date])
+  @@index([studentId])
+  @@index([date])
 }
 
 model Session {
