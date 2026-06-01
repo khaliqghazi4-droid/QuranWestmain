@@ -59,6 +59,7 @@ model User {
   teacherBookings       BookingSlot[]   @relation("TeacherBookings")
   trialAssignments      TrialAssignment[] @relation("TrialTeacher")
   files                 TeacherFile[]
+  lessonAssignments     LessonAssignment[] @relation("LessonAssignedTo")
   parentChildren        ParentChild[]   @relation("Parent")
   childOfParents        ParentChild[]   @relation("Child")
   attendanceRecords     Attendance[]
@@ -149,8 +150,24 @@ model Lesson {
 
   course      Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
   completions LessonCompletion[]
+  assignments LessonAssignment[]
 
   @@index([courseId, order])
+}
+
+// Teacher assigns a specific lesson to specific student(s) of the course.
+// Only assigned students see the lesson in their panel.
+model LessonAssignment {
+  id         String   @id @default(cuid())
+  lessonId   String
+  studentId  String
+  assignedAt DateTime @default(now())
+
+  lesson  Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  student User   @relation("LessonAssignedTo", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([lessonId, studentId])
+  @@index([studentId])
 }
 
 model LessonCompletion {

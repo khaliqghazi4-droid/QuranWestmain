@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -11,15 +12,28 @@ export async function GET(req: Request) {
   const courseId = searchParams.get("courseId");
   if (!courseId) return NextResponse.json({ error: "courseId required" }, { status: 400 });
 
-  // Students: only enrolled courses
+  // Students: only see lessons explicitly assigned to them
   if (session.user.role === "STUDENT") {
     const enrolled = await prisma.enrollment.findUnique({
       where: { studentId_courseId: { studentId: session.user.id, courseId } },
     });
     if (!enrolled) return NextResponse.json({ error: "Not enrolled" }, { status: 403 });
+
+    const lessons = await prisma.lesson.findMany({
+      where: {
+        courseId,
+        isPublished: true,
+        assignments: { some: { studentId: session.user.id } },
+      },
+      orderBy: { order: "asc" },
+      include: {
+        completions: { where: { studentId: session.user.id }, select: { id: true } },
+      },
+    });
+    return NextResponse.json({ lessons });
   }
 
-  // Teachers: only their courses
+  // Teacher: only their courses
   if (session.user.role === "TEACHER") {
     const course = await prisma.course.findUnique({ where: { id: courseId } });
     if (!course || course.teacherId !== session.user.id) {
@@ -28,16 +42,13 @@ export async function GET(req: Request) {
   }
 
   const lessons = await prisma.lesson.findMany({
-    where: { courseId, ...(session.user.role === "STUDENT" ? { isPublished: true } : {}) },
+    where: { courseId },
     orderBy: { order: "asc" },
     include: {
-      completions:
-        session.user.role === "STUDENT"
-          ? { where: { studentId: session.user.id }, select: { id: true } }
-          : { select: { id: true } },
+      completions: { select: { id: true } },
+      assignments: { include: { student: { select: { id: true, name: true } } } },
     },
   });
-
   return NextResponse.json({ lessons });
 }
 
@@ -49,7 +60,17 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { courseId, title, description, content, videoUrl, audioUrl, fileUrl, duration } = body as {
+    const {
+      courseId,
+      title,
+      description,
+      content,
+      videoUrl,
+      audioUrl,
+      fileUrl,
+      duration,
+      studentIds,
+    } = body as {
       courseId?: string;
       title?: string;
       description?: string;
@@ -58,10 +79,17 @@ export async function POST(req: Request) {
       audioUrl?: string;
       fileUrl?: string;
       duration?: number;
+      studentIds?: string[];
     };
 
     if (!courseId || !title) {
       return NextResponse.json({ error: "courseId and title are required" }, { status: 400 });
+    }
+    if (!Array.isArray(studentIds) || studentIds.length === 0) {
+      return NextResponse.json(
+        { error: "Assign at least one student to this lesson" },
+        { status: 400 }
+      );
     }
 
     // Teacher can only add lessons to their own courses
@@ -72,7 +100,20 @@ export async function POST(req: Request) {
       }
     }
 
-    // Auto-increment order
+    // Verify the chosen students are actually enrolled in this course
+    const validEnrollments = await prisma.enrollment.findMany({
+      where: { courseId, studentId: { in: studentIds } },
+      select: { studentId: true },
+    });
+    const validIds = new Set(validEnrollments.map((e) => e.studentId));
+    const filteredStudentIds = studentIds.filter((id) => validIds.has(id));
+    if (filteredStudentIds.length === 0) {
+      return NextResponse.json(
+        { error: "None of the chosen students are enrolled in this course" },
+        { status: 400 }
+      );
+    }
+
     const last = await prisma.lesson.findFirst({
       where: { courseId },
       orderBy: { order: "desc" },
@@ -91,9 +132,19 @@ export async function POST(req: Request) {
         fileUrl: fileUrl || null,
         duration: duration || null,
         order: nextOrder,
+        assignments: {
+          createMany: {
+            data: filteredStudentIds.map((studentId) => ({ studentId })),
+          },
+        },
+      },
+      include: {
+        assignments: { include: { student: { select: { id: true, name: true } } } },
       },
     });
 
+    revalidatePath("/app/teacher/lessons");
+    revalidatePath("/app/student/courses");
     return NextResponse.json({ lesson }, { status: 201 });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Failed";

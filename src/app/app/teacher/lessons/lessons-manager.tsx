@@ -29,6 +29,8 @@ type Course = {
   lessonCount: number;
 };
 
+type StudentRef = { id: string; name: string };
+
 type Lesson = {
   id: string;
   title: string;
@@ -41,16 +43,21 @@ type Lesson = {
   order: number;
   isPublished: boolean;
   completionsCount: number;
+  assignedTo: StudentRef[];
 };
+
+type EnrolledStudent = { id: string; name: string; email: string };
 
 export function LessonsManager({
   courses,
   activeCourseId,
   initialLessons,
+  enrolledStudents,
 }: {
   courses: Course[];
   activeCourseId: string | null;
   initialLessons: Lesson[];
+  enrolledStudents: EnrolledStudent[];
 }) {
   const router = useRouter();
   const [lessons, setLessons] = React.useState(initialLessons);
@@ -205,6 +212,25 @@ export function LessonsManager({
                       <Users className="h-3 w-3" /> {l.completionsCount} completed
                     </span>
                   </div>
+                  {l.assignedTo.length > 0 ? (
+                    <div className="mt-1.5 flex items-center gap-1 flex-wrap">
+                      <span className="text-[10px] uppercase font-semibold text-muted-foreground">
+                        Assigned:
+                      </span>
+                      {l.assignedTo.map((s) => (
+                        <span
+                          key={s.id}
+                          className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary"
+                        >
+                          {s.name}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-1.5 text-[10px] text-destructive italic">
+                      ⚠ Not assigned to any student — no one sees this lesson
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-1">
                   <button
@@ -251,6 +277,7 @@ export function LessonsManager({
         <LessonModal
           courseId={activeCourseId}
           lesson={editing}
+          enrolledStudents={enrolledStudents}
           onClose={() => {
             setModalOpen(false);
             setEditing(null);
@@ -265,11 +292,13 @@ export function LessonsManager({
 function LessonModal({
   courseId,
   lesson,
+  enrolledStudents,
   onClose,
   onSaved,
 }: {
   courseId: string;
   lesson: Lesson | null;
+  enrolledStudents: EnrolledStudent[];
   onClose: () => void;
   onSaved: (lesson: Lesson) => void;
 }) {
@@ -280,12 +309,35 @@ function LessonModal({
   const [audioUrl, setAudioUrl] = React.useState(lesson?.audioUrl ?? "");
   const [fileUrl, setFileUrl] = React.useState(lesson?.fileUrl ?? "");
   const [duration, setDuration] = React.useState<number | "">(lesson?.duration ?? "");
+  const [studentIds, setStudentIds] = React.useState<Set<string>>(
+    () => new Set(lesson?.assignedTo.map((s) => s.id) ?? [])
+  );
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  function toggleStudent(id: string) {
+    setStudentIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+  function toggleAll() {
+    setStudentIds((prev) =>
+      prev.size === enrolledStudents.length
+        ? new Set()
+        : new Set(enrolledStudents.map((s) => s.id))
+    );
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (studentIds.size === 0) {
+      setError("Pick at least one student to assign this lesson to");
+      return;
+    }
     setLoading(true);
 
     const url = lesson ? `/api/lessons/${lesson.id}` : "/api/lessons";
@@ -303,6 +355,7 @@ function LessonModal({
         audioUrl: audioUrl || null,
         fileUrl: fileUrl || null,
         duration: typeof duration === "number" ? duration : null,
+        studentIds: Array.from(studentIds),
       }),
     });
     setLoading(false);
@@ -312,6 +365,13 @@ function LessonModal({
       setError(data.error ?? "Save failed");
       return;
     }
+
+    const assignedTo: StudentRef[] = Array.isArray(data.lesson.assignments)
+      ? data.lesson.assignments.map((a: { student: StudentRef }) => a.student)
+      : Array.from(studentIds).map((id) => ({
+          id,
+          name: enrolledStudents.find((s) => s.id === id)?.name ?? "Student",
+        }));
 
     onSaved({
       id: data.lesson.id,
@@ -325,6 +385,7 @@ function LessonModal({
       order: data.lesson.order,
       isPublished: data.lesson.isPublished,
       completionsCount: lesson?.completionsCount ?? 0,
+      assignedTo,
     });
   }
 
@@ -354,6 +415,55 @@ function LessonModal({
               placeholder="e.g. Lesson 1 - Introduction to Tajweed"
               className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
+          </div>
+
+          {/* Assign to students (required) */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-semibold text-muted-foreground">
+                Assign to students * ({studentIds.size}/{enrolledStudents.length})
+              </label>
+              {enrolledStudents.length > 0 && (
+                <button
+                  type="button"
+                  onClick={toggleAll}
+                  className="text-[11px] font-semibold text-primary hover:text-accent"
+                >
+                  {studentIds.size === enrolledStudents.length ? "Clear all" : "Select all"}
+                </button>
+              )}
+            </div>
+            {enrolledStudents.length === 0 ? (
+              <p className="rounded-xl border border-[hsl(var(--gold))]/30 bg-[hsl(var(--gold)/0.08)] p-3 text-xs">
+                No students enrolled in this course yet. Lessons need at least one student to assign to.
+              </p>
+            ) : (
+              <div className="rounded-xl border border-border bg-background p-2 max-h-44 overflow-y-auto space-y-1">
+                {enrolledStudents.map((s) => {
+                  const checked = studentIds.has(s.id);
+                  return (
+                    <label
+                      key={s.id}
+                      className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 cursor-pointer transition-colors ${
+                        checked ? "bg-primary/10" : "hover:bg-muted/50"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleStudent(s.id)}
+                        className="rounded border-border"
+                      />
+                      <span className="text-sm font-semibold flex-1">{s.name}</span>
+                      <span className="text-[10px] text-muted-foreground truncate">{s.email}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Only selected students will see this lesson in their panel.
+            </p>
           </div>
 
           <div>

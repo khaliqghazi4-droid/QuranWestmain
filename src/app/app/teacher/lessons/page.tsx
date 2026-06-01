@@ -22,19 +22,33 @@ export default async function TeacherLessonsPage({
 
   const activeCourseId = searchParams.courseId ?? courses[0]?.id ?? null;
 
-  const lessons = activeCourseId
-    ? await prisma.lesson.findMany({
-        where: { courseId: activeCourseId },
-        orderBy: { order: "asc" },
-        include: { _count: { select: { completions: true } } },
-      })
-    : [];
+  const [lessons, enrolled] = await Promise.all([
+    activeCourseId
+      ? prisma.lesson.findMany({
+          where: { courseId: activeCourseId },
+          orderBy: { order: "asc" },
+          include: {
+            _count: { select: { completions: true } },
+            assignments: {
+              include: { student: { select: { id: true, name: true } } },
+            },
+          },
+        })
+      : Promise.resolve([]),
+    activeCourseId
+      ? prisma.enrollment.findMany({
+          where: { courseId: activeCourseId },
+          include: { student: { select: { id: true, name: true, email: true } } },
+          orderBy: { startedAt: "asc" },
+        })
+      : Promise.resolve([]),
+  ]);
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Lesson Plans"
-        description="Create lessons, videos, and materials for your courses"
+        description="Create lessons and assign them to specific students"
       />
       <LessonsManager
         courses={courses.map((c) => ({
@@ -44,6 +58,11 @@ export default async function TeacherLessonsPage({
           lessonCount: c._count.lessons,
         }))}
         activeCourseId={activeCourseId}
+        enrolledStudents={enrolled.map((e) => ({
+          id: e.student.id,
+          name: e.student.name,
+          email: e.student.email,
+        }))}
         initialLessons={lessons.map((l) => ({
           id: l.id,
           title: l.title,
@@ -56,6 +75,10 @@ export default async function TeacherLessonsPage({
           order: l.order,
           isPublished: l.isPublished,
           completionsCount: l._count.completions,
+          assignedTo: l.assignments.map((a) => ({
+            id: a.student.id,
+            name: a.student.name,
+          })),
         }))}
       />
     </div>
