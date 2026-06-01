@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import bcrypt from "bcryptjs";
 import { authOptions } from "@/lib/auth";
@@ -44,6 +45,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       select: { id: true, name: true, email: true },
     });
 
+    revalidatePath("/app/admin/students");
+    revalidatePath("/app/admin/teachers");
     return NextResponse.json({ user, newPassword });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Reset failed";

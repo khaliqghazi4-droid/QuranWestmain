@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import bcrypt from "bcryptjs";
 import { authOptions } from "@/lib/auth";
@@ -99,6 +100,10 @@ export async function POST(req: Request) {
       }
     }
 
+    revalidatePath("/app/admin/students");
+    revalidatePath("/app/admin/teachers");
+    revalidatePath("/app/admin/courses");
+    revalidatePath("/app/admin");
     return NextResponse.json({ student, password }, { status: 201 });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Failed to create student";

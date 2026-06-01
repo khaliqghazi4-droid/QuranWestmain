@@ -1,7 +1,17 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+
+function revalidateCourseTouched() {
+  // Pages that show course / teacher-assignment data
+  revalidatePath("/app/admin/courses");
+  revalidatePath("/app/admin/teachers");
+  revalidatePath("/app/admin/students");
+  revalidatePath("/app/admin/trials");
+  revalidatePath("/app/admin");
+}
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const course = await prisma.course.findUnique({
@@ -65,6 +75,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       }
     }
 
+    revalidateCourseTouched();
     return NextResponse.json({ course });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Update failed";
@@ -80,6 +91,7 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
 
   try {
     await prisma.course.delete({ where: { id: params.id } });
+    revalidateCourseTouched();
     return NextResponse.json({ ok: true });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Delete failed";

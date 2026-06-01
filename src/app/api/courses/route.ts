@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -58,6 +59,9 @@ export async function POST(req: Request) {
       },
     });
 
+    revalidatePath("/app/admin/courses");
+    revalidatePath("/app/admin/teachers");
+    revalidatePath("/app/admin");
     return NextResponse.json({ course }, { status: 201 });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Failed to create course";

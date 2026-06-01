@@ -1,7 +1,15 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+
+function revalidateUserTouched() {
+  revalidatePath("/app/admin/teachers");
+  revalidatePath("/app/admin/students");
+  revalidatePath("/app/admin/courses");
+  revalidatePath("/app/admin");
+}
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
@@ -15,6 +23,7 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
 
   try {
     await prisma.user.delete({ where: { id: params.id } });
+    revalidateUserTouched();
     return NextResponse.json({ ok: true });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Delete failed";
@@ -53,6 +62,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         gender: true,
       },
     });
+    revalidateUserTouched();
     return NextResponse.json({ user });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Update failed";
