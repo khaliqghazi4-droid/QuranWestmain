@@ -18,16 +18,6 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    return NextResponse.json(
-      {
-        error:
-          "File storage not configured. Enable Vercel Blob in the project's Storage tab (auto-creates BLOB_READ_WRITE_TOKEN) and redeploy.",
-      },
-      { status: 500 }
-    );
-  }
-
   try {
     const form = await req.formData();
     const file = form.get("file");
