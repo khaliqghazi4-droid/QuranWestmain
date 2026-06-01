@@ -4,7 +4,6 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus,
-  Star,
   UserX,
   Mail,
   Award,
@@ -45,6 +44,13 @@ type Teacher = {
   gender: "MALE" | "FEMALE" | null;
   courses: { id: string; name: string; students: number }[];
   availability: AvailabilitySlot[];
+  bookings: {
+    id: string;
+    dayOfWeek: number;
+    startTime: string;
+    student: string;
+    course: string;
+  }[];
 };
 
 type CourseOption = {
@@ -276,10 +282,9 @@ export function TeachersGrid({
             </p>
           </div>
           <div>
-            <p className="text-[10px] uppercase font-semibold text-muted-foreground">Rating</p>
+            <p className="text-[10px] uppercase font-semibold text-muted-foreground">Classes</p>
             <p className="text-base font-bold mt-0.5 inline-flex items-center gap-1">
-              <Star className="h-3 w-3 fill-[hsl(var(--gold))] text-[hsl(var(--gold))]" />
-              —
+              <Calendar className="h-3 w-3" /> {t.bookings.length}
             </p>
           </div>
         </div>
@@ -310,21 +315,54 @@ export function TeachersGrid({
         </div>
 
         {availabilityOpenId === t.id && (
-          <div className="mt-3 rounded-xl border border-border bg-background p-3 space-y-2">
-            {t.availability.length === 0 ? (
-              <p className="text-[11px] text-muted-foreground italic">
-                No availability set. Use Edit to add the hours this teacher is available.
+          <div className="mt-3 rounded-xl border border-border bg-background p-3 space-y-3">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-2">
+                Availability ({t.availability.length})
               </p>
-            ) : (
-              <AvailabilityViewer teacherTimezone={t.timezone} slots={t.availability} compact />
-            )}
-            <button
-              onClick={() => setEditAvailabilityFor(t)}
-              className="w-full inline-flex items-center justify-center gap-1.5 rounded-full border border-primary/40 bg-primary/5 px-3 py-1.5 text-[11px] font-bold text-primary hover:bg-primary/10"
-            >
-              <Calendar className="h-3.5 w-3.5" />
-              {t.availability.length === 0 ? "Set availability" : "Edit availability"}
-            </button>
+              {t.availability.length === 0 ? (
+                <p className="text-[11px] text-muted-foreground italic">
+                  No availability set. Use Edit to add the hours this teacher is available.
+                </p>
+              ) : (
+                <AvailabilityViewer teacherTimezone={t.timezone} slots={t.availability} compact />
+              )}
+              <button
+                onClick={() => setEditAvailabilityFor(t)}
+                className="mt-2 w-full inline-flex items-center justify-center gap-1.5 rounded-full border border-primary/40 bg-primary/5 px-3 py-1.5 text-[11px] font-bold text-primary hover:bg-primary/10"
+              >
+                <Calendar className="h-3.5 w-3.5" />
+                {t.availability.length === 0 ? "Set availability" : "Edit availability"}
+              </button>
+            </div>
+
+            <div className="pt-2 border-t border-border">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-2">
+                Booked Classes ({t.bookings.length})
+              </p>
+              {t.bookings.length === 0 ? (
+                <p className="text-[11px] text-muted-foreground italic">
+                  No classes booked yet. Book from the Scheduling tab.
+                </p>
+              ) : (
+                <div className="space-y-1">
+                  {t.bookings.map((b) => (
+                    <div
+                      key={b.id}
+                      className="flex items-center gap-2 rounded-lg bg-card border border-border px-2 py-1.5 text-[11px]"
+                    >
+                      <span className="font-bold text-primary">
+                        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][b.dayOfWeek]}
+                      </span>
+                      <span className="font-mono">{b.startTime} PKT</span>
+                      <span className="text-muted-foreground truncate flex-1">
+                        {b.student} · {b.course}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -786,6 +824,7 @@ function InviteTeacherModal({
       gender,
       courses: [],
       availability: [],
+      bookings: [],
     });
   }
 

@@ -24,6 +24,17 @@ export default async function AdminTeachersPage() {
         availability: {
           orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
         },
+        teacherBookings: {
+          include: {
+            enrollment: {
+              include: {
+                student: { select: { name: true } },
+                course: { select: { name: true } },
+              },
+            },
+          },
+          orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
+        },
       },
       orderBy: { createdAt: "desc" },
     }),
@@ -80,6 +91,13 @@ export default async function AdminTeachersPage() {
               dayOfWeek: a.dayOfWeek,
               startTime: a.startTime,
               endTime: a.endTime,
+            })),
+            bookings: t.teacherBookings.map((b) => ({
+              id: b.id,
+              dayOfWeek: b.dayOfWeek,
+              startTime: b.startTime,
+              student: b.enrollment.student.name,
+              course: b.enrollment.course.name,
             })),
           };
         })}
