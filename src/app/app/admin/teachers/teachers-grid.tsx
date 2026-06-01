@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Plus,
@@ -184,7 +185,10 @@ export function TeachersGrid({
         className="group rounded-2xl border border-border bg-card p-5 hover:border-primary/40 hover:shadow-lg hover:-translate-y-0.5 transition-all stagger-item"
         style={{ animationDelay: `${i * 60}ms` }}
       >
-        <div className="flex items-start gap-3">
+        <Link
+          href={`/app/admin/teachers/${t.id}`}
+          className="flex items-start gap-3 group/profile hover:opacity-90 transition-opacity"
+        >
           <Avatar name={t.name} size={56} style="micah" className="rounded-2xl" />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
@@ -205,7 +209,7 @@ export function TeachersGrid({
             <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{t.email}</p>
             {t.country && <p className="text-[11px] text-muted-foreground">{t.country}</p>}
           </div>
-        </div>
+        </Link>
 
         {/* Shift selector */}
         <div className="mt-3">

@@ -43,6 +43,7 @@ model User {
   gender        Gender?       // for teachers: MALE or FEMALE
   image         String?
   country       String?
+  address       String?   // full address (street, city, postal) — for teacher profiles
   timezone      String?
   bio           String?
   emailVerified DateTime?
@@ -57,6 +58,7 @@ model User {
   availability          UserAvailability[]
   teacherBookings       BookingSlot[]   @relation("TeacherBookings")
   trialAssignments      TrialAssignment[] @relation("TrialTeacher")
+  files                 TeacherFile[]
   parentChildren        ParentChild[]   @relation("Parent")
   childOfParents        ParentChild[]   @relation("Child")
   attendanceRecords     Attendance[]
@@ -271,6 +273,23 @@ model TrialAssignment {
 
   @@index([teacherId])
   @@index([trialTime])
+}
+
+// PDFs / docs uploaded for a teacher's profile (certificates, resume, etc.)
+// Files live on Vercel Blob; we store the URL + metadata.
+model TeacherFile {
+  id         String   @id @default(cuid())
+  userId     String
+  kind       String   // "resume" | "certificate" | "other"
+  name       String   // display label
+  url        String   // Vercel Blob URL (public)
+  mimeType   String?
+  size       Int?
+  uploadedAt DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model PasswordResetToken {

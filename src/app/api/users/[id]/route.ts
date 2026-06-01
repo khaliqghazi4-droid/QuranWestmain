@@ -43,6 +43,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const data: Record<string, unknown> = {};
     if (body.name !== undefined) data.name = body.name;
     if (body.country !== undefined) data.country = body.country;
+    if (body.address !== undefined) data.address = body.address;
     if (body.bio !== undefined) data.bio = body.bio;
     if (body.phone !== undefined) data.phone = body.phone;
     if (body.timezone !== undefined) data.timezone = body.timezone;
