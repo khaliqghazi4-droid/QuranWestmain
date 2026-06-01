@@ -9,8 +9,17 @@ export default async function AdminTeachersPage() {
     prisma.user.findMany({
       where: { role: "TEACHER" },
       include: {
+        // Courses where this teacher is the primary teacher
         teacherCourses: {
           include: { _count: { select: { enrollments: true } } },
+        },
+        // Courses where this teacher is a co-teacher (via CourseTeacher join)
+        courseTeacherships: {
+          include: {
+            course: {
+              include: { _count: { select: { enrollments: true } } },
+            },
+          },
         },
         availability: {
           orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
@@ -38,27 +47,42 @@ export default async function AdminTeachersPage() {
         description={`${teachers.length} active teachers in your academy`}
       />
       <TeachersGrid
-        initialTeachers={teachers.map((t) => ({
-          id: t.id,
-          name: t.name,
-          email: t.email,
-          country: t.country,
-          bio: t.bio,
-          createdAt: t.createdAt.toISOString(),
-          timezone: t.timezone ?? "UTC",
-          shift: t.shift,
-          gender: t.gender,
-          courses: t.teacherCourses.map((c) => ({
-            id: c.id,
-            name: c.name,
-            students: c._count.enrollments,
-          })),
-          availability: t.availability.map((a) => ({
-            dayOfWeek: a.dayOfWeek,
-            startTime: a.startTime,
-            endTime: a.endTime,
-          })),
-        }))}
+        initialTeachers={teachers.map((t) => {
+          // Merge primary + co-taught courses (deduped by course id)
+          const courseMap = new Map<
+            string,
+            { id: string; name: string; students: number }
+          >();
+          for (const c of t.teacherCourses) {
+            courseMap.set(c.id, { id: c.id, name: c.name, students: c._count.enrollments });
+          }
+          for (const ct of t.courseTeacherships) {
+            if (!courseMap.has(ct.course.id)) {
+              courseMap.set(ct.course.id, {
+                id: ct.course.id,
+                name: ct.course.name,
+                students: ct.course._count.enrollments,
+              });
+            }
+          }
+          return {
+            id: t.id,
+            name: t.name,
+            email: t.email,
+            country: t.country,
+            bio: t.bio,
+            createdAt: t.createdAt.toISOString(),
+            timezone: t.timezone ?? "UTC",
+            shift: t.shift,
+            gender: t.gender,
+            courses: Array.from(courseMap.values()),
+            availability: t.availability.map((a) => ({
+              dayOfWeek: a.dayOfWeek,
+              startTime: a.startTime,
+              endTime: a.endTime,
+            })),
+          };
+        })}
         allCourses={allCourses.map((c) => ({
           id: c.id,
           name: c.name,
