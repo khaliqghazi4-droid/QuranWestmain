@@ -27,6 +27,7 @@ type CourseEnrollment = {
   id: string;
   name: string;
   duration: string | null;
+  teacherName: string | null;
 };
 
 type Student = {
@@ -40,9 +41,16 @@ type Student = {
   courses: CourseEnrollment[];
 };
 
-type CourseOption = { id: string; name: string };
+type CourseTeacher = { id: string; name: string; gender: "MALE" | "FEMALE" | null };
+type CourseOption = { id: string; name: string; teachers: CourseTeacher[] };
 
-type Prefill = { name: string; email: string; phone: string; country: string } | null;
+type Prefill = {
+  name: string;
+  email: string;
+  phone: string;
+  country: string;
+  courseId: string;
+} | null;
 
 type LoginTarget = {
   id: string;
@@ -399,10 +407,22 @@ function AddStudentModal({
   const [email, setEmail] = React.useState(prefill?.email ?? "");
   const [phone, setPhone] = React.useState(prefill?.phone ?? "");
   const [country, setCountry] = React.useState(prefill?.country ?? "");
-  const [courseId, setCourseId] = React.useState("");
+  const [courseId, setCourseId] = React.useState(prefill?.courseId ?? "");
+  const [teacherId, setTeacherId] = React.useState("");
   const [password, setPassword] = React.useState(() => genPassword(10));
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  const selectedCourse = React.useMemo(
+    () => allCourses.find((c) => c.id === courseId) ?? null,
+    [allCourses, courseId]
+  );
+  const courseTeachers = selectedCourse?.teachers ?? [];
+
+  // Reset teacher when course changes (the picked teacher may not belong to the new course)
+  React.useEffect(() => {
+    if (!courseTeachers.some((t) => t.id === teacherId)) setTeacherId("");
+  }, [courseTeachers, teacherId]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -418,6 +438,7 @@ function AddStudentModal({
         phone: phone || undefined,
         country: country || undefined,
         courseId: courseId || undefined,
+        teacherId: teacherId || undefined,
         password,
       }),
     });
@@ -506,23 +527,55 @@ function AddStudentModal({
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-              Enroll in course (optional)
-            </label>
-            <select
-              value={courseId}
-              onChange={(e) => setCourseId(e.target.value)}
-              className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            >
-              <option value="">No course yet</option>
-              {allCourses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+                Enroll in course {prefill?.courseId ? "(from website)" : "(optional)"}
+              </label>
+              <select
+                value={courseId}
+                onChange={(e) => setCourseId(e.target.value)}
+                className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="">No course yet</option>
+                {allCourses.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+                Assign teacher{courseId ? "" : " (pick a course first)"}
+              </label>
+              <select
+                value={teacherId}
+                onChange={(e) => setTeacherId(e.target.value)}
+                disabled={!courseId || courseTeachers.length === 0}
+                className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
+              >
+                <option value="">
+                  {!courseId
+                    ? "—"
+                    : courseTeachers.length === 0
+                    ? "No teachers on this course"
+                    : "Pick a teacher"}
                 </option>
-              ))}
-            </select>
+                {courseTeachers.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                    {t.gender ? ` (${t.gender === "MALE" ? "♂" : "♀"})` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
+          {courseId && courseTeachers.length === 0 && (
+            <p className="text-[11px] text-[hsl(var(--gold))]">
+              ⚠ This course has no teachers assigned. Assign teachers in the Courses tab first.
+            </p>
+          )}
 
           <div>
             <label className="block text-xs font-semibold text-muted-foreground mb-1.5">

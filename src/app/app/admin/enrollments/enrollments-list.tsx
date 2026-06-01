@@ -21,6 +21,7 @@ function addStudentHref(e: WebsiteEnrollment) {
     addEmail: e.email,
     addPhone: e.whatsapp,
     addCountry: e.country,
+    addCourse: e.course,
   });
   return `/app/admin/students?${params.toString()}`;
 }

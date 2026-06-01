@@ -29,6 +29,7 @@ export async function POST(req: Request) {
       phone?: string;
       country?: string;
       courseId?: string;
+      teacherId?: string;
       password?: string;
     };
 
@@ -75,12 +76,25 @@ export async function POST(req: Request) {
       select: { id: true, name: true, email: true, phone: true, country: true },
     });
 
-    // Optional: enroll in a course right away.
+    // Optional: enroll in a course right away (and assign a teacher from that course)
     if (body.courseId) {
-      const course = await prisma.course.findUnique({ where: { id: body.courseId } });
+      const course = await prisma.course.findUnique({
+        where: { id: body.courseId },
+        include: {
+          courseTeachers: { select: { teacherId: true } },
+        },
+      });
       if (course) {
+        // Verify the chosen teacher actually teaches this course
+        let teacherId: string | null = null;
+        if (body.teacherId) {
+          const teachesIt =
+            course.teacherId === body.teacherId ||
+            course.courseTeachers.some((ct) => ct.teacherId === body.teacherId);
+          if (teachesIt) teacherId = body.teacherId;
+        }
         await prisma.enrollment.create({
-          data: { studentId: student.id, courseId: body.courseId },
+          data: { studentId: student.id, courseId: body.courseId, teacherId },
         });
       }
     }
