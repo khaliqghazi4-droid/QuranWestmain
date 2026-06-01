@@ -23,7 +23,6 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
-import { AvailabilityViewer } from "@/components/availability/availability-viewer";
 import { AvailabilityEditor } from "@/components/availability/availability-editor";
 
 type AvailabilitySlot = {
@@ -305,7 +304,7 @@ export function TeachersGrid({
             }`}
           >
             <Calendar className="h-3.5 w-3.5" />
-            Availability ({t.availability.length})
+            Schedule ({t.bookings.length})
             {availabilityOpenId === t.id ? (
               <ChevronUp className="h-3 w-3" />
             ) : (
@@ -318,31 +317,11 @@ export function TeachersGrid({
           <div className="mt-3 rounded-xl border border-border bg-background p-3 space-y-3">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-2">
-                Availability ({t.availability.length})
-              </p>
-              {t.availability.length === 0 ? (
-                <p className="text-[11px] text-muted-foreground italic">
-                  No availability set. Use Edit to add the hours this teacher is available.
-                </p>
-              ) : (
-                <AvailabilityViewer teacherTimezone={t.timezone} slots={t.availability} compact />
-              )}
-              <button
-                onClick={() => setEditAvailabilityFor(t)}
-                className="mt-2 w-full inline-flex items-center justify-center gap-1.5 rounded-full border border-primary/40 bg-primary/5 px-3 py-1.5 text-[11px] font-bold text-primary hover:bg-primary/10"
-              >
-                <Calendar className="h-3.5 w-3.5" />
-                {t.availability.length === 0 ? "Set availability" : "Edit availability"}
-              </button>
-            </div>
-
-            <div className="pt-2 border-t border-border">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-2">
                 Booked Classes ({t.bookings.length})
               </p>
               {t.bookings.length === 0 ? (
                 <p className="text-[11px] text-muted-foreground italic">
-                  No classes booked yet. Book from the Scheduling tab.
+                  No classes booked yet.
                 </p>
               ) : (
                 <div className="space-y-1">
@@ -362,6 +341,19 @@ export function TeachersGrid({
                   ))}
                 </div>
               )}
+              <a
+                href="/app/admin/availability"
+                className="mt-2 w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-primary to-accent px-3 py-1.5 text-[11px] font-bold text-primary-foreground shadow-md hover:shadow-lg"
+              >
+                <Calendar className="h-3.5 w-3.5" />
+                Schedule a class
+              </a>
+              <button
+                onClick={() => setEditAvailabilityFor(t)}
+                className="mt-1 w-full text-center text-[10px] text-muted-foreground hover:text-foreground underline"
+              >
+                Set teacher&apos;s available hours ({t.availability.length})
+              </button>
             </div>
           </div>
         )}
