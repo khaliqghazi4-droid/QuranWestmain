@@ -4,15 +4,18 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Send,
   Search,
-  Loader2,
   Inbox,
   GraduationCap,
   Users,
   MessageSquare,
 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
+import {
+  MessageAttachmentView,
+  type MessageAttachment,
+} from "@/components/messaging/message-attachment";
+import { MessageComposer } from "@/components/messaging/message-composer";
 
 type Conversation = {
   partnerId: string;
@@ -28,6 +31,11 @@ type Message = {
   content: string;
   senderId: string;
   createdAt: string;
+  attachmentUrl?: string | null;
+  attachmentType?: "image" | "file" | "voice" | null;
+  attachmentName?: string | null;
+  attachmentMime?: string | null;
+  attachmentSize?: number | null;
 };
 
 type Thread = {
@@ -46,8 +54,6 @@ export function AdminInbox({
 }) {
   const router = useRouter();
   const [query, setQuery] = React.useState("");
-  const [text, setText] = React.useState("");
-  const [sending, setSending] = React.useState(false);
   const [messages, setMessages] = React.useState<Message[]>(activeThread?.messages ?? []);
   const scrollRef = React.useRef<HTMLDivElement>(null);
 
@@ -64,50 +70,51 @@ export function AdminInbox({
     c.partnerName.toLowerCase().includes(query.toLowerCase())
   );
 
-  async function send(e: React.FormEvent) {
-    e.preventDefault();
-    if (!text.trim() || !activeThread || sending) return;
-    setSending(true);
-
+  async function send({
+    text,
+    attachment,
+  }: {
+    text: string;
+    attachment: MessageAttachment | null;
+  }) {
+    if (!activeThread) return;
     const optimistic: Message = {
       id: `tmp-${Date.now()}`,
-      content: text.trim(),
+      content: text,
       senderId: currentUserId,
       createdAt: new Date().toISOString(),
+      attachmentUrl: attachment?.url ?? null,
+      attachmentType: attachment?.type ?? null,
+      attachmentName: attachment?.name ?? null,
+      attachmentMime: attachment?.mime ?? null,
+      attachmentSize: attachment?.size ?? null,
     };
-    setMessages([...messages, optimistic]);
-    setText("");
+    setMessages((prev) => [...prev, optimistic]);
 
     const res = await fetch("/api/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         receiverId: activeThread.partner.id,
-        content: optimistic.content,
+        content: text,
+        attachmentUrl: attachment?.url,
+        attachmentType: attachment?.type,
+        attachmentName: attachment?.name,
+        attachmentMime: attachment?.mime,
+        attachmentSize: attachment?.size,
       }),
     });
-    setSending(false);
 
-    if (res.ok) {
-      const data = await res.json();
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === optimistic.id
-            ? {
-                id: data.message.id,
-                content: data.message.content,
-                senderId: data.message.senderId,
-                createdAt: data.message.createdAt,
-              }
-            : m
-        )
-      );
-      router.refresh();
-    } else {
-      const data = await res.json();
-      alert(data.error ?? "Failed to send");
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
       setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
+      throw new Error(data.error ?? "Failed to send");
     }
+    const data = await res.json();
+    setMessages((prev) =>
+      prev.map((m) => (m.id === optimistic.id ? { ...optimistic, ...data.message } : m))
+    );
+    router.refresh();
   }
 
   return (
@@ -231,7 +238,23 @@ export function AdminInbox({
                             ? "bg-gradient-to-r from-primary to-accent text-primary-foreground rounded-br-sm"
                             : "bg-card border border-border rounded-bl-sm"
                         }`}>
-                          <p className="leading-relaxed whitespace-pre-wrap">{m.content}</p>
+                          {m.attachmentUrl && m.attachmentType && (
+                            <MessageAttachmentView
+                              attachment={{
+                                url: m.attachmentUrl,
+                                type: m.attachmentType,
+                                name: m.attachmentName ?? "attachment",
+                                mime: m.attachmentMime ?? "",
+                                size: m.attachmentSize ?? 0,
+                              }}
+                              isMe={isMe}
+                            />
+                          )}
+                          {m.content && (
+                            <p className="leading-relaxed whitespace-pre-wrap mt-1 first:mt-0">
+                              {m.content}
+                            </p>
+                          )}
                           <p className={`text-[10px] mt-1 ${isMe ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
                             {new Date(m.createdAt).toLocaleString("en-US", {
                               hour: "numeric", minute: "2-digit", hour12: true,
@@ -245,24 +268,10 @@ export function AdminInbox({
                 )}
               </div>
 
-              <form onSubmit={send} className="p-4 border-t border-border bg-card">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    placeholder={`Reply to ${activeThread.partner.name}...`}
-                    className="flex-1 rounded-full border border-border bg-muted/50 px-4 py-2.5 text-sm focus:border-primary focus:bg-card focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                  <button
-                    type="submit"
-                    disabled={sending || !text.trim()}
-                    className="grid h-11 w-11 place-items-center rounded-full bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-md hover:shadow-lg disabled:opacity-50"
-                  >
-                    {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                  </button>
-                </div>
-              </form>
+              <MessageComposer
+                placeholder={`Reply to ${activeThread.partner.name}...`}
+                onSend={send}
+              />
             </>
           )}
         </div>

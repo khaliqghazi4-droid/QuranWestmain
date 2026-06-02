@@ -74,6 +74,31 @@ export async function getVersesByChapter(
   }
 }
 
+// Full chapter recitation by a reciter (id 7 = Mishary Rashid Alafasy)
+export async function getChapterAudio(
+  chapterId: number,
+  recitationId = 7
+): Promise<string | null> {
+  try {
+    const res = await fetch(`${BASE}/chapter_recitations/${recitationId}/${chapterId}`, {
+      next: { revalidate: 86400 },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.audio_file?.audio_url ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// Quran.com returns verse audio paths like "Alafasy/mp3/001001.mp3"; the
+// CDN base needs to be prepended for the browser to play them.
+export function verseAudioUrl(rawUrl: string | undefined | null): string | null {
+  if (!rawUrl) return null;
+  if (rawUrl.startsWith("http")) return rawUrl;
+  return `https://verses.quran.com/${rawUrl.replace(/^\/+/, "")}`;
+}
+
 export async function getRandomVerse(): Promise<RandomVerse | null> {
   try {
     const res = await fetch(

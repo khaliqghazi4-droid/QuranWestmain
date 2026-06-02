@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Bookmark, Play, Share2, Volume2 } from "lucide-react";
-import { getSurah, getVersesByChapter } from "@/lib/quran-api";
+import { ArrowLeft, Bookmark, Share2 } from "lucide-react";
+import { getSurah, getVersesByChapter, getChapterAudio, verseAudioUrl } from "@/lib/quran-api";
+import { AudioPlayer } from "@/components/quran/audio-player";
 
 export async function SurahDetail({
   basePath,
@@ -13,9 +14,10 @@ export async function SurahDetail({
   const id = parseInt(surahId, 10);
   if (isNaN(id) || id < 1 || id > 114) notFound();
 
-  const [surah, versesData] = await Promise.all([
+  const [surah, versesData, chapterAudio] = await Promise.all([
     getSurah(id),
     getVersesByChapter(id, 1, 30),
+    getChapterAudio(id),
   ]);
 
   if (!surah) notFound();
@@ -68,9 +70,13 @@ export async function SurahDetail({
           </div>
 
           <div className="mt-6 flex flex-wrap gap-2">
-            <button className="inline-flex items-center gap-2 rounded-full bg-[hsl(var(--gold))] px-5 py-2 text-sm font-bold text-[hsl(220_32%_10%)] shadow-md hover:shadow-lg transition-all">
-              <Play className="h-4 w-4 fill-current" /> Play Audio
-            </button>
+            {chapterAudio ? (
+              <AudioPlayer src={chapterAudio} label="Play Audio" variant="primary" />
+            ) : (
+              <span className="inline-flex items-center gap-2 rounded-full bg-primary-foreground/10 px-5 py-2 text-sm font-semibold text-primary-foreground/70">
+                Audio unavailable
+              </span>
+            )}
             <button className="inline-flex items-center gap-2 rounded-full bg-primary-foreground/15 backdrop-blur-md border border-primary-foreground/20 px-5 py-2 text-sm font-semibold hover:bg-primary-foreground/25 transition-all">
               <Bookmark className="h-4 w-4" /> Bookmark
             </button>
@@ -107,10 +113,11 @@ export async function SurahDetail({
               <div className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-primary to-accent text-primary-foreground font-bold text-xs shadow-md shrink-0">
                 {v.verse_number}
               </div>
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button className="grid h-8 w-8 place-items-center rounded-full hover:bg-muted">
-                  <Volume2 className="h-3.5 w-3.5 text-muted-foreground" />
-                </button>
+              <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                {(() => {
+                  const vAudio = verseAudioUrl(v.audio?.url);
+                  return vAudio ? <AudioPlayer src={vAudio} variant="ghost" /> : null;
+                })()}
                 <button className="grid h-8 w-8 place-items-center rounded-full hover:bg-muted">
                   <Bookmark className="h-3.5 w-3.5 text-muted-foreground" />
                 </button>

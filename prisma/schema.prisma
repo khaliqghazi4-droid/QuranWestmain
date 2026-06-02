@@ -280,7 +280,13 @@ model Message {
   id         String   @id @default(cuid())
   senderId   String
   receiverId String
-  content    String
+  content    String   // empty string when only an attachment is sent
+  // Optional attachment (image / pdf / voice) stored on Vercel Blob
+  attachmentUrl  String?
+  attachmentType String?  // "image" | "file" | "voice"
+  attachmentName String?
+  attachmentMime String?
+  attachmentSize Int?
   read       Boolean  @default(false)
   createdAt  DateTime @default(now())
 

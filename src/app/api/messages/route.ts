@@ -48,13 +48,27 @@ export async function POST(req: Request) {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const { receiverId, content } = (await req.json()) as {
+    const body = (await req.json()) as {
       receiverId?: string;
       content?: string;
+      attachmentUrl?: string;
+      attachmentType?: "image" | "file" | "voice";
+      attachmentName?: string;
+      attachmentMime?: string;
+      attachmentSize?: number;
     };
+    const { receiverId } = body;
+    const content = (body.content ?? "").trim();
+    const hasAttachment = !!body.attachmentUrl;
 
-    if (!receiverId || !content?.trim()) {
-      return NextResponse.json({ error: "receiverId and content required" }, { status: 400 });
+    if (!receiverId) {
+      return NextResponse.json({ error: "receiverId required" }, { status: 400 });
+    }
+    if (!content && !hasAttachment) {
+      return NextResponse.json(
+        { error: "Message text or attachment is required" },
+        { status: 400 }
+      );
     }
 
     // Students and Teachers can only send to Admin
@@ -75,7 +89,12 @@ export async function POST(req: Request) {
       data: {
         senderId: session.user.id,
         receiverId,
-        content: content.trim(),
+        content,
+        attachmentUrl: hasAttachment ? body.attachmentUrl ?? null : null,
+        attachmentType: hasAttachment ? body.attachmentType ?? null : null,
+        attachmentName: hasAttachment ? body.attachmentName ?? null : null,
+        attachmentMime: hasAttachment ? body.attachmentMime ?? null : null,
+        attachmentSize: hasAttachment ? body.attachmentSize ?? null : null,
       },
     });
 
