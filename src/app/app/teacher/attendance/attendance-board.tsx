@@ -12,9 +12,11 @@ import {
   Loader2,
   Trash2,
   ClipboardCheck,
+  Download,
 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { formatSlotRange } from "@/lib/shifts";
+import { downloadCsv } from "@/lib/csv";
 
 export type AttendanceRow = {
   bookingSlotId: string;
@@ -48,6 +50,15 @@ export function AttendanceBoard({
   }
   function pickStudent(id: string) {
     if (id) router.push(`/app/teacher/attendance?student=${id}`);
+  }
+
+  function exportCsv() {
+    if (rows.length === 0) return;
+    downloadCsv(
+      `attendance-${date}.csv`,
+      ["Date", "Student", "Class Time (PKT)", "Course", "Status"],
+      rows.map((r) => [date, r.studentName, formatSlotRange(r.startTime), r.courseName, r.status ?? "Unmarked"])
+    );
   }
 
   const dateLabel = new Date(`${date}T00:00:00.000Z`).toLocaleDateString("en-US", {
@@ -109,6 +120,14 @@ export function AttendanceBoard({
             </option>
           ))}
         </select>
+        <button
+          onClick={exportCsv}
+          disabled={rows.length === 0}
+          title="Download today's marks as CSV"
+          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-sm font-semibold hover:bg-muted disabled:opacity-60"
+        >
+          <Download className="h-3.5 w-3.5" /> Export CSV
+        </button>
       </div>
 
       {/* Summary */}
