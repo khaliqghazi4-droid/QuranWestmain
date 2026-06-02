@@ -25,12 +25,16 @@ export type AttendanceRow = {
   status: "PRESENT" | "ABSENT" | "LATE" | null;
 };
 
+type StudentRef = { id: string; name: string };
+
 export function AttendanceBoard({
   date,
   rows,
+  students,
 }: {
   date: string;
   rows: AttendanceRow[];
+  students: StudentRef[];
 }) {
   const router = useRouter();
 
@@ -41,6 +45,9 @@ export function AttendanceBoard({
     const d = new Date(`${date}T00:00:00.000Z`);
     d.setUTCDate(d.getUTCDate() + days);
     changeDate(d.toISOString().slice(0, 10));
+  }
+  function pickStudent(id: string) {
+    if (id) router.push(`/app/teacher/attendance?student=${id}`);
   }
 
   const dateLabel = new Date(`${date}T00:00:00.000Z`).toLocaleDateString("en-US", {
@@ -58,7 +65,7 @@ export function AttendanceBoard({
 
   return (
     <div className="space-y-4">
-      {/* Date navigator */}
+      {/* Date navigator + student filter */}
       <div className="rounded-2xl border border-border bg-card p-4 flex flex-wrap items-center gap-3">
         <button
           onClick={() => shiftDate(-1)}
@@ -66,7 +73,7 @@ export function AttendanceBoard({
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
-        <div className="flex items-center gap-2 flex-1">
+        <div className="flex items-center gap-2 flex-1 min-w-[180px]">
           <CalendarDays className="h-4 w-4 text-primary" />
           <div>
             <p className="text-sm font-bold">{dateLabel}</p>
@@ -85,6 +92,23 @@ export function AttendanceBoard({
         >
           <ChevronRight className="h-4 w-4" />
         </button>
+        <div className="h-8 w-px bg-border mx-1 hidden sm:block" />
+        <select
+          value=""
+          onChange={(e) => pickStudent(e.target.value)}
+          disabled={students.length === 0}
+          className="rounded-full border border-border bg-background px-3 py-1.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60 min-w-[180px]"
+          title="View a student's full attendance history"
+        >
+          <option value="">
+            {students.length === 0 ? "No students yet" : "Filter by student…"}
+          </option>
+          {students.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Summary */}
