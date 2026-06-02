@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { PdfViewer } from "@/components/pdf-viewer";
 import {
   FileText,
   Video,
@@ -50,6 +51,7 @@ export function LessonsList({ lessons }: { lessons: Lesson[] }) {
   );
   const [marking, setMarking] = React.useState<string | null>(null);
   const [localLessons, setLocalLessons] = React.useState(lessons);
+  const [viewingPdf, setViewingPdf] = React.useState<{ url: string; title: string } | null>(null);
 
   React.useEffect(() => {
     setLocalLessons(lessons);
@@ -220,14 +222,15 @@ export function LessonsList({ lessons }: { lessons: Lesson[] }) {
                 )}
 
                 {lesson.fileUrl && (
-                  <a
-                    href={lesson.fileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setViewingPdf({ url: lesson.fileUrl!, title: lesson.title })
+                    }
                     className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold hover:bg-muted"
                   >
-                    <Paperclip className="h-3.5 w-3.5" /> Download Attached File <ExternalLink className="h-3 w-3" />
-                  </a>
+                    <Paperclip className="h-3.5 w-3.5" /> View PDF
+                  </button>
                 )}
 
                 <div className="pt-3 border-t border-border flex justify-end">
@@ -256,6 +259,14 @@ export function LessonsList({ lessons }: { lessons: Lesson[] }) {
           </div>
         );
       })}
+
+      {viewingPdf && (
+        <PdfViewer
+          url={viewingPdf.url}
+          title={viewingPdf.title}
+          onClose={() => setViewingPdf(null)}
+        />
+      )}
     </div>
   );
 }

@@ -21,6 +21,8 @@ import {
   EyeOff,
   CheckCircle2,
 } from "lucide-react";
+import { PdfUploader } from "@/components/pdf-uploader";
+import { PdfViewer } from "@/components/pdf-viewer";
 
 type Course = {
   id: string;
@@ -64,6 +66,7 @@ export function LessonsManager({
   const [modalOpen, setModalOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Lesson | null>(null);
   const [deleting, setDeleting] = React.useState<string | null>(null);
+  const [viewingPdf, setViewingPdf] = React.useState<{ url: string; title: string } | null>(null);
 
   React.useEffect(() => {
     setLessons(initialLessons);
@@ -199,9 +202,17 @@ export function LessonsManager({
                       </span>
                     )}
                     {l.fileUrl && (
-                      <span className="inline-flex items-center gap-1 text-primary">
-                        <Paperclip className="h-3 w-3" /> File
-                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setViewingPdf({ url: l.fileUrl!, title: l.title });
+                        }}
+                        className="inline-flex items-center gap-1 text-primary hover:underline"
+                        title="View PDF in app"
+                      >
+                        <Paperclip className="h-3 w-3" /> View PDF
+                      </button>
                     )}
                     {l.duration && (
                       <span className="inline-flex items-center gap-1">
@@ -283,6 +294,14 @@ export function LessonsManager({
             setEditing(null);
           }}
           onSaved={handleSaved}
+        />
+      )}
+
+      {viewingPdf && (
+        <PdfViewer
+          url={viewingPdf.url}
+          title={viewingPdf.title}
+          onClose={() => setViewingPdf(null)}
         />
       )}
     </div>
@@ -514,19 +533,14 @@ function LessonModal({
             </div>
           </div>
 
+          <div>
+            <label className="block text-xs font-semibold text-muted-foreground mb-1.5 inline-flex items-center gap-1">
+              <Paperclip className="h-3 w-3" /> Attached PDF
+            </label>
+            <PdfUploader value={fileUrl ?? ""} onChange={setFileUrl} folder="lessons" />
+          </div>
+
           <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5 inline-flex items-center gap-1">
-                <Paperclip className="h-3 w-3" /> Attached File URL
-              </label>
-              <input
-                type="url"
-                value={fileUrl ?? ""}
-                onChange={(e) => setFileUrl(e.target.value)}
-                placeholder="PDF, worksheet..."
-                className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
             <div>
               <label className="block text-xs font-semibold text-muted-foreground mb-1.5 inline-flex items-center gap-1">
                 <Clock className="h-3 w-3" /> Estimated Duration (min)
