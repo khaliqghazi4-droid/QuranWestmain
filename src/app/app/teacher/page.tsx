@@ -20,6 +20,8 @@ import { DAYS } from "@/lib/timezones";
 import { formatSlotRange, SHIFT_RANGES, type Shift } from "@/lib/shifts";
 import { pktDayMidnightUTC } from "@/lib/pkt-day";
 import { TeacherWorkdayCard } from "@/components/teacher/workday-card";
+import { WeekAttendanceStrip } from "@/components/teacher/week-attendance-strip";
+import { buildWeekDays, weekTotalMs } from "@/lib/attendance-week";
 
 export const revalidate = 30;
 
@@ -69,6 +71,14 @@ export default async function TeacherDashboard() {
     signInAt: todayAttendance?.signInAt.toISOString() ?? null,
     signOutAt: todayAttendance?.signOutAt?.toISOString() ?? null,
   };
+
+  // Last 7 PKT days for the teacher's own attendance strip
+  const sevenDaysAgo = new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000);
+  const weekRecords = await prisma.teacherAttendance.findMany({
+    where: { teacherId, date: { gte: sevenDaysAgo, lte: today } },
+  });
+  const weekDays = buildWeekDays(weekRecords);
+  const weekHours = weekTotalMs(weekRecords);
 
   const totalStudents = new Set(enrollments.map((e) => e.student.id)).size;
   const totalCourses = courses.length;
@@ -139,6 +149,30 @@ export default async function TeacherDashboard() {
       </div>
 
       <TeacherWorkdayCard initial={workdayInitial} />
+
+      {/* My weekly attendance history */}
+      <div className="rounded-2xl border border-border bg-card p-5">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <div>
+            <h2 className="text-base font-bold inline-flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-primary" /> My Attendance — Last 7 Days
+            </h2>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              PKT calendar days · admin sees the same record
+            </p>
+          </div>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
+            <Clock className="h-3 w-3" />
+            {(() => {
+              const m = Math.round(weekHours / 60000);
+              const h = Math.floor(m / 60);
+              const mm = m % 60;
+              return `${h}h ${mm}m this week`;
+            })()}
+          </span>
+        </div>
+        <WeekAttendanceStrip days={weekDays} />
+      </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((s, i) => (
