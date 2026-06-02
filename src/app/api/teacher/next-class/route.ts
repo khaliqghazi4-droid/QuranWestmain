@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { bookingTiming, SLOT_MINUTES } from "@/lib/shifts";
-import { courseMeetingLink } from "@/lib/meeting";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -16,7 +15,7 @@ type NextClass = {
   startUTC: number;
   durationMin: number;
   minutesUntil: number;
-  meetingLink: string;
+  classHref: string;
 };
 
 // GET /api/teacher/next-class — closest upcoming or live class within next 60 min
@@ -36,7 +35,7 @@ export async function GET() {
         enrollment: {
           include: {
             student: { select: { name: true } },
-            course: { select: { name: true, slug: true, meetingUrl: true } },
+            course: { select: { name: true, slug: true } },
           },
         },
       },
@@ -65,7 +64,7 @@ export async function GET() {
       startUTC: t.startUTC,
       durationMin: b.duration,
       minutesUntil: minsUntil,
-      meetingLink: courseMeetingLink(b.enrollment.course),
+      classHref: `/app/teacher/class/booking-${b.id}`,
     });
   }
 
@@ -86,9 +85,7 @@ export async function GET() {
       startUTC,
       durationMin: SLOT_MINUTES,
       minutesUntil: minsUntil,
-      // Trial link will be looked up in the Classes page; reminder uses a
-      // generic Jitsi room keyed by the trial id so the teacher can still join
-      meetingLink: `https://meet.jit.si/OnlineQuranAcademy-trial-${a.mongoEnrollmentId}`,
+      classHref: `/app/teacher/class/trial-${a.id}`,
     });
   }
 

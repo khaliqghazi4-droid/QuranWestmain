@@ -63,6 +63,7 @@ model User {
   bookingAttendance     BookingAttendance[] @relation("BookingAttendanceStudent")
   workdayAttendance     TeacherAttendance[] @relation("TeacherWorkdayAttendance")
   notes                 TeacherNote[]       @relation("TeacherNotes")
+  classRecordings       ClassRecording[]    @relation("TeacherRecordings")
   parentChildren        ParentChild[]   @relation("Parent")
   childOfParents        ParentChild[]   @relation("Child")
   attendanceRecords     Attendance[]
@@ -373,6 +374,28 @@ model TeacherNote {
 
   @@index([teacherId])
   @@index([courseId])
+}
+
+// Recording of a class session — captured client-side from the teacher's
+// screen + audio via MediaRecorder and uploaded directly to Vercel Blob.
+// Admin can watch / download every recording from /app/admin/recordings.
+model ClassRecording {
+  id          String   @id @default(cuid())
+  teacherId   String
+  roomId      String   // "booking-<id>" | "trial-<id>" | "course-<slug>"
+  studentName String?  // copy for admin visibility (may be "Trial student")
+  courseName  String?
+  url         String   // Vercel Blob URL (public)
+  mimeType    String?  // e.g. video/webm
+  durationSec Int?
+  sizeBytes   Int?
+  startedAt   DateTime
+  createdAt   DateTime @default(now())
+
+  teacher User @relation("TeacherRecordings", fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([teacherId])
+  @@index([createdAt])
 }
 
 model PasswordResetToken {

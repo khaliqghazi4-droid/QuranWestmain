@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -13,7 +14,6 @@ import {
 } from "lucide-react";
 import { DAYS } from "@/lib/timezones";
 import { formatSlotRange, bookingTiming, SHIFT_RANGES, type Shift } from "@/lib/shifts";
-import { courseMeetingLink } from "@/lib/meeting";
 import { getWebsiteEnrollments } from "@/lib/enroll-source";
 
 export const revalidate = 30;
@@ -23,7 +23,7 @@ type TrialItem = {
   student: string;
   courseName: string;
   trialTime: string;
-  meetingLink: string;
+  classHref: string;
 };
 
 export default async function TeacherClassesPage() {
@@ -32,7 +32,7 @@ export default async function TeacherClassesPage() {
 
   const teacherId = session.user.id;
 
-  const [me, bookings, myAssignments, allCourses] = await Promise.all([
+  const [me, bookings, myAssignments] = await Promise.all([
     prisma.user.findUnique({ where: { id: teacherId }, select: { shift: true } }),
     prisma.bookingSlot.findMany({
       where: { teacherId },
@@ -40,7 +40,7 @@ export default async function TeacherClassesPage() {
         enrollment: {
           include: {
             student: { select: { name: true, country: true } },
-            course: { select: { id: true, name: true, slug: true, level: true, meetingUrl: true } },
+            course: { select: { id: true, name: true, slug: true, level: true } },
           },
         },
       },
@@ -52,9 +52,6 @@ export default async function TeacherClassesPage() {
       },
       orderBy: { trialTime: "asc" },
     }),
-    prisma.course.findMany({
-      select: { id: true, name: true, slug: true, meetingUrl: true },
-    }),
   ]);
 
   const shift = me?.shift as Shift | null;
@@ -65,20 +62,16 @@ export default async function TeacherClassesPage() {
     try {
       const enrollments = await getWebsiteEnrollments();
       const enrollById = new Map(enrollments.map((e) => [e.id, e]));
-      const courseByName = new Map(allCourses.map((c) => [c.name.trim().toLowerCase(), c]));
       trials = myAssignments
         .map((a) => {
           const e = enrollById.get(a.mongoEnrollmentId);
           if (!e) return null;
-          const course = courseByName.get(e.course.trim().toLowerCase());
           return {
-            id: e.id,
+            id: a.id,
             student: e.fullName,
             courseName: e.course,
             trialTime: a.trialTime.toISOString(),
-            meetingLink: course
-              ? courseMeetingLink(course)
-              : `https://meet.jit.si/OnlineQuranAcademy-trial-${e.id}`,
+            classHref: `/app/teacher/class/trial-${a.id}`,
           };
         })
         .filter((x): x is TrialItem => x !== null);
@@ -100,7 +93,7 @@ export default async function TeacherClassesPage() {
         country: b.enrollment.student.country,
         courseName: b.enrollment.course.name,
         level: b.enrollment.course.level,
-        meetingLink: courseMeetingLink(b.enrollment.course),
+        classHref: `/app/teacher/class/booking-${b.id}`,
         ...timing,
       };
     })
@@ -175,14 +168,12 @@ export default async function TeacherClassesPage() {
                       : "Time not set"}
                   </p>
                 </div>
-                <a
-                  href={t.meetingLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <Link
+                  href={t.classHref}
                   className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[hsl(var(--gold))] to-amber-500 px-5 py-2 text-sm font-bold text-white shadow-md hover:shadow-lg transition-all shrink-0"
                 >
                   <Video className="h-4 w-4" /> Start Class
-                </a>
+                </Link>
               </div>
             ))}
           </div>
@@ -248,7 +239,7 @@ type ClassData = {
   country: string | null;
   courseName: string;
   level: string;
-  meetingLink: string;
+  classHref: string;
   startUTC: number;
   isLive: boolean;
   minutesUntil: number;
@@ -318,10 +309,8 @@ function ClassRow({ c, highlight }: { c: ClassData; highlight?: boolean }) {
         </div>
       </div>
 
-      <a
-        href={c.meetingLink}
-        target="_blank"
-        rel="noopener noreferrer"
+      <Link
+        href={c.classHref}
         className={`inline-flex items-center gap-1.5 rounded-full px-5 py-2 text-sm font-bold shadow-md hover:shadow-lg transition-all shrink-0 ${
           c.isLive
             ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white"
@@ -329,7 +318,7 @@ function ClassRow({ c, highlight }: { c: ClassData; highlight?: boolean }) {
         }`}
       >
         <Video className="h-4 w-4" /> Start Class
-      </a>
+      </Link>
     </div>
   );
 }

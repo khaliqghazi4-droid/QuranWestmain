@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Bell,
@@ -19,7 +20,7 @@ type NextClass = {
   startUTC: number;
   durationMin: number;
   minutesUntil: number;
-  meetingLink: string;
+  classHref: string;
 };
 
 const REMINDER_MINUTES = 15;
@@ -146,10 +147,8 @@ export function TeacherClassReminder() {
           </p>
         </div>
 
-        <a
-          href={data.meetingLink}
-          target="_blank"
-          rel="noopener noreferrer"
+        <Link
+          href={data.classHref}
           className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold text-white shadow-md hover:shadow-lg transition-all shrink-0 ${
             isLive
               ? "bg-gradient-to-r from-emerald-500 to-teal-500"
@@ -157,7 +156,7 @@ export function TeacherClassReminder() {
           }`}
         >
           <Video className="h-4 w-4" /> Start Class
-        </a>
+        </Link>
 
         <button
           onClick={() => setDismissedId(data.id)}

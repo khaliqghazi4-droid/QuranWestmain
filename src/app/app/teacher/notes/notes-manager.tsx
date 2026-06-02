@@ -241,6 +241,7 @@ export function NotesManager({
 
       {modalOpen && (
         <NoteEditorModal
+          key={editing?.id ?? "new"}
           note={editing}
           courses={courses}
           onClose={() => {
@@ -293,8 +294,22 @@ function NoteEditorModal({
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  // Re-hydrate form state if the parent swaps in a different note while the
+  // modal is still mounted (e.g. after `router.refresh()` returned a server
+  // copy with the fresh updatedAt). Without this, the form would keep showing
+  // the version the modal originally mounted with — which is what "save ke
+  // baad fresh dikhata" was reporting.
+  React.useEffect(() => {
+    setTitle(note?.title ?? "");
+    setContent(note?.content ?? "");
+    setCourseId(note?.courseId ?? "");
+    setFileUrl(note?.fileUrl ?? "");
+    setError(null);
+  }, [note?.id, note?.updatedAt]);
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (saving) return;
     setError(null);
     setSaving(true);
     const url = note ? `/api/teacher/notes/${note.id}` : "/api/teacher/notes";
@@ -303,34 +318,56 @@ function NoteEditorModal({
       ? fileUrl.split("/").pop()?.replace(/^\d+-/, "") ?? null
       : null;
 
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title,
-        content: content || null,
-        courseId: courseId || null,
-        fileUrl: fileUrl || null,
-        fileName,
-      }),
-    });
-    setSaving(false);
-    const data = await res.json();
-    if (!res.ok) {
-      setError(data.error ?? "Save failed");
+    // Use the trimmed-or-null form values for both the request AND the
+    // optimistic copy we hand back, so the on-screen card reflects what the
+    // user actually typed even if the server response is delayed.
+    const trimmedTitle = title.trim();
+    const sentContent = content.trim() ? content : null;
+    const sentCourseId = courseId || null;
+    const sentFileUrl = fileUrl || null;
+
+    if (!trimmedTitle) {
+      setSaving(false);
+      setError("Title is required");
       return;
     }
-    const n = data.note;
-    onSaved({
-      id: n.id,
-      title: n.title,
-      content: n.content,
-      fileUrl: n.fileUrl,
-      fileName: n.fileName,
-      courseId: n.courseId,
-      courseName: n.course?.name ?? null,
-      updatedAt: n.updatedAt,
-    });
+
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({
+          title: trimmedTitle,
+          content: sentContent,
+          courseId: sentCourseId,
+          fileUrl: sentFileUrl,
+          fileName,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error ?? `Save failed (${res.status})`);
+        return;
+      }
+      const n = data.note ?? {};
+      onSaved({
+        id: n.id ?? note?.id ?? `tmp-${Date.now()}`,
+        title: n.title ?? trimmedTitle,
+        content: n.content ?? sentContent,
+        fileUrl: n.fileUrl ?? sentFileUrl,
+        fileName: n.fileName ?? fileName,
+        courseId: n.courseId ?? sentCourseId,
+        courseName:
+          n.course?.name ??
+          (sentCourseId ? courses.find((c) => c.id === sentCourseId)?.name ?? null : null),
+        updatedAt: n.updatedAt ?? new Date().toISOString(),
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Network error");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (

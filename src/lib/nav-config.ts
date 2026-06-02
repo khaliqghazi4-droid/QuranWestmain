@@ -17,6 +17,7 @@ import {
   BookMarked,
   Inbox,
   CalendarCheck,
+  Film,
   type LucideIcon,
 } from "lucide-react";
 
@@ -62,6 +63,7 @@ export const navConfig: Record<Role, NavItem[]> = {
     { href: "/app/admin/courses", label: "Courses", icon: BookOpen },
     { href: "/app/admin/payments", label: "Payments", icon: DollarSign },
     { href: "/app/admin/reports", label: "Reports", icon: LineChart },
+    { href: "/app/admin/recordings", label: "Class Recordings", icon: Film },
     { href: "/app/admin/messages", label: "Messages", icon: MessageSquare },
     { href: "/app/admin/settings", label: "Settings", icon: Settings },
   ],

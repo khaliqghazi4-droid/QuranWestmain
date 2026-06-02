@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/dashboard/page-header";
-import { Video, Clock, Calendar, ExternalLink, BookOpen } from "lucide-react";
+import { Video, Clock, Calendar, BookOpen } from "lucide-react";
 
 export const revalidate = 30;
 
@@ -28,7 +28,7 @@ export default async function StudentSchedule() {
     },
     include: {
       course: {
-        select: { id: true, name: true, level: true, teacher: { select: { name: true } } },
+        select: { id: true, name: true, slug: true, level: true, teacher: { select: { name: true } } },
       },
     },
     orderBy: { startTime: "asc" },
@@ -132,25 +132,17 @@ export default async function StudentSchedule() {
                             </span>
                           </div>
                         </div>
-                        {c.meetingUrl ? (
-                          <a
-                            href={c.meetingUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold shadow-md transition-all ${
-                              startingSoon
-                                ? "bg-[hsl(var(--gold))] text-[hsl(220_32%_10%)] animate-glow"
-                                : "bg-gradient-to-r from-primary to-accent text-primary-foreground hover:shadow-lg"
-                            }`}
-                          >
-                            {startingSoon ? "Join Now" : "Join"}
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
-                        ) : (
-                          <span className="text-[11px] text-muted-foreground italic">
-                            Link coming soon
-                          </span>
-                        )}
+                        <Link
+                          href={`/app/student/class/course-${c.course.slug}`}
+                          className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold shadow-md transition-all ${
+                            startingSoon
+                              ? "bg-[hsl(var(--gold))] text-[hsl(220_32%_10%)] animate-glow"
+                              : "bg-gradient-to-r from-primary to-accent text-primary-foreground hover:shadow-lg"
+                          }`}
+                        >
+                          <Video className="h-3 w-3" />
+                          {startingSoon ? "Join Now" : "Join"}
+                        </Link>
                       </div>
                     );
                   })}
