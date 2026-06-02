@@ -41,6 +41,7 @@ export const navConfig: Record<Role, NavItem[]> = {
   ],
   teacher: [
     { href: "/app/teacher", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/app/teacher/my-workday", label: "My Workday", icon: CalendarClock },
     { href: "/app/teacher/classes", label: "Classes", icon: Calendar },
     { href: "/app/teacher/attendance", label: "Attendance", icon: ClipboardCheck },
     { href: "/app/teacher/lessons", label: "Lessons", icon: FileText },
