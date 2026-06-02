@@ -61,6 +61,7 @@ model User {
   files                 TeacherFile[]
   lessonAssignments     LessonAssignment[] @relation("LessonAssignedTo")
   bookingAttendance     BookingAttendance[] @relation("BookingAttendanceStudent")
+  workdayAttendance     TeacherAttendance[] @relation("TeacherWorkdayAttendance")
   parentChildren        ParentChild[]   @relation("Parent")
   childOfParents        ParentChild[]   @relation("Child")
   attendanceRecords     Attendance[]
@@ -328,6 +329,22 @@ model TeacherFile {
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// Teacher's daily workday sign-in / sign-out (separate from auth login).
+// Teacher clicks "Sign In" when starting their day and "Sign Out" when done.
+// Admin sees the record per teacher per day with total hours.
+model TeacherAttendance {
+  id        String    @id @default(cuid())
+  teacherId String
+  date      DateTime  // PKT calendar day at 00:00 UTC
+  signInAt  DateTime
+  signOutAt DateTime?
+
+  teacher User @relation("TeacherWorkdayAttendance", fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, date])
+  @@index([date])
 }
 
 model PasswordResetToken {

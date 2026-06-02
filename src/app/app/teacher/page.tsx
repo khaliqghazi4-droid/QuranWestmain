@@ -18,6 +18,8 @@ import { CountUp } from "@/components/count-up";
 import { Avatar } from "@/components/avatar";
 import { DAYS } from "@/lib/timezones";
 import { formatSlotRange, SHIFT_RANGES, type Shift } from "@/lib/shifts";
+import { pktDayMidnightUTC } from "@/lib/pkt-day";
+import { TeacherWorkdayCard } from "@/components/teacher/workday-card";
 
 export const revalidate = 30;
 
@@ -28,7 +30,8 @@ export default async function TeacherDashboard() {
   const teacherId = session.user.id;
   const teacherName = session.user.name ?? "Teacher";
 
-  const [me, courses, enrollments, bookings] = await Promise.all([
+  const today = pktDayMidnightUTC();
+  const [me, courses, enrollments, bookings, todayAttendance] = await Promise.all([
     prisma.user.findUnique({ where: { id: teacherId }, select: { shift: true } }),
     prisma.course.findMany({
       where: { teacherId },
@@ -55,7 +58,17 @@ export default async function TeacherDashboard() {
       },
       orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
     }),
+    prisma.teacherAttendance.findUnique({
+      where: { teacherId_date: { teacherId, date: today } },
+    }),
   ]);
+
+  const workdayInitial = {
+    signedIn: !!todayAttendance,
+    signedOut: !!todayAttendance?.signOutAt,
+    signInAt: todayAttendance?.signInAt.toISOString() ?? null,
+    signOutAt: todayAttendance?.signOutAt?.toISOString() ?? null,
+  };
 
   const totalStudents = new Set(enrollments.map((e) => e.student.id)).size;
   const totalCourses = courses.length;
@@ -124,6 +137,8 @@ export default async function TeacherDashboard() {
           </Link>
         </div>
       </div>
+
+      <TeacherWorkdayCard initial={workdayInitial} />
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((s, i) => (
