@@ -61,9 +61,20 @@ export default async function AdminMessages({
 
   // Active conversation (from query param)
   const activeId = searchParams.with;
+  type ThreadMessage = {
+    id: string;
+    content: string;
+    senderId: string;
+    createdAt: string;
+    attachmentUrl: string | null;
+    attachmentType: "image" | "file" | "voice" | null;
+    attachmentName: string | null;
+    attachmentMime: string | null;
+    attachmentSize: number | null;
+  };
   let activeThread: {
     partner: { id: string; name: string; role: string };
-    messages: { id: string; content: string; senderId: string; createdAt: string }[];
+    messages: ThreadMessage[];
   } | null = null;
 
   if (activeId) {
@@ -89,6 +100,13 @@ export default async function AdminMessages({
           content: m.content,
           senderId: m.senderId,
           createdAt: m.createdAt.toISOString(),
+          // Preserve attachment fields — without these the server re-render
+          // would silently drop voice clips / images / files from the chat.
+          attachmentUrl: m.attachmentUrl,
+          attachmentType: m.attachmentType as "image" | "file" | "voice" | null,
+          attachmentName: m.attachmentName,
+          attachmentMime: m.attachmentMime,
+          attachmentSize: m.attachmentSize,
         })),
       };
 

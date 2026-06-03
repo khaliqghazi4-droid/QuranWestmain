@@ -56,6 +56,13 @@ export default async function TeacherMessages() {
           content: m.content,
           senderId: m.senderId,
           createdAt: m.createdAt.toISOString(),
+          // Preserve attachment fields — without these the server re-render
+          // would silently drop voice clips / images / files from the chat.
+          attachmentUrl: m.attachmentUrl,
+          attachmentType: m.attachmentType as "image" | "file" | "voice" | null,
+          attachmentName: m.attachmentName,
+          attachmentMime: m.attachmentMime,
+          attachmentSize: m.attachmentSize,
         }))}
       />
     </div>

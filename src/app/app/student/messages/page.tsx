@@ -11,15 +11,11 @@ export default async function StudentMessages() {
   const session = await getServerSession(authOptions);
   if (!session?.user) return null;
 
-  const [admin, messages] = await Promise.all([
-    prisma.user.findFirst({
-      where: { role: "ADMIN" },
-      select: { id: true, name: true },
-      orderBy: { createdAt: "asc" },
-    }),
-    // empty until admin exists
-    Promise.resolve([] as { id: string; content: string; senderId: string; createdAt: Date }[]),
-  ]);
+  const admin = await prisma.user.findFirst({
+    where: { role: "ADMIN" },
+    select: { id: true, name: true },
+    orderBy: { createdAt: "asc" },
+  });
 
   if (!admin) {
     return (
@@ -48,8 +44,6 @@ export default async function StudentMessages() {
     orderBy: { createdAt: "asc" },
     take: 200,
   });
-  // discard the unused placeholder
-  void messages;
 
   return (
     <div className="space-y-6">
@@ -65,6 +59,13 @@ export default async function StudentMessages() {
           content: m.content,
           senderId: m.senderId,
           createdAt: m.createdAt.toISOString(),
+          // Preserve attachment fields — without these the server re-render
+          // would silently drop voice clips / images / files from the chat.
+          attachmentUrl: m.attachmentUrl,
+          attachmentType: m.attachmentType as "image" | "file" | "voice" | null,
+          attachmentName: m.attachmentName,
+          attachmentMime: m.attachmentMime,
+          attachmentSize: m.attachmentSize,
         }))}
       />
     </div>
