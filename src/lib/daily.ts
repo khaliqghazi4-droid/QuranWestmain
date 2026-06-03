@@ -86,13 +86,19 @@ export async function ensureDailyRoom(roomId: string): Promise<DailyRoom> {
   }
 
   // Create the room. Properties tuned for an online classroom:
-  // - private + knock disabled so anyone with the link can join immediately,
+  // - public + knock disabled so anyone with the link can join immediately,
   //   gated by our own auth / role checks at /app/{role}/class/[id].
   // - max_participants kept small for free tier sanity.
   // - enable_prejoin_ui: false → drops the "Setup audio/video" splash so the
   //   teacher lands straight in the meeting.
-  // - enable_recording: "local" — the only recording mode available on free
-  //   tier; our screen-recorder will trigger it via the call frame.
+  //
+  // NOTE: room-level `enable_recording` is a paid feature on Daily — passing
+  // it on the free plan returns a 400 ("cannot be set to that value with
+  // your current plan") which we used to swallow, silently falling back to
+  // Jitsi. Left out so the room creates cleanly on the free tier. Local
+  // recording is still requested by the client via
+  // `call.startRecording({ type: 'local' })` and falls back to screen-share
+  // capture if Daily rejects it at runtime.
   const created = await dailyFetch<DailyApiRoom>("/rooms", {
     method: "POST",
     body: JSON.stringify({
@@ -104,7 +110,6 @@ export async function ensureDailyRoom(roomId: string): Promise<DailyRoom> {
         enable_screenshare: true,
         enable_chat: true,
         enable_knocking: false,
-        enable_recording: "local",
         start_video_off: false,
         start_audio_off: false,
       },
