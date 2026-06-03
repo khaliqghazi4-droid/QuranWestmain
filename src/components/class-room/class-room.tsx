@@ -14,7 +14,23 @@ import {
   BookOpen,
   User,
   Info,
+  RefreshCw,
 } from "lucide-react";
+
+// Jitsi External API instance shape (subset we use).
+type JitsiApi = {
+  addEventListener: (event: string, handler: (...args: unknown[]) => void) => void;
+  dispose: () => void;
+  executeCommand: (cmd: string, ...args: unknown[]) => void;
+};
+type JitsiApiCtor = new (domain: string, options: Record<string, unknown>) => JitsiApi;
+
+// Jitsi External API global, loaded from meet.jit.si/external_api.js
+declare global {
+  interface Window {
+    JitsiMeetExternalAPI?: JitsiApiCtor;
+  }
+}
 
 export type ClassRoomNote = {
   id: string;
@@ -56,20 +72,104 @@ export function ClassRoom({
     notes[0] ?? null
   );
 
-  // Hash params disable Jitsi's pre-join screen so the teacher lands directly
-  // in the meeting, and set their display name so the student knows who's in.
-  const jitsiUrl = React.useMemo(() => {
-    const params = new URLSearchParams();
-    params.set("config.prejoinPageEnabled", "false");
-    params.set("config.startWithVideoMuted", "false");
-    params.set("config.disableDeepLinking", "true");
-    params.set("config.requireDisplayName", "false");
-    params.set(
-      "userInfo.displayName",
-      encodeURIComponent(displayName).replace(/%20/g, " ")
-    );
-    return `https://meet.jit.si/${encodeURIComponent(jitsiRoomName)}#${params.toString()}`;
-  }, [jitsiRoomName, displayName]);
+  // Mount Jitsi via the official External API so we can listen for the
+  // `readyToClose` event the free meet.jit.si fires after the 5-minute
+  // embed cutoff — when it fires, we tear the instance down and re-mount
+  // it, which the user perceives as a ~2s reconnect rather than a hard stop.
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const apiRef = React.useRef<JitsiApi | null>(null);
+  const [reconnecting, setReconnecting] = React.useState(false);
+
+  // Bump the version to force a remount of Jitsi (used by auto-rejoin and
+  // by the manual "Reconnect" button).
+  const [version, setVersion] = React.useState(0);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const container = containerRef.current;
+    if (!container) return;
+
+    function load(): Promise<void> {
+      return new Promise((resolve, reject) => {
+        if (window.JitsiMeetExternalAPI) return resolve();
+        const existing = document.querySelector<HTMLScriptElement>(
+          'script[data-jitsi="external-api"]'
+        );
+        if (existing) {
+          existing.addEventListener("load", () => resolve());
+          existing.addEventListener("error", () => reject(new Error("Jitsi script failed")));
+          return;
+        }
+        const s = document.createElement("script");
+        s.src = "https://meet.jit.si/external_api.js";
+        s.async = true;
+        s.dataset.jitsi = "external-api";
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error("Jitsi script failed"));
+        document.body.appendChild(s);
+      });
+    }
+
+    (async () => {
+      try {
+        await load();
+        if (cancelled || !container || !window.JitsiMeetExternalAPI) return;
+        const api = new window.JitsiMeetExternalAPI("meet.jit.si", {
+          roomName: jitsiRoomName,
+          parentNode: container,
+          width: "100%",
+          height: "100%",
+          userInfo: { displayName },
+          configOverwrite: {
+            prejoinPageEnabled: false,
+            startWithVideoMuted: false,
+            disableDeepLinking: true,
+            requireDisplayName: false,
+          },
+          interfaceConfigOverwrite: {
+            MOBILE_APP_PROMO: false,
+            SHOW_JITSI_WATERMARK: false,
+          },
+        });
+        apiRef.current = api;
+        // Jitsi fires `readyToClose` when the call is ending — including the
+        // 5-min embed cutoff. Bump `version` to re-mount and rejoin.
+        api.addEventListener("readyToClose", () => {
+          if (cancelled) return;
+          setReconnecting(true);
+          // Brief pause to let Jitsi clean up before we re-create.
+          setTimeout(() => {
+            if (cancelled) return;
+            setVersion((v) => v + 1);
+          }, 1500);
+        });
+      } catch (e) {
+        console.error("[class-room] Jitsi load failed", e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      try {
+        apiRef.current?.dispose();
+      } catch {
+        /* ignore */
+      }
+      apiRef.current = null;
+      if (container) container.innerHTML = "";
+    };
+    // `version` re-runs the effect for auto-rejoin; the others are stable
+    // identity for the lifetime of this component.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [version, jitsiRoomName, displayName]);
+
+  // Clear the reconnect banner once we're back in.
+  React.useEffect(() => {
+    if (reconnecting) {
+      const t = setTimeout(() => setReconnecting(false), 4000);
+      return () => clearTimeout(t);
+    }
+  }, [reconnecting, version]);
 
   // Wall-clock label so the teacher knows when class is supposed to end.
   const startLabel = startUTC
@@ -121,14 +221,22 @@ export function ClassRoom({
       </div>
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Meeting iframe — the actual Jitsi call */}
+        {/* Meeting mount — the Jitsi External API attaches its own iframe here */}
         <div className="flex-1 relative bg-black min-h-[60vh]">
-          <iframe
-            src={jitsiUrl}
-            allow="camera; microphone; display-capture; fullscreen; speaker-selection; autoplay; clipboard-write"
-            className="absolute inset-0 w-full h-full"
-            // sandbox left off intentionally — Jitsi needs allow-scripts + same-origin for storage
-          />
+          <div ref={containerRef} className="absolute inset-0 w-full h-full" />
+          {reconnecting && (
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 inline-flex items-center gap-2 rounded-full bg-black/70 text-white px-4 py-2 text-xs font-semibold backdrop-blur">
+              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+              Reconnecting…
+            </div>
+          )}
+          <button
+            onClick={() => setVersion((v) => v + 1)}
+            title="Reconnect meeting"
+            className="absolute bottom-3 right-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/60 hover:bg-black/80 text-white px-3 py-1.5 text-[11px] font-semibold backdrop-blur"
+          >
+            <RefreshCw className="h-3 w-3" /> Reconnect
+          </button>
         </div>
 
         {/* Side panel (teacher-only): notes + recorder */}

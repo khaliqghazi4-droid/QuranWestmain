@@ -44,7 +44,7 @@ export async function POST(req: Request): Promise<Response> {
       request: req,
 
       // Called before issuing the upload token — gate on auth + role.
-      onBeforeGenerateToken: async (pathname, clientPayloadStr) => {
+      onBeforeGenerateToken: async (_pathname, clientPayloadStr) => {
         const session = await getServerSession(authOptions);
         if (!session?.user || session.user.role !== "TEACHER") {
           throw new Error("Only teachers can upload class recordings");
@@ -58,6 +58,10 @@ export async function POST(req: Request): Promise<Response> {
           throw new Error("You don't teach this class");
         }
 
+        // NOTE: only the keys typed on `HandleUploadOptions` are honored
+        // here — `pathname` is decided client-side (we already namespace it
+        // there) and adding it here makes the SDK throw, which surfaces as
+        // "Failed to retrieve the client token" in the browser.
         return {
           allowedContentTypes: [
             "video/webm",
@@ -67,6 +71,7 @@ export async function POST(req: Request): Promise<Response> {
             "audio/mpeg",
           ],
           maximumSizeInBytes: 500 * 1024 * 1024, // 500 MB ceiling
+          addRandomSuffix: true,
           // We re-derive teacherId/roomId on the completion call below from
           // tokenPayload so the client can't tamper with attribution.
           tokenPayload: JSON.stringify({
@@ -77,9 +82,6 @@ export async function POST(req: Request): Promise<Response> {
             startedAt: payload.startedAt ?? new Date().toISOString(),
             durationSec: payload.durationSec ?? null,
           }),
-          // Append a per-class folder so recordings are easy to find in Blob.
-          addRandomSuffix: true,
-          pathname: `recordings/${payload.roomId}/${Date.now()}-${pathname.replace(/^.*\//, "")}`,
         };
       },
 

@@ -128,9 +128,12 @@ export function ScreenRecorder({
       const startedAt = startedAtRef.current ?? new Date();
       const durationSec = Math.max(1, Math.round((Date.now() - startedAt.getTime()) / 1000));
       const ext = blob.type.includes("mp4") ? "mp4" : "webm";
-      const filename = `${roomId}-${Date.now()}.${ext}`;
+      // Path is decided here on the client — the server `onBeforeGenerateToken`
+      // can only set token policy (size, allowed types, payload), not pathname.
+      const safeRoom = roomId.replace(/[^a-zA-Z0-9_-]/g, "-");
+      const pathname = `recordings/${safeRoom}/${Date.now()}.${ext}`;
 
-      const result = await upload(filename, blob, {
+      const result = await upload(pathname, blob, {
         access: "public",
         handleUploadUrl: "/api/upload/recording",
         contentType: blob.type || "video/webm",
