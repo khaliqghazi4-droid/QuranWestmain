@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveRoom } from "@/lib/class-room";
+import { ensureDailyRoom, isDailyConfigured } from "@/lib/daily";
 import { ClassRoom } from "@/components/class-room/class-room";
 
 export const dynamic = "force-dynamic";
@@ -32,10 +33,21 @@ export default async function StudentClassRoom({
     if (!enrolled) redirect("/app/student/schedule");
   }
 
+  let dailyUrl: string | null = null;
+  if (isDailyConfigured()) {
+    try {
+      const dRoom = await ensureDailyRoom(room.roomId);
+      dailyUrl = dRoom.url;
+    } catch (e) {
+      console.error("[student/class] Daily room create failed", e);
+    }
+  }
+
   return (
     <div className="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 lg:-mt-8 -mb-8">
       <ClassRoom
         roomId={room.roomId}
+        dailyUrl={dailyUrl}
         jitsiRoomName={room.jitsiRoomName}
         courseName={room.courseName}
         studentName={room.studentName}

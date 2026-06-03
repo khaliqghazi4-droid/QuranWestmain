@@ -10,6 +10,7 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@daily-co/daily-js": "^0.90.0",
     "@prisma/client": "^6.19.3",
     "@vercel/blob": "^2.4.0",
     "bcryptjs": "^3.0.3",
