@@ -3,10 +3,12 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { ProfileEditor } from "@/components/profile/profile-editor";
-import { AvailabilityEditor } from "@/components/availability/availability-editor";
 
 export const revalidate = 30;
 
+// Teaching hours / availability are controlled by the academy admin from
+// the teacher's admin profile — so the teacher's own profile only shows
+// editable personal info (name, contact, bio, etc.), no availability grid.
 export default async function TeacherProfile() {
   const session = await getServerSession(authOptions);
   if (!session?.user) return null;
@@ -23,9 +25,6 @@ export default async function TeacherProfile() {
       bio: true,
       role: true,
       createdAt: true,
-      availability: {
-        orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
-      },
     },
   });
 
@@ -35,7 +34,7 @@ export default async function TeacherProfile() {
     <div className="space-y-6">
       <PageHeader
         title="My Profile"
-        description="Manage your teaching profile and availability"
+        description="Manage your personal teaching profile"
       />
       <ProfileEditor
         user={{
@@ -49,17 +48,6 @@ export default async function TeacherProfile() {
           role: user.role,
           createdAt: user.createdAt.toISOString(),
         }}
-      />
-      <AvailabilityEditor
-        userId={user.id}
-        initialTimezone={user.timezone ?? "UTC"}
-        initialSlots={user.availability.map((a) => ({
-          dayOfWeek: a.dayOfWeek,
-          startTime: a.startTime,
-          endTime: a.endTime,
-        }))}
-        title="My Teaching Hours"
-        description="Set when you're available to teach"
       />
     </div>
   );
