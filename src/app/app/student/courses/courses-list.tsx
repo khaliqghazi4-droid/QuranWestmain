@@ -3,22 +3,31 @@
 import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   Clock,
   PlayCircle,
-  Calendar,
+  ChevronDown,
+  ChevronUp,
+  BookOpen,
+  User,
   CheckCircle2,
-  AlertCircle,
-  X,
 } from "lucide-react";
-import { AvailabilityEditor } from "@/components/availability/availability-editor";
+import { LessonsList } from "./[id]/lessons-list";
 
-type AvailabilitySlot = {
+// Each enrollment hands its full lesson list (with the student's per-lesson
+// completion flag baked in) so we can render lessons inline inside an
+// expandable accordion right on the My Courses page — no extra navigation.
+type Lesson = {
   id: string;
-  dayOfWeek: number;
-  startTime: string;
-  endTime: string;
+  title: string;
+  description: string | null;
+  content: string | null;
+  videoUrl: string | null;
+  audioUrl: string | null;
+  fileUrl: string | null;
+  duration: number | null;
+  order: number;
+  completed: boolean;
 };
 
 type Enrollment = {
@@ -32,205 +41,160 @@ type Enrollment = {
     duration: string | null;
     classDuration: number;
     teacherName: string | null;
+    lessons: Lesson[];
   };
-  availability: AvailabilitySlot[];
 };
 
-export function CoursesList({
-  enrollments,
-  userTimezone,
-}: {
-  enrollments: Enrollment[];
-  userTimezone: string;
-}) {
-  const router = useRouter();
-  const [editingEnrollment, setEditingEnrollment] = React.useState<Enrollment | null>(null);
+export function CoursesList({ enrollments }: { enrollments: Enrollment[] }) {
+  // Open the most-recently enrolled course by default so the student lands
+  // straight on the lessons they're most likely working through.
+  const [openId, setOpenId] = React.useState<string | null>(
+    enrollments[0]?.id ?? null
+  );
 
   return (
-    <>
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {enrollments.map((e, i) => {
-          const c = e.course;
-          const hasAvailability = e.availability.length > 0;
-          const tag = e.progress >= 80 ? "Almost Done" : e.progress > 0 ? "In Progress" : "Just Started";
-          const tagColor = e.progress >= 80 ? "bg-[hsl(var(--gold))] text-[hsl(220_32%_10%)]" : "bg-primary text-primary-foreground";
-          return (
-            <div
-              key={e.id}
-              className="group overflow-hidden rounded-2xl border border-border bg-card hover:border-primary/40 hover:shadow-xl hover:-translate-y-1 transition-all stagger-item"
-              style={{ animationDelay: `${i * 60}ms` }}
+    <div className="space-y-4">
+      {enrollments.map((e, i) => {
+        const c = e.course;
+        const isOpen = openId === e.id;
+        const completedCount = c.lessons.filter((l) => l.completed).length;
+        const tag =
+          e.progress >= 80 ? "Almost Done" : e.progress > 0 ? "In Progress" : "Just Started";
+        const tagColor =
+          e.progress >= 80
+            ? "bg-[hsl(var(--gold))] text-[hsl(220_32%_10%)]"
+            : "bg-primary text-primary-foreground";
+        return (
+          <div
+            key={e.id}
+            className="overflow-hidden rounded-2xl border border-border bg-card hover:border-primary/40 transition-colors stagger-item"
+            style={{ animationDelay: `${i * 60}ms` }}
+          >
+            {/* Header — clickable to expand / collapse */}
+            <button
+              type="button"
+              onClick={() => setOpenId(isOpen ? null : e.id)}
+              className="w-full flex items-center gap-4 p-4 text-left hover:bg-muted/30 transition-colors"
             >
-              {c.image && (
-                <div className="relative aspect-[16/10] overflow-hidden">
+              {c.image ? (
+                <div className="relative h-20 w-28 sm:h-24 sm:w-32 shrink-0 overflow-hidden rounded-xl">
                   <Image
                     src={c.image}
                     alt={c.name}
                     fill
-                    sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-                    className="object-cover transition-transform duration-500 group-hover:scale-110"
+                    sizes="(min-width: 640px) 128px, 112px"
+                    className="object-cover"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-card/80 via-card/20 to-transparent" />
-                  <span className={`absolute top-3 left-3 rounded-full px-3 py-1 text-[11px] font-bold ${tagColor}`}>
-                    {tag}
-                  </span>
-                  <span className="absolute top-3 right-3 rounded-full bg-[hsl(var(--gold))] px-2.5 py-0.5 text-[10px] font-bold text-[hsl(220_32%_10%)]">
-                    {c.classDuration}m
-                  </span>
+                </div>
+              ) : (
+                <div className="grid h-20 w-28 sm:h-24 sm:w-32 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-primary/15 to-accent/15 text-primary">
+                  <BookOpen className="h-6 w-6" />
                 </div>
               )}
-              <div className="p-5">
-                <h3 className="text-base font-bold tracking-tight group-hover:text-primary transition-colors">
-                  {c.name}
-                </h3>
-                {c.teacherName && (
-                  <p className="text-xs text-muted-foreground mt-1">by {c.teacherName}</p>
-                )}
 
-                <div className="mt-4">
-                  <div className="flex items-center justify-between mb-1.5 text-xs">
-                    <span className="text-muted-foreground">{c.level}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-base font-bold tracking-tight truncate">
+                    {c.name}
+                  </h3>
+                  <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${tagColor}`}>
+                    {tag}
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold">
+                    {c.level}
+                  </span>
+                </div>
+                <div className="mt-1 flex items-center gap-3 text-[11px] text-muted-foreground flex-wrap">
+                  {c.teacherName && (
+                    <span className="inline-flex items-center gap-1">
+                      <User className="h-3 w-3" /> {c.teacherName}
+                    </span>
+                  )}
+                  <span className="inline-flex items-center gap-1">
+                    <BookOpen className="h-3 w-3" /> {c.lessons.length}{" "}
+                    {c.lessons.length === 1 ? "lesson" : "lessons"}
+                    {completedCount > 0 && (
+                      <span className="inline-flex items-center gap-0.5 text-emerald-600 font-semibold ml-1">
+                        <CheckCircle2 className="h-3 w-3" /> {completedCount} done
+                      </span>
+                    )}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <Clock className="h-3 w-3" /> {c.classDuration} min/class
+                  </span>
+                </div>
+
+                <div className="mt-2.5">
+                  <div className="flex items-center justify-between mb-1 text-[10px]">
+                    <span className="text-muted-foreground font-semibold">Progress</span>
                     <span className="font-bold">{e.progress}%</span>
                   </div>
-                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                  <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                     <div
                       className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-all duration-700"
                       style={{ width: `${e.progress}%` }}
                     />
                   </div>
                 </div>
-
-                {/* Availability indicator */}
-                <div
-                  className={`mt-4 rounded-xl border p-3 ${
-                    hasAvailability
-                      ? "border-emerald-500/30 bg-emerald-500/5"
-                      : "border-[hsl(var(--gold))]/40 bg-[hsl(var(--gold)/0.08)]"
-                  }`}
-                >
-                  {hasAvailability ? (
-                    <div className="flex items-start gap-2">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 mt-0.5 shrink-0" />
-                      <div className="flex-1 text-[11px]">
-                        <p className="font-semibold text-foreground">
-                          Your times set for this course
-                        </p>
-                        <p className="text-muted-foreground mt-0.5">
-                          {e.availability.length} slot
-                          {e.availability.length === 1 ? "" : "s"} configured
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-start gap-2">
-                      <AlertCircle className="h-3.5 w-3.5 text-[hsl(var(--gold))] mt-0.5 shrink-0" />
-                      <div className="flex-1 text-[11px]">
-                        <p className="font-semibold text-foreground">
-                          Set your available times
-                        </p>
-                        <p className="text-muted-foreground mt-0.5">
-                          Admin needs this to book your classes
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-4 grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => setEditingEnrollment(e)}
-                    className={`inline-flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-bold transition-all ${
-                      hasAvailability
-                        ? "border border-border bg-card text-foreground hover:bg-muted"
-                        : "bg-gradient-to-r from-[hsl(var(--gold))] to-amber-500 text-[hsl(220_32%_10%)] shadow-md"
-                    }`}
-                  >
-                    <Calendar className="h-3.5 w-3.5" />
-                    {hasAvailability ? "Edit Times" : "Set My Times"}
-                  </button>
-                  <Link
-                    href={`/app/student/courses/${c.id}`}
-                    className="inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-primary to-accent px-3 py-2 text-xs font-bold text-primary-foreground shadow-md"
-                  >
-                    <PlayCircle className="h-3.5 w-3.5" /> Continue
-                  </Link>
-                </div>
-
-                <p className="mt-3 text-[11px] text-muted-foreground inline-flex items-center gap-1.5">
-                  <Clock className="h-3 w-3" /> {c.duration ?? "Self-paced"}
-                </p>
               </div>
-            </div>
-          );
-        })}
-      </div>
 
-      {editingEnrollment && (
-        <AvailabilityModal
-          enrollment={editingEnrollment}
-          userTimezone={userTimezone}
-          onClose={() => setEditingEnrollment(null)}
-          onSaved={() => {
-            setEditingEnrollment(null);
-            router.refresh();
-          }}
-        />
-      )}
-    </>
-  );
-}
-
-function AvailabilityModal({
-  enrollment,
-  userTimezone,
-  onClose,
-  onSaved,
-}: {
-  enrollment: Enrollment;
-  userTimezone: string;
-  onClose: () => void;
-  onSaved: () => void;
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-50 overflow-y-auto bg-foreground/40 backdrop-blur-sm animate-fade-in"
-      onClick={onClose}
-    >
-      <div className="flex min-h-full items-start sm:items-center justify-center p-4">
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-2xl rounded-3xl border border-border bg-card shadow-2xl my-auto"
-        >
-          <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-card">
-            <div>
-              <h2 className="text-base font-bold">Set Your Available Times</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                For course: <span className="font-semibold text-foreground">{enrollment.course.name}</span>
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              className="grid h-9 w-9 place-items-center rounded-full hover:bg-muted"
-            >
-              <X className="h-4 w-4" />
+              <div className="hidden sm:flex flex-col items-end gap-2 shrink-0">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-primary to-accent px-3 py-1.5 text-[11px] font-bold text-primary-foreground shadow-sm">
+                  <PlayCircle className="h-3.5 w-3.5" />
+                  {isOpen ? "Hide Lessons" : "Show Lessons"}
+                </span>
+                {isOpen ? (
+                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                )}
+              </div>
+              <div className="sm:hidden grid h-9 w-9 place-items-center rounded-full border border-border shrink-0">
+                {isOpen ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </div>
             </button>
-          </div>
 
-          <div className="p-4">
-            <AvailabilityEditor
-              saveUrl={`/api/enrollments/${enrollment.id}/availability`}
-              initialTimezone={userTimezone}
-              initialSlots={enrollment.availability.map((a) => ({
-                dayOfWeek: a.dayOfWeek,
-                startTime: a.startTime,
-                endTime: a.endTime,
-              }))}
-              title={`Available Times for ${enrollment.course.name}`}
-              description={`Class will be ${enrollment.course.classDuration} min each. Set hours when you can attend`}
-              onSaved={onSaved}
-            />
+            {/* Expanded body — embedded LessonsList. We pre-key on the
+                lessons identity so toggling open ↔ closed keeps internal
+                lesson UI state (which lesson is open, etc.) sensible. */}
+            {isOpen && (
+              <div className="border-t border-border p-4 sm:p-6 bg-background/40">
+                {c.lessons.length === 0 ? (
+                  <div className="text-center py-8">
+                    <BookOpen className="mx-auto h-10 w-10 text-muted-foreground/30" />
+                    <p className="mt-3 text-sm font-semibold">
+                      No lessons published yet
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground max-w-md mx-auto">
+                      Your teacher will add lesson material here as the course
+                      progresses.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="mb-4 flex items-center justify-between gap-2 flex-wrap">
+                      <p className="text-sm font-bold inline-flex items-center gap-1.5">
+                        <BookOpen className="h-4 w-4 text-primary" /> Course Lessons
+                      </p>
+                      <Link
+                        href={`/app/student/courses/${c.id}`}
+                        className="text-[11px] text-primary font-semibold hover:underline"
+                      >
+                        Open full course →
+                      </Link>
+                    </div>
+                    <LessonsList lessons={c.lessons} />
+                  </>
+                )}
+              </div>
+            )}
           </div>
-        </div>
-      </div>
+        );
+      })}
     </div>
   );
 }

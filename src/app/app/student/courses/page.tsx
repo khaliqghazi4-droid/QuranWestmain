@@ -12,20 +12,27 @@ export default async function StudentCourses() {
   const session = await getServerSession(authOptions);
   if (!session?.user) return null;
 
-  const me = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { timezone: true },
-  });
-
+  // Load enrollments + the published lessons for each enrolled course (with
+  // the student's per-lesson completion flag) so the My Courses page can
+  // expand each course inline into its full lesson list — no extra
+  // navigation to /courses/[id] needed.
   const enrollments = await prisma.enrollment.findMany({
     where: { studentId: session.user.id },
     include: {
       course: {
-        include: { teacher: { select: { id: true, name: true } } },
-      },
-      availability: {
-        select: { id: true, dayOfWeek: true, startTime: true, endTime: true },
-        orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
+        include: {
+          teacher: { select: { id: true, name: true } },
+          lessons: {
+            where: { isPublished: true },
+            orderBy: { order: "asc" },
+            include: {
+              completions: {
+                where: { studentId: session.user.id },
+                select: { id: true },
+              },
+            },
+          },
+        },
       },
     },
     orderBy: { startedAt: "desc" },
@@ -38,7 +45,7 @@ export default async function StudentCourses() {
         description={
           enrollments.length === 0
             ? "Browse the catalog and enroll in your first course"
-            : `${enrollments.length} enrolled · Set your available times for each course`
+            : `${enrollments.length} enrolled · Click a course to see its lessons`
         }
         action={
           <Link
@@ -68,7 +75,6 @@ export default async function StudentCourses() {
         </div>
       ) : (
         <CoursesList
-          userTimezone={me?.timezone ?? "UTC"}
           enrollments={enrollments.map((e) => ({
             id: e.id,
             progress: e.progress,
@@ -80,8 +86,19 @@ export default async function StudentCourses() {
               duration: e.course.duration,
               classDuration: e.course.classDuration,
               teacherName: e.course.teacher?.name ?? null,
+              lessons: e.course.lessons.map((l) => ({
+                id: l.id,
+                title: l.title,
+                description: l.description,
+                content: l.content,
+                videoUrl: l.videoUrl,
+                audioUrl: l.audioUrl,
+                fileUrl: l.fileUrl,
+                duration: l.duration,
+                order: l.order,
+                completed: l.completions.length > 0,
+              })),
             },
-            availability: e.availability,
           }))}
         />
       )}
