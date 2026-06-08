@@ -62,10 +62,10 @@ export function QuranTabs({ quranReader }: { quranReader: React.ReactNode }) {
 // navigation, so a student can read the whole qa'idah without leaving
 // the app. The download / open-in-new-tab buttons are provided so
 // teachers can hand the source PDF to students for offline study.
-const NORANI_QAIDA_EMBED =
-  "https://archive.org/embed/NooraniQaida_201601";
-const NORANI_QAIDA_PAGE =
-  "https://archive.org/details/NooraniQaida_201601";
+const NORANI_QAIDA_EMBED = "https://archive.org/embed/noorani-qaida";
+const NORANI_QAIDA_PAGE = "https://archive.org/details/noorani-qaida";
+const NORANI_QAIDA_PDF =
+  "https://archive.org/download/noorani-qaida/Noorani%20Qaida.pdf";
 
 function NoraniQaidaPlaceholder() {
   return (
@@ -94,6 +94,14 @@ function NoraniQaidaPlaceholder() {
               className="inline-flex items-center gap-2 rounded-full bg-primary-foreground/15 backdrop-blur-md border border-primary-foreground/20 px-4 py-2 text-xs font-bold hover:bg-primary-foreground/25 transition-all"
             >
               <Maximize2 className="h-3.5 w-3.5" /> Open Fullscreen
+            </a>
+            <a
+              href={NORANI_QAIDA_PDF}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-full bg-primary-foreground/15 backdrop-blur-md border border-primary-foreground/20 px-4 py-2 text-xs font-bold hover:bg-primary-foreground/25 transition-all"
+            >
+              <FileText className="h-3.5 w-3.5" /> Download PDF
             </a>
             <a
               href={NORANI_QAIDA_PAGE}
