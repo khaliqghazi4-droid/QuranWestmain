@@ -6,8 +6,9 @@ import {
   BookOpen,
   GraduationCap,
   FileText,
-  Clock,
   Sparkles,
+  ExternalLink,
+  Maximize2,
 } from "lucide-react";
 
 type TabKey = "quran" | "qaida" | "other";
@@ -56,6 +57,16 @@ export function QuranTabs({ quranReader }: { quranReader: React.ReactNode }) {
   );
 }
 
+// Default Norani Qaida edition embedded inline. Archive.org's `/embed/`
+// endpoint reliably serves an in-page PDF viewer with page-by-page
+// navigation, so a student can read the whole qa'idah without leaving
+// the app. The download / open-in-new-tab buttons are provided so
+// teachers can hand the source PDF to students for offline study.
+const NORANI_QAIDA_EMBED =
+  "https://archive.org/embed/NooraniQaida_201601";
+const NORANI_QAIDA_PAGE =
+  "https://archive.org/details/NooraniQaida_201601";
+
 function NoraniQaidaPlaceholder() {
   return (
     <div className="space-y-6">
@@ -75,18 +86,48 @@ function NoraniQaidaPlaceholder() {
             Norani Qaida teaches the Arabic alphabet, harakat, madd, and tajweed
             basics — the classical primer every Quran learner starts with.
           </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <a
+              href={NORANI_QAIDA_PAGE}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-full bg-primary-foreground/15 backdrop-blur-md border border-primary-foreground/20 px-4 py-2 text-xs font-bold hover:bg-primary-foreground/25 transition-all"
+            >
+              <Maximize2 className="h-3.5 w-3.5" /> Open Fullscreen
+            </a>
+            <a
+              href={NORANI_QAIDA_PAGE}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-full bg-primary-foreground/15 backdrop-blur-md border border-primary-foreground/20 px-4 py-2 text-xs font-bold hover:bg-primary-foreground/25 transition-all"
+            >
+              <ExternalLink className="h-3.5 w-3.5" /> View on Archive.org
+            </a>
+          </div>
         </div>
       </div>
 
-      <div className="rounded-2xl border-2 border-dashed border-border bg-card/50 p-12 text-center">
-        <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-primary/10 text-primary">
-          <Clock className="h-7 w-7" />
+      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+        <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center gap-2">
+          <FileText className="h-4 w-4 text-primary" />
+          <p className="text-sm font-bold">Norani Qaida — full edition</p>
+          <a
+            href={NORANI_QAIDA_PAGE}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-auto text-[11px] text-primary font-semibold hover:underline inline-flex items-center gap-1"
+          >
+            Open in new tab <ExternalLink className="h-3 w-3" />
+          </a>
         </div>
-        <h3 className="mt-4 text-base font-bold">Coming soon</h3>
-        <p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
-          The full Norani Qaida — page-by-page, with audio for every lesson —
-          will be added here shortly. Check back soon.
-        </p>
+        <iframe
+          src={NORANI_QAIDA_EMBED}
+          title="Norani Qaida"
+          allow="fullscreen"
+          loading="lazy"
+          className="w-full bg-background"
+          style={{ height: "75vh", minHeight: 600, border: 0 }}
+        />
       </div>
     </div>
   );
