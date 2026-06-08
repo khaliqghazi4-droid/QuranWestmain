@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Bookmark, Share2 } from "lucide-react";
-import { getSurah, getVersesByChapter, getChapterAudio, verseAudioUrl } from "@/lib/quran-api";
+import { ArrowLeft, ArrowRight, Bookmark, Share2 } from "lucide-react";
+import {
+  getSurah,
+  getAllVersesByChapter,
+  getChapterAudio,
+  verseAudioUrl,
+} from "@/lib/quran-api";
 import { AudioPlayer } from "@/components/quran/audio-player";
 
 export async function SurahDetail({
@@ -14,24 +19,31 @@ export async function SurahDetail({
   const id = parseInt(surahId, 10);
   if (isNaN(id) || id < 1 || id > 114) notFound();
 
-  const [surah, versesData, chapterAudio] = await Promise.all([
+  // Fetch the surah meta, *all* of its verses, and the chapter recitation
+  // audio in parallel. getAllVersesByChapter handles the multi-page round
+  // trips needed for long surahs (e.g. Al-Baqarah's 286 verses).
+  const [surah, verses, chapterAudio] = await Promise.all([
     getSurah(id),
-    getVersesByChapter(id, 1, 30),
+    getAllVersesByChapter(id),
     getChapterAudio(id),
   ]);
 
   if (!surah) notFound();
 
-  const verses = versesData?.verses ?? [];
+  const prevId = id > 1 ? id - 1 : null;
+  const nextId = id < 114 ? id + 1 : null;
 
   return (
     <div className="space-y-6">
-      <Link
-        href={basePath}
-        className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
-      >
-        <ArrowLeft className="h-4 w-4" /> Back to all Surahs
-      </Link>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <Link
+          href={basePath}
+          className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back to all Surahs
+        </Link>
+        <SurahPager basePath={basePath} prevId={prevId} nextId={nextId} />
+      </div>
 
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary via-accent to-primary p-8 text-primary-foreground shadow-xl shadow-primary/20">
         <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-[hsl(var(--gold)/0.3)] blur-3xl" />
@@ -107,7 +119,7 @@ export async function SurahDetail({
           <div
             key={v.id}
             className="group rounded-2xl border border-border bg-card p-6 hover:border-primary/40 hover:shadow-md transition-all stagger-item"
-            style={{ animationDelay: `${Math.min(i * 30, 600)}ms` }}
+            style={{ animationDelay: `${Math.min(i * 15, 600)}ms` }}
           >
             <div className="flex items-start justify-between gap-4 mb-4">
               <div className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-primary to-accent text-primary-foreground font-bold text-xs shadow-md shrink-0">
@@ -145,12 +157,53 @@ export async function SurahDetail({
         ))}
       </div>
 
-      {versesData && versesData.pagination.total_pages > 1 && (
-        <div className="rounded-2xl border border-border bg-card p-6 text-center">
-          <p className="text-sm text-muted-foreground">
-            Showing first 30 verses · Total: {versesData.pagination.total_records}
-          </p>
-        </div>
+      {/* Bottom nav so the reader can flow into the next surah without
+          scrolling all the way back to the top. */}
+      <div className="rounded-2xl border border-border bg-card p-4 flex items-center justify-between gap-2 flex-wrap">
+        <p className="text-xs text-muted-foreground">
+          End of {surah.name_simple} · {verses.length} of {surah.verses_count}{" "}
+          verses
+        </p>
+        <SurahPager basePath={basePath} prevId={prevId} nextId={nextId} />
+      </div>
+    </div>
+  );
+}
+
+function SurahPager({
+  basePath,
+  prevId,
+  nextId,
+}: {
+  basePath: string;
+  prevId: number | null;
+  nextId: number | null;
+}) {
+  return (
+    <div className="inline-flex items-center gap-2">
+      {prevId ? (
+        <Link
+          href={`${basePath}/${prevId}`}
+          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold hover:border-primary/40 hover:bg-muted transition-colors"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" /> Previous Surah
+        </Link>
+      ) : (
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/50 px-3 py-1.5 text-xs font-semibold text-muted-foreground/50">
+          <ArrowLeft className="h-3.5 w-3.5" /> Previous
+        </span>
+      )}
+      {nextId ? (
+        <Link
+          href={`${basePath}/${nextId}`}
+          className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-primary to-accent px-3 py-1.5 text-xs font-bold text-primary-foreground shadow-md hover:shadow-lg transition-all"
+        >
+          Next Surah <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      ) : (
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-xs font-semibold text-muted-foreground/50">
+          Next <ArrowRight className="h-3.5 w-3.5" />
+        </span>
       )}
     </div>
   );

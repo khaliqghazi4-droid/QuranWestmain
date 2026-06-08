@@ -74,6 +74,28 @@ export async function getVersesByChapter(
   }
 }
 
+// Fetch every verse of a chapter (Quran.com caps per_page at 50, so for a
+// long surah like Al-Baqarah we need to round-trip multiple pages). The
+// pages are loaded in parallel after the first page tells us the total
+// count; each request is ISR-cached for 24h so subsequent reads are instant.
+export async function getAllVersesByChapter(id: number): Promise<Verse[]> {
+  const first = await getVersesByChapter(id, 1, 50);
+  if (!first) return [];
+  const totalPages = first.pagination.total_pages;
+  if (totalPages <= 1) return first.verses;
+
+  const rest = await Promise.all(
+    Array.from({ length: totalPages - 1 }, (_, i) =>
+      getVersesByChapter(id, i + 2, 50)
+    )
+  );
+  const all = [...first.verses];
+  for (const r of rest) {
+    if (r) all.push(...r.verses);
+  }
+  return all;
+}
+
 // Full chapter recitation by a reciter (id 7 = Mishary Rashid Alafasy)
 export async function getChapterAudio(
   chapterId: number,
