@@ -11,10 +11,11 @@ import {
   Maximize2,
 } from "lucide-react";
 
-type TabKey = "quran" | "qaida" | "other";
+type TabKey = "quran" | "fullquran" | "qaida" | "other";
 
 const TABS: { key: TabKey; label: string; icon: typeof BookOpen }[] = [
-  { key: "quran", label: "Quran Reader", icon: BookMarked },
+  { key: "quran", label: "Surah Reader", icon: BookMarked },
+  { key: "fullquran", label: "Full Quran (PDF)", icon: BookOpen },
   { key: "qaida", label: "Norani Qaida", icon: BookOpen },
   { key: "other", label: "Other Studies", icon: GraduationCap },
 ];
@@ -49,10 +50,93 @@ export function QuranTabs({ quranReader }: { quranReader: React.ReactNode }) {
       </div>
 
       {/* Quran Reader stays mounted (just hidden) so the surah list + cache
-          survive a tab switch. The other two are cheap placeholders. */}
+          survive a tab switch. The PDF tabs are cheap iframes. */}
       <div className={active === "quran" ? "" : "hidden"}>{quranReader}</div>
+      {active === "fullquran" && <FullQuranPdf />}
       {active === "qaida" && <NoraniQaidaPlaceholder />}
       {active === "other" && <OtherStudiesPlaceholder />}
+    </div>
+  );
+}
+
+// Full Mushaf PDF from archive.org — for students who want to read the
+// whole Quran like a physical book (page-by-page navigation, zoom, etc.)
+// instead of the verse-by-verse Surah Reader.
+const FULL_QURAN_EMBED = "https://archive.org/embed/QuranArabic";
+const FULL_QURAN_PAGE = "https://archive.org/details/QuranArabic";
+const FULL_QURAN_PDF =
+  "https://archive.org/download/QuranArabic/quran.pdf";
+
+function FullQuranPdf() {
+  return (
+    <div className="space-y-6">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-700 p-8 text-white shadow-xl">
+        <div
+          className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-[hsl(var(--gold)/0.3)] blur-3xl"
+          aria-hidden="true"
+        />
+        <div className="relative">
+          <p className="text-xs text-white/80 font-semibold uppercase tracking-wide">
+            Full Quran (PDF)
+          </p>
+          <h2 className="mt-3 text-2xl sm:text-3xl font-bold">
+            Read the complete Mushaf — page by page
+          </h2>
+          <p className="mt-3 text-sm text-white/90 max-w-2xl leading-relaxed">
+            The full Quran in the traditional Mushaf layout. Use the Surah
+            Reader tab for verse-by-verse audio + translations.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <a
+              href={FULL_QURAN_PAGE}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-full bg-white/15 backdrop-blur-md border border-white/20 px-4 py-2 text-xs font-bold hover:bg-white/25 transition-all"
+            >
+              <Maximize2 className="h-3.5 w-3.5" /> Open Fullscreen
+            </a>
+            <a
+              href={FULL_QURAN_PDF}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-full bg-white/15 backdrop-blur-md border border-white/20 px-4 py-2 text-xs font-bold hover:bg-white/25 transition-all"
+            >
+              <FileText className="h-3.5 w-3.5" /> Download PDF
+            </a>
+            <a
+              href={FULL_QURAN_PAGE}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-full bg-white/15 backdrop-blur-md border border-white/20 px-4 py-2 text-xs font-bold hover:bg-white/25 transition-all"
+            >
+              <ExternalLink className="h-3.5 w-3.5" /> View on Archive.org
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+        <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center gap-2">
+          <FileText className="h-4 w-4 text-primary" />
+          <p className="text-sm font-bold">Full Quran — Mushaf edition</p>
+          <a
+            href={FULL_QURAN_PAGE}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-auto text-[11px] text-primary font-semibold hover:underline inline-flex items-center gap-1"
+          >
+            Open in new tab <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
+        <iframe
+          src={FULL_QURAN_EMBED}
+          title="Full Quran"
+          allow="fullscreen"
+          loading="lazy"
+          className="w-full bg-background"
+          style={{ height: "80vh", minHeight: 600, border: 0 }}
+        />
+      </div>
     </div>
   );
 }
