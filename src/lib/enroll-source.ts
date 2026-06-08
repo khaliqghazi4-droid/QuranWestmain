@@ -52,6 +52,43 @@ export type WebsiteEnrollment = {
   createdAt: string | null;
 };
 
+// Shape the website form posts into MongoDB. We mirror it exactly when a
+// signed-in student submits the in-app enrollment form so the admin's
+// existing /app/admin/enrollments review flow keeps working with no
+// changes — the request shows up in the same list either way.
+export type EnrollSubmission = {
+  course: string;            // course name (matches a row in our Postgres `courses` table)
+  courseFor: "adult" | "kid";
+  gender: "male" | "female" | null;
+  tutorGender: "male" | "female" | null;
+  fullName: string;
+  email: string;
+  whatsapp: string;
+  city: string;
+  country: string;
+  trialTime: string | null;  // ISO timestamp the student picked, optional
+  children: EnrollChild[];
+  source: "website" | "dashboard"; // so admin can tell where it came from
+};
+
+export async function submitWebsiteEnrollment(
+  payload: EnrollSubmission
+): Promise<{ id: string }> {
+  const client = await getClient();
+  const result = await client
+    .db(dbName)
+    .collection("enrollments")
+    .insertOne({
+      ...payload,
+      // `trialTime` is stored as a real Date object in the website's own
+      // submissions; preserve that shape so existing admin code that reads
+      // it back doesn't have to special-case our submissions.
+      trialTime: payload.trialTime ? new Date(payload.trialTime) : null,
+      createdAt: new Date(),
+    });
+  return { id: String(result.insertedId) };
+}
+
 export async function getWebsiteEnrollments(): Promise<WebsiteEnrollment[]> {
   const client = await getClient();
   const docs = await client

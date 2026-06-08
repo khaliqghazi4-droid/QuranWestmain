@@ -10,7 +10,7 @@ export default async function CatalogPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) return null;
 
-  const [courses, enrollments] = await Promise.all([
+  const [courses, enrollments, me] = await Promise.all([
     prisma.course.findMany({
       where: { isActive: true },
       include: {
@@ -23,6 +23,10 @@ export default async function CatalogPage() {
       where: { studentId: session.user.id },
       select: { courseId: true },
     }),
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { name: true, email: true, phone: true, country: true },
+    }),
   ]);
 
   const enrolledIds = new Set(enrollments.map((e) => e.courseId));
@@ -33,7 +37,16 @@ export default async function CatalogPage() {
         title="Course Catalog"
         description={`Browse ${courses.length} available courses and enroll`}
       />
-      <CatalogClient courses={courses} enrolledIds={Array.from(enrolledIds)} />
+      <CatalogClient
+        courses={courses}
+        enrolledIds={Array.from(enrolledIds)}
+        prefill={{
+          fullName: me?.name ?? "",
+          email: me?.email ?? "",
+          whatsapp: me?.phone ?? "",
+          country: me?.country ?? "",
+        }}
+      />
     </div>
   );
 }
