@@ -5,7 +5,7 @@ A public website and learning management system for an online Quran academy. Fam
 Built with **Next.js 14**, **TypeScript**, **Prisma + PostgreSQL**, **NextAuth** and **Vercel Blob**.
 
 ---
-
+Ready to deploy
 ## Contents
 
 - [Features](#features)
