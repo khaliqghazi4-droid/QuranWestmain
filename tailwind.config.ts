@@ -9,6 +9,9 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      borderColor: {
+        DEFAULT: "hsl(var(--border) / <alpha-value>)",
+      },
       colors: {
         background: "hsl(var(--background) / <alpha-value>)",
         foreground: "hsl(var(--foreground) / <alpha-value>)",
@@ -37,11 +40,13 @@ const config: Config = {
       keyframes: {
         "fade-in": {
           "0%": { opacity: "0", transform: "translateY(8px)" },
-          "100%": { opacity: "1", transform: "translateY(0)" },
+          "100%": { opacity: "1", transform: "none" },
         },
       },
       animation: {
-        "fade-in": "fade-in 0.5s ease-out forwards",
+        // `backwards`, not `forwards`: a held end-transform (even translateY(0)) turns the
+        // element into the containing block for position:fixed modals inside it
+        "fade-in": "fade-in 0.5s ease-out backwards",
       },
     },
   },

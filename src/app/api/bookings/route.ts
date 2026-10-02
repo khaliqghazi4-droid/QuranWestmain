@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { authOptions, isAdminSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 // POST /api/bookings - admin assigns a student (enrollment) to a teacher slot
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
-  if (!session?.user || session.user.role !== "ADMIN") {
+  if (!isAdminSession(session)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -68,6 +69,8 @@ export async function POST(req: Request) {
       });
     }
 
+    revalidatePath("/app/admin/availability");
+    revalidatePath("/app/teacher", "layout");
     return NextResponse.json({ booking }, { status: 201 });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Booking failed";

@@ -1,8 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getStudentViewer } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ArrowLeft, BookOpen, Clock, GraduationCap, User } from "lucide-react";
 import { LessonsList } from "./lessons-list";
@@ -14,34 +13,35 @@ export default async function StudentCourseDetail({
 }: {
   params: { id: string };
 }) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return null;
+  const viewer = await getStudentViewer();
+  if (!viewer) return null;
 
-  const enrollment = await prisma.enrollment.findUnique({
-    where: {
-      studentId_courseId: { studentId: session.user.id, courseId: params.id },
-    },
-    include: {
-      course: {
-        include: {
-          teacher: { select: { id: true, name: true } },
+  const [enrollment, lessons] = await Promise.all([
+    prisma.enrollment.findUnique({
+      where: {
+        studentId_courseId: { studentId: viewer.id, courseId: params.id },
+      },
+      include: {
+        course: {
+          include: {
+            teacher: { select: { id: true, name: true } },
+          },
         },
       },
-    },
-  });
+    }),
+    prisma.lesson.findMany({
+      where: { courseId: params.id, isPublished: true },
+      orderBy: { order: "asc" },
+      include: {
+        completions: {
+          where: { studentId: viewer.id },
+          select: { id: true },
+        },
+      },
+    }),
+  ]);
 
   if (!enrollment) notFound();
-
-  const lessons = await prisma.lesson.findMany({
-    where: { courseId: params.id, isPublished: true },
-    orderBy: { order: "asc" },
-    include: {
-      completions: {
-        where: { studentId: session.user.id },
-        select: { id: true },
-      },
-    },
-  });
 
   const course = enrollment.course;
   const totalDuration = lessons.reduce((s, l) => s + (l.duration ?? 0), 0);

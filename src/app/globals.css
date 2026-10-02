@@ -1,249 +1,303 @@
+@import url('https://fonts.googleapis.com/css2?family=Finlandica+Headline:ital,wght@0,100..900;1,100..900&family=Roboto:ital,wght@0,100..900;1,100..900&family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+* {
+  font-family: "Ubuntu", sans-serif !important;
+}
+
+
+:root {
+  /* Base */
+  --background: 45 35% 97%;
+  --foreground: 160 35% 10%;
+  /* Card */
+  --card: 0 0% 100%;
+  --card-foreground: 160 35% 10%;
+  /* Muted */
+  --muted: 45 30% 92%;
+  --muted-foreground: 160 12% 38%;
+  /* Border */
+  --border: 160 15% 86%;
+  /* Primary (green) */
+  --primary: 160 70% 28%;
+  --primary-foreground: 45 35% 98%;
+  /* Accent */
+  --accent: 160 65% 35%;
+  --accent-foreground: 0 0% 100%;
+  /* Gold */
+  --gold: 42 80% 48%;
+  /* Destructive */
+  --destructive: 0 75% 50%;
+}
+
+.dark {
+  --background: 220 32% 8%;
+  --foreground: 45 30% 95%;
+  --card: 220 28% 12%;
+  --card-foreground: 45 30% 95%;
+  --muted: 220 25% 16%;
+  --muted-foreground: 45 12% 70%;
+  --border: 220 14% 15%;
+  --primary: 42 78% 55%;
+  --primary-foreground: 220 32% 10%;
+  --accent: 42 75% 50%;
+  --accent-foreground: 220 32% 10%;
+  --gold: 42 85% 62%;
+  --destructive: 0 70% 60%;
+}
+
+html, body {
+  overflow-x: clip;
+}
+
+html {
+  overscroll-behavior: none;
+}
+
+body {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+img,
+svg,
+video {
+  max-width: 100%;
+  display: block;
+}
+
+.scroller::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scroller::-webkit-scrollbar-track {
+  background: #f1f1f100;
+}
+
+.scroller::-webkit-scrollbar-thumb {
+  background-color: #838383;
+  /* Tailwind blue-500 */
+  border-radius: 9999px;
+}
+
+
+/* Hide broken flaticon squares in navbar */
+.nav .dropdown-nav>a::after,
+.nav .dropdown-nav>a .fi,
+.navbar-nav .fi {
+  display: none;
+}
+
+.dropdown-nav>a::after {
+  display: none !important;
+}
+
+
+
+/* Website typography — `:not(.admin-dashboard *)` keeps it out of the dashboards
+   (admin, teacher and student; DashboardShell sets the class).
+   The !important values sit inside :where() so they only carry element
+   specificity: an important Tailwind utility on the element (`!text-xs`,
+   `!font-light`) still wins, as it did on the Tailwind v4 site these pages
+   came from. The plain values keep the higher specificity and beat plain
+   utilities, also as on that site. */
+h1:not(.admin-dashboard *) {
+  font-weight: 700;
+}
+
+h1:where(:not(.admin-dashboard *)) {
+  font-size: 2.95rem !important;
+}
+
+h2:where(:not(.admin-dashboard *)) {
+  font-size: 1.975rem !important;
+  line-height: 2.25rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.5px !important;
+}
+
+h3:not(.admin-dashboard *) {
+  line-height: 2rem;
+  font-weight: 700;
+}
+
+h3:where(:not(.admin-dashboard *)) {
+  font-size: 1.5rem !important;
+}
+
+h4:not(.admin-dashboard *) {
+  line-height: 1.75rem;
+  font-weight: 700;
+}
+
+h4:where(:not(.admin-dashboard *)) {
+  font-size: 1.25rem !important;
+}
+
+h5:not(.admin-dashboard *) {
+  line-height: 1.75rem;
+}
+
+h5:where(:not(.admin-dashboard *)) {
+  font-size: 1.125rem !important;
+}
+
+h6:not(.admin-dashboard *) {
+  line-height: 1.5rem;
+}
+
+h6:where(:not(.admin-dashboard *)) {
+  font-size: 1.4rem !important;
+}
+
+p:not(.admin-dashboard *) {
+  line-height: 1.5rem;
+  font-weight: 400;
+}
+
+p:where(:not(.admin-dashboard *)) {
+  font-size: 1.2rem !important;
+}
+
+/* Dashboards: undo the website template's (Bootstrap) element styles so
+   the dashboard's own Tailwind classes decide sizes again. Lives in the base
+   layer, so any Tailwind utility on the element still wins. */
 @layer base {
-  :root {
-    /* Light theme: Soft cream + Emerald green */
-    --background: 45 35% 97%;
-    --foreground: 160 35% 10%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 160 35% 10%;
-
-    --muted: 45 30% 92%;
-    --muted-foreground: 160 12% 38%;
-
-    --border: 160 15% 86%;
-
-    --primary: 160 70% 28%;
-    --primary-foreground: 45 35% 98%;
-
-    --accent: 160 65% 35%;
-    --accent-foreground: 0 0% 100%;
-
-    --gold: 42 80% 48%;
-    --destructive: 0 75% 50%;
+  .admin-dashboard :where(h1, h2, h3, h4, h5, h6) {
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+    margin: 0;
   }
 
-  .dark {
-    /* Dark theme: Deep navy + Gold */
-    --background: 220 32% 8%;
-    --foreground: 45 30% 95%;
-
-    --card: 220 28% 12%;
-    --card-foreground: 45 30% 95%;
-
-    --muted: 220 25% 16%;
-    --muted-foreground: 45 12% 70%;
-
-    --border: 220 20% 22%;
-
-    --primary: 42 78% 55%;
-    --primary-foreground: 220 32% 10%;
-
-    --accent: 42 75% 50%;
-    --accent-foreground: 220 32% 10%;
-
-    --gold: 42 85% 62%;
-    --destructive: 0 70% 60%;
+  .admin-dashboard :where(p, ul, ol, dl, figure) {
+    margin: 0;
   }
 
-  * {
-    @apply border-border;
+  .admin-dashboard :where(ul, ol) {
+    padding: 0;
+    list-style: none;
   }
 
-  body {
-    @apply bg-background text-foreground antialiased;
-    background-image: var(--pattern);
-    background-size: 24px 24px;
-    transition: background-color 0.3s ease, color 0.3s ease;
-  }
-
-  html.light body {
-    --pattern: radial-gradient(
-      circle at 1px 1px,
-      hsl(160 70% 28% / 0.06) 1px,
-      transparent 0
-    );
-  }
-
-  html.dark body {
-    --pattern: radial-gradient(
-      circle at 1px 1px,
-      hsl(42 80% 55% / 0.06) 1px,
-      transparent 0
-    );
+  .admin-dashboard :where(a) {
+    color: inherit;
+    text-decoration: inherit;
   }
 }
 
-@layer utilities {
-  .text-gradient-primary {
-    background: linear-gradient(
-      135deg,
-      hsl(var(--primary)),
-      hsl(var(--gold))
-    );
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+/* Light mode: all admin borders use the theme border token */
+.admin-dashboard *,
+.admin-dashboard *::before,
+.admin-dashboard *::after {
+  border-color: hsl(var(--border));
+}
+
+/* Dark mode: force dark borders with !important so Bootstrap & Tailwind currentColor cannot override */
+html.dark .admin-dashboard *,
+html.dark .admin-dashboard *::before,
+html.dark .admin-dashboard *::after {
+  border-color: hsl(220 14% 15%) !important;
+}
+
+/* Restore intentional colored borders that need to stay visible in dark mode */
+html.dark .admin-dashboard [class~="border-destructive"],
+html.dark .admin-dashboard [class*="border-red"] {
+  border-color: hsl(var(--destructive)) !important;
+}
+html.dark .admin-dashboard [class~="border-transparent"] {
+  border-color: transparent !important;
+}
+html.dark .admin-dashboard [class*="border-primary"]:not([class*="border-primary/"]) {
+  border-color: hsl(var(--primary)) !important;
+}
+html.dark .admin-dashboard [class*="border-amber"],
+html.dark .admin-dashboard [class*="border-emerald"] {
+  border-color: revert !important;
+}
+
+/* Bootstrap loads after our CSS and overrides body { background } — force dark bg */
+html.dark body {
+  background-color: hsl(var(--background)) !important;
+}
+
+/* Admin-dashboard wrapper: ensure dark bg even on transparent wrapper */
+html.dark .admin-dashboard {
+  background-color: hsl(var(--background));
+}
+
+/* Tailwind preflight sets --tw-ring-offset-color: #fff globally.
+   In dark mode match it to the background so ring offsets are invisible. */
+html.dark * {
+  --tw-ring-offset-color: hsl(var(--background));
+}
+
+/* Pure-CSS marquee — immune to tab-switch pauses and duplicate Swiper init */
+.marquee-track {
+  display: flex;
+  overflow: hidden;
+  user-select: none;
+}
+
+.marquee-set {
+  display: flex;
+  flex-shrink: 0;
+  animation: marquee-scroll 35s linear infinite;
+}
+
+@keyframes marquee-scroll {
+  from {
+    transform: translateX(0);
   }
 
-  .glass-card {
-    @apply bg-card/70 backdrop-blur-md border border-border;
-  }
-
-  .ring-focus {
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background;
-  }
-
-  .stagger-item {
-    opacity: 0;
-    animation: fade-in 0.5s ease-out forwards;
-  }
-
-  .animate-float {
-    animation: float 6s ease-in-out infinite;
-  }
-
-  .animate-float-slow {
-    animation: float 10s ease-in-out infinite;
-  }
-
-  .animate-shimmer {
-    background: linear-gradient(
-      90deg,
-      transparent,
-      hsl(var(--primary) / 0.1),
-      transparent
-    );
-    background-size: 200% 100%;
-    animation: shimmer 2s linear infinite;
-  }
-
-  .animate-glow {
-    animation: glow 3s ease-in-out infinite;
+  to {
+    transform: translateX(-100%);
   }
 }
 
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-12px);
-  }
-}
-
-@keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
-@keyframes glow {
-  0%, 100% {
-    box-shadow: 0 0 20px hsl(var(--primary) / 0.2);
-  }
-  50% {
-    box-shadow: 0 0 40px hsl(var(--primary) / 0.4);
-  }
-}
-
-@keyframes slide-up {
-  0% {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes scale-in {
-  0% {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@media print {
-  /* Hide sidebar, header, and other dashboard chrome */
-  aside,
-  header,
-  nav,
-  [class*="sidebar"],
-  .print\:hidden {
-    display: none !important;
+@media (max-width: 767px) {
+  .section-area .container,
+  .hero-banner-one .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
   }
 
-  body {
-    background: white !important;
-    color: black !important;
+  .hero-banner-one {
+    overflow: hidden;
   }
 
-  main {
-    padding: 0 !important;
-    max-width: 100% !important;
+  .hero-banner-one .hero-content {
+    padding-right: 0;
   }
 
-  /* When report modal is open: hide everything except the modal content */
-  body.print-modal-open > div:not(:has(.student-report-modal)) {
-    display: none !important;
+  .hero-banner-one .hero-content .flex,
+  .hero-banner-one .hero-content > div:last-child {
+    flex-direction: column;
+    align-items: stretch;
   }
 
-  body.print-modal-open .student-report-modal {
-    position: static !important;
-    box-shadow: none !important;
-    border: 0 !important;
-    max-width: 100% !important;
-    max-height: none !important;
-    width: 100% !important;
-    overflow: visible !important;
-    border-radius: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
+  .hero-banner-one .btn,
+  .hero-banner-one a.btn {
+    width: 100%;
+    justify-content: center;
+    margin-left: 0 !important;
   }
 
-  body.print-modal-open .student-report-modal ~ * {
-    display: none !important;
+  .featured-bx1 .featured-content,
+  .testimonial-content p,
+  .categorie-title,
+  .categories-card h5,
+  .heading-bx h2,
+  .heading-bx p {
+    word-break: break-word;
+    overflow-wrap: anywhere;
   }
 
-  body.print-modal-open .fixed.inset-0 {
-    position: static !important;
-    background: white !important;
-    backdrop-filter: none !important;
-    padding: 0 !important;
-    display: block !important;
-  }
-
-  /* Force light colors for printing */
-  .bg-card,
-  .bg-background,
-  .bg-muted {
-    background: white !important;
-  }
-
-  .text-muted-foreground {
-    color: #555 !important;
-  }
-
-  .text-foreground {
-    color: #000 !important;
-  }
-
-  /* Avoid breaking inside elements */
-  .rounded-2xl,
-  table {
-    page-break-inside: avoid;
-  }
-
-  /* Ensure proper margins */
-  @page {
-    margin: 1.5cm;
+  .testimonial-card {
+    padding: 1rem;
   }
 }

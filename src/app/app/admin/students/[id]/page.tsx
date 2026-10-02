@@ -15,9 +15,11 @@ import {
   CheckCircle2,
   XCircle,
   Users,
+  Film,
 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { PrintButton } from "./print-button";
+import { StudentRecordings, type StudentRecordingItem } from "./student-recordings";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +64,29 @@ export default async function StudentReportPage({
     },
     orderBy: { completedAt: "desc" },
   });
+
+  // Class recordings of this student's booked classes (room id `booking-<slot id>`)
+  const bookingIds = await prisma.bookingSlot.findMany({
+    where: { enrollment: { studentId: student.id } },
+    select: { id: true },
+  });
+  const recordings = bookingIds.length
+    ? await prisma.classRecording.findMany({
+        where: { roomId: { in: bookingIds.map((b) => `booking-${b.id}`) } },
+        orderBy: { createdAt: "desc" },
+        include: { teacher: { select: { name: true } } },
+      })
+    : [];
+  const recordingItems: StudentRecordingItem[] = recordings.map((r) => ({
+    id: r.id,
+    teacherName: r.teacher?.name ?? null,
+    courseName: r.courseName,
+    url: r.url,
+    durationSec: r.durationSec,
+    sizeBytes: r.sizeBytes,
+    startedAt: r.startedAt.toISOString(),
+    shared: !!r.sharedWithStudentAt,
+  }));
 
   // Stats
   const totalEnrollments = student.studentEnrollments.length;
@@ -338,6 +363,21 @@ export default async function StudentReportPage({
           </div>
         </div>
       )}
+
+      {/* Class recordings — admin only unless shared; left out of the printed report */}
+      <div className="rounded-2xl border border-border bg-card p-6 print:hidden">
+        <div className="flex items-center gap-2 mb-4">
+          <Film className="h-5 w-5 text-primary" />
+          <h3 className="text-lg font-bold">Class Recordings</h3>
+          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">
+            {recordingItems.length}
+          </span>
+          <span className="ml-auto text-xs text-muted-foreground">
+            The student sees only the ones you show them
+          </span>
+        </div>
+        <StudentRecordings items={recordingItems} />
+      </div>
 
       {/* Footer */}
       <div className="hidden print:block text-center text-xs text-muted-foreground border-t border-foreground pt-4 mt-8">

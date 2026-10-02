@@ -1,5 +1,4 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getStudentViewer } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { CheckCircle2, XCircle, Clock, Calendar, TrendingUp } from "lucide-react";
@@ -7,11 +6,11 @@ import { CheckCircle2, XCircle, Clock, Calendar, TrendingUp } from "lucide-react
 export const dynamic = "force-dynamic";
 
 export default async function StudentAttendance() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return null;
+  const viewer = await getStudentViewer();
+  if (!viewer) return null;
 
   const records = await prisma.attendance.findMany({
-    where: { studentId: session.user.id },
+    where: { studentId: viewer.id },
     include: {
       class: {
         include: {

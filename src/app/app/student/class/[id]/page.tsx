@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveRoom } from "@/lib/class-room";
 import { ensureDailyRoom, isDailyConfigured } from "@/lib/daily";
+import { createJaasJwt, getJaasConfig } from "@/lib/jaas";
 import { ClassRoom } from "@/components/class-room/class-room";
 
 export const dynamic = "force-dynamic";
@@ -33,8 +34,20 @@ export default async function StudentClassRoom({
     if (!enrolled) redirect("/app/student/schedule");
   }
 
+  const displayName = session.user.name ?? "Student";
+
+  // With JaaS keys configured the student joins the teacher's 8x8.vc room as a
+  // regular participant. Trials stay on public meet.jit.si (see teacher page).
+  const jaasConfig = room.kind !== "trial" ? getJaasConfig() : null;
+  const jaas = jaasConfig
+    ? createJaasJwt(jaasConfig, {
+        user: { id: session.user.id, name: displayName, email: session.user.email },
+        moderator: false,
+      })
+    : null;
+
   let dailyUrl: string | null = null;
-  if (isDailyConfigured()) {
+  if (!jaas && isDailyConfigured()) {
     try {
       const dRoom = await ensureDailyRoom(room.roomId);
       dailyUrl = dRoom.url;
@@ -49,9 +62,10 @@ export default async function StudentClassRoom({
         roomId={room.roomId}
         dailyUrl={dailyUrl}
         jitsiRoomName={room.jitsiRoomName}
+        jaas={jaas}
         courseName={room.courseName}
         studentName={room.studentName}
-        displayName={session.user.name ?? "Student"}
+        displayName={displayName}
         isTeacher={false}
         notes={[]}
         backHref="/app/student/schedule"

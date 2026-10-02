@@ -1,4 +1,4 @@
-import { BookOpen } from "lucide-react";
+import Image from "next/image";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { IslamicPattern } from "@/components/islamic-pattern";
 
@@ -12,21 +12,20 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <header className="relative z-10">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between">
           <a
-            href="https://fe-quran-academy.vercel.app/"
+            href="/"
             target="_blank"
             rel="noopener noreferrer"
             title="Visit the academy website"
-            className="flex items-center gap-2 group"
+            className="flex items-center group"
           >
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-primary to-accent shadow-md shadow-primary/20 transition-transform group-hover:scale-105">
-              <BookOpen className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <div className="flex flex-col leading-tight">
-              <span className="text-sm font-bold tracking-tight">Online Quran</span>
-              <span className="text-[11px] font-medium text-muted-foreground -mt-0.5">
-                Academy
-              </span>
-            </div>
+            <Image
+              src="/quran-academy-logo.png"
+              alt="Quran Academy Logo"
+              width={140}
+              height={44}
+              className="h-10 w-auto object-contain transition-opacity group-hover:opacity-80"
+              priority
+            />
           </a>
           <ThemeToggle />
         </div>

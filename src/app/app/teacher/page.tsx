@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import {
   Users,
   BookOpen,
@@ -21,7 +20,7 @@ import { formatSlotRange, SHIFT_RANGES, type Shift } from "@/lib/shifts";
 import { pktDayMidnightUTC } from "@/lib/pkt-day";
 import { TeacherWorkdayCard } from "@/components/teacher/workday-card";
 import { WeekAttendanceStrip } from "@/components/teacher/week-attendance-strip";
-import { buildWeekDays, weekTotalMs } from "@/lib/attendance-week";
+import { getTeacherDashboardData } from "./_caches";
 
 export const revalidate = 30;
 
@@ -32,57 +31,14 @@ export default async function TeacherDashboard() {
   const teacherId = session.user.id;
   const teacherName = session.user.name ?? "Teacher";
 
+  // Keyed by today's PKT date so the workday card + 7-day strip roll over at midnight
   const today = pktDayMidnightUTC();
-  const [me, courses, enrollments, bookings, todayAttendance] = await Promise.all([
-    prisma.user.findUnique({ where: { id: teacherId }, select: { shift: true } }),
-    prisma.course.findMany({
-      where: { teacherId },
-      include: { _count: { select: { enrollments: true } } },
-    }),
-    prisma.enrollment.findMany({
-      where: { course: { teacherId } },
-      include: {
-        student: { select: { id: true, name: true, country: true } },
-        course: { select: { id: true, name: true, level: true } },
-      },
-      orderBy: { startedAt: "desc" },
-      take: 10,
-    }),
-    prisma.bookingSlot.findMany({
-      where: { teacherId },
-      include: {
-        enrollment: {
-          include: {
-            student: { select: { name: true, country: true } },
-            course: { select: { name: true } },
-          },
-        },
-      },
-      orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
-    }),
-    prisma.teacherAttendance.findUnique({
-      where: { teacherId_date: { teacherId, date: today } },
-    }),
-  ]);
-
-  const workdayInitial = {
-    signedIn: !!todayAttendance,
-    signedOut: !!todayAttendance?.signOutAt,
-    signInAt: todayAttendance?.signInAt.toISOString() ?? null,
-    signOutAt: todayAttendance?.signOutAt?.toISOString() ?? null,
-  };
-
-  // Last 7 PKT days for the teacher's own attendance strip
-  const sevenDaysAgo = new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000);
-  const weekRecords = await prisma.teacherAttendance.findMany({
-    where: { teacherId, date: { gte: sevenDaysAgo, lte: today } },
-  });
-  const weekDays = buildWeekDays(weekRecords);
-  const weekHours = weekTotalMs(weekRecords);
+  const { shift: myShift, courses, enrollments, bookings, workdayInitial, weekDays, weekHours } =
+    await getTeacherDashboardData(teacherId, today.toISOString());
 
   const totalStudents = new Set(enrollments.map((e) => e.student.id)).size;
   const totalCourses = courses.length;
-  const shift = me?.shift as Shift | null;
+  const shift = myShift as Shift | null;
 
   // Group bookings by day for the weekly schedule
   const bookingsByDay = DAYS.map((d) => ({

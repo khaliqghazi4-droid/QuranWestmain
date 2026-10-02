@@ -44,24 +44,25 @@ export function addMinutes(hhmm: string, minutes: number): string {
   return `${String(nh).padStart(2, "0")}:${String(nm).padStart(2, "0")}`;
 }
 
-// Check if a PKT slot [slotStart, slotStart+30) falls within ANY of the student's
-// availability windows. Student windows are in their own timezone, so we convert
-// each window's bounds to PKT for comparison on the matching weekday.
+// Check if a PKT slot [slotStart, slotStart+30) falls within ANY of the given
+// availability windows (a student's or a teacher's). Windows are in their owner's
+// timezone, so we convert each window's bounds to PKT for comparison on the
+// matching weekday.
 export type AvailWindow = { dayOfWeek: number; startTime: string; endTime: string };
 
-export function slotMatchesStudent(
+export function slotInWindows(
   slotDay: number,
   slotStart: string, // PKT "HH:MM"
-  studentWindows: AvailWindow[],
-  studentTz: string
+  windows: AvailWindow[],
+  windowsTz: string
 ): boolean {
   const slotStartMin = toMinutes(slotStart);
   const slotEndMin = slotStartMin + SLOT_MINUTES;
 
-  for (const w of studentWindows) {
-    // Convert student's window bounds (their TZ) to PKT
-    const startConv = convertTime(w.startTime, studentTz, PK_TZ, w.dayOfWeek);
-    const endConv = convertTime(w.endTime, studentTz, PK_TZ, w.dayOfWeek);
+  for (const w of windows) {
+    // Convert the window bounds (owner's TZ) to PKT
+    const startConv = convertTime(w.startTime, windowsTz, PK_TZ, w.dayOfWeek);
+    const endConv = convertTime(w.endTime, windowsTz, PK_TZ, w.dayOfWeek);
 
     // The day in PKT for this window's start
     const winDay = ((w.dayOfWeek + startConv.dayShift) % 7 + 7) % 7;
@@ -83,6 +84,15 @@ export function slotMatchesStudent(
     if (s >= winStartMin && e <= winEndMin) return true;
   }
   return false;
+}
+
+export function slotMatchesStudent(
+  slotDay: number,
+  slotStart: string, // PKT "HH:MM"
+  studentWindows: AvailWindow[],
+  studentTz: string
+): boolean {
+  return slotInWindows(slotDay, slotStart, studentWindows, studentTz);
 }
 
 function toMinutes(hhmm: string): number {

@@ -47,6 +47,8 @@ model User {
   timezone      String?
   bio           String?
   emailVerified DateTime?
+  accessExpiresAt DateTime? // free-trial logins: sign-in and sessions stop working after this; null = no limit
+  suspendedAt     DateTime? // set by the admin; blocks sign-in and ends open sessions until cleared
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -290,9 +292,14 @@ model Message {
   attachmentSize Int?
   read       Boolean  @default(false)
   createdAt  DateTime @default(now())
+  editedAt   DateTime? // sender edited the text (allowed for 15 min after sending)
+  deletedAt  DateTime? // "This message was deleted": content and attachment are cleared
+  replyToId  String?   // the message this one replies to
 
   sender     User @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
   receiver   User @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  replyTo    Message?  @relation("MessageReply", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies    Message[] @relation("MessageReply")
 }
 
 model UserAvailability {
@@ -308,13 +315,38 @@ model UserAvailability {
   @@index([userId])
 }
 
-// Admin's manual assignment of a website trial request to a specific teacher.
-// The trial itself lives in MongoDB (developer's backend); we key by its _id.
+// "Enroll Now" submissions from the public website and the student dashboard.
+// Every row shows on /app/admin/enrollments; rows the admin sends to Free Trial
+// (inTrials) also show on /app/admin/trials.
+model EnrollmentRequest {
+  id          String    @id @default(cuid())
+  course      String // DB course name when matched, else the form label
+  courseFor   String    @default("adult") // "adult" | "kid"
+  gender      String? // "male" | "female"
+  tutorGender String? // "male" | "female"
+  fullName    String
+  email       String
+  whatsapp    String
+  city        String    @default("")
+  country     String
+  trialTime   DateTime? // requested time; replaced when the admin schedules the trial
+  children    Json      @default("[]")
+  source      String    @default("website") // "website" | "dashboard"
+  inTrials    Boolean   @default(false)
+  convertedAt DateTime? // set when the admin adds the applicant as a student; hides the request from both lists
+  createdAt   DateTime  @default(now())
+
+  @@index([createdAt])
+  @@index([inTrials])
+}
+
+// Admin's manual assignment of a trial request to a specific teacher.
+// mongoEnrollmentId holds the EnrollmentRequest id (the name predates the move off MongoDB).
 model TrialAssignment {
   id                String   @id @default(cuid())
   mongoEnrollmentId String   @unique
   teacherId         String
-  trialTime         DateTime // copy of MongoDB trialTime for fast conflict checks
+  trialTime         DateTime // copy of the request's trialTime for fast conflict checks
   assignedAt        DateTime @default(now())
 
   teacher User @relation("TrialTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
@@ -391,6 +423,8 @@ model ClassRecording {
   sizeBytes   Int?
   startedAt   DateTime
   createdAt   DateTime @default(now())
+  // When the admin made it visible to the class's student; null = admin only
+  sharedWithStudentAt DateTime?
 
   teacher User @relation("TeacherRecordings", fields: [teacherId], references: [id], onDelete: Cascade)
 

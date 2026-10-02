@@ -95,10 +95,8 @@ export async function ensureDailyRoom(roomId: string): Promise<DailyRoom> {
   // NOTE: room-level `enable_recording` is a paid feature on Daily — passing
   // it on the free plan returns a 400 ("cannot be set to that value with
   // your current plan") which we used to swallow, silently falling back to
-  // Jitsi. Left out so the room creates cleanly on the free tier. Local
-  // recording is still requested by the client via
-  // `call.startRecording({ type: 'local' })` and falls back to screen-share
-  // capture if Daily rejects it at runtime.
+  // Jitsi. Left out so the room creates cleanly on the free tier. Classes are
+  // recorded by the class room's own tab recorder (use-class-recorder.ts).
   const created = await dailyFetch<DailyApiRoom>("/rooms", {
     method: "POST",
     body: JSON.stringify({

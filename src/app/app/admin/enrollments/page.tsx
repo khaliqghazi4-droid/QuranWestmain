@@ -1,49 +1,64 @@
+﻿﻿import { Suspense } from "react";
 import { PageHeader } from "@/components/dashboard/page-header";
-import { getWebsiteEnrollments, type WebsiteEnrollment } from "@/lib/enroll-source";
+import type { WebsiteEnrollment } from "@/lib/enroll-source";
 import { EnrollmentsList } from "./enrollments-list";
 import { AlertCircle } from "lucide-react";
+import { getCachedEnrollments } from "../_caches";
 
-export const revalidate = 30;
+export const revalidate = 600;
 
-export default async function AdminEnrollmentsPage() {
+export default function AdminEnrollmentsPage() {
+  return (
+    <div className="space-y-6">
+      <PageHeader title="Enrollments" description="Student enrollment requests" />
+      <Suspense fallback={<EnrollmentsShell />}>
+        <EnrollmentsData />
+      </Suspense>
+    </div>
+  );
+}
+
+async function EnrollmentsData() {
   let enrollments: WebsiteEnrollment[] = [];
   let error: string | null = null;
 
   try {
-    enrollments = await getWebsiteEnrollments();
+    enrollments = await getCachedEnrollments();
   } catch (e) {
     error = e instanceof Error ? e.message : "Could not load enrollment requests";
   }
 
-  const adults = enrollments.filter((e) => e.courseFor === "adult").length;
-  const kids = enrollments.filter((e) => e.courseFor === "kid").length;
-
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Enrollment Requests"
-        description={
-          error
-            ? "Requests submitted from the academy website"
-            : `${enrollments.length} total · ${adults} adult · ${kids} kids`
-        }
-      />
-
-      {error ? (
-        <div className="flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/10 p-5 text-sm">
-          <AlertCircle className="h-5 w-5 mt-0.5 shrink-0 text-destructive" />
-          <div>
-            <p className="font-semibold text-destructive">Could not reach the website database</p>
-            <p className="text-muted-foreground mt-1 text-xs">{error}</p>
-            <p className="text-muted-foreground mt-2 text-xs">
-              Make sure <span className="font-mono font-semibold">ENROLL_MONGO_URI</span> is set in
-              the environment (Vercel → Settings → Environment Variables).
-            </p>
-          </div>
+  if (error) {
+    return (
+      <div className="flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/10 p-5 text-sm">
+        <AlertCircle className="h-5 w-5 mt-0.5 shrink-0 text-destructive" />
+        <div>
+          <p className="font-semibold text-destructive">Could not load enrollments</p>
+          <p className="text-muted-foreground mt-1 text-xs">{error}</p>
         </div>
-      ) : (
-        <EnrollmentsList enrollments={enrollments} />
-      )}
+      </div>
+    );
+  }
+
+  return <EnrollmentsList enrollments={enrollments} />;
+}
+
+function EnrollmentsShell() {
+  const cols = ["Status", "Name", "Email", "Course", "Date"];
+  return (
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <div className="flex gap-3 px-4 py-3 border-b border-border bg-muted/20">
+        {cols.map((h) => (
+          <span key={h} className="text-xs font-medium text-muted-foreground flex-1">{h}</span>
+        ))}
+      </div>
+      {Array.from({ length: 7 }).map((_, i) => (
+        <div key={i} className="flex gap-3 px-4 py-3 border-b border-border last:border-0">
+          {cols.map((h) => (
+            <span key={h} className="text-xs text-muted-foreground/40 flex-1">—</span>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }

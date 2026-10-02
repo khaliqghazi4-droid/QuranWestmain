@@ -1,29 +1,11 @@
-import { MongoClient } from "mongodb";
+import { prisma } from "@/lib/prisma";
 
-// Reads enrollment submissions from the public website's MongoDB Atlas
-// (the developer's "Enroll Now" form writes to the `enrollments` collection).
-const uri = process.env.ENROLL_MONGO_URI;
-const dbName = process.env.ENROLL_MONGO_DB || "test";
+// Enrollment requests submitted from the public website's "Enroll Now" form
+// and the student dashboard, stored in the EnrollmentRequest table.
 
-// Cache the client across hot reloads / serverless invocations.
-const globalForMongo = globalThis as unknown as {
-  enrollMongo?: Promise<MongoClient>;
-};
-
-function getClient(): Promise<MongoClient> {
-  if (!uri) throw new Error("ENROLL_MONGO_URI is not configured");
-  if (!globalForMongo.enrollMongo) {
-    const client = new MongoClient(uri, { serverSelectionTimeoutMS: 15000 });
-    globalForMongo.enrollMongo = client.connect();
-  }
-  return globalForMongo.enrollMongo;
-}
-
-// Lightweight ping used by /api/health to keep the Atlas connection warm.
 export async function pingEnrollDb(): Promise<boolean> {
   try {
-    const client = await getClient();
-    await client.db(dbName).command({ ping: 1 });
+    await prisma.enrollmentRequest.findFirst({ select: { id: true } });
     return true;
   } catch {
     return false;
@@ -52,12 +34,8 @@ export type WebsiteEnrollment = {
   createdAt: string | null;
 };
 
-// Shape the website form posts into MongoDB. We mirror it exactly when a
-// signed-in student submits the in-app enrollment form so the admin's
-// existing /app/admin/enrollments review flow keeps working with no
-// changes — the request shows up in the same list either way.
 export type EnrollSubmission = {
-  course: string;            // course name (matches a row in our Postgres `courses` table)
+  course: string;            // course name (matches a row in the `courses` table when possible)
   courseFor: "adult" | "kid";
   gender: "male" | "female" | null;
   tutorGender: "male" | "female" | null;
@@ -71,52 +49,72 @@ export type EnrollSubmission = {
   source: "website" | "dashboard"; // so admin can tell where it came from
 };
 
+export function trimStr(v: unknown, max = 200): string {
+  if (typeof v !== "string") return "";
+  return v.trim().slice(0, max);
+}
+
+export function parseGender(v: unknown): "male" | "female" | null {
+  return v === "male" || v === "female" ? v : null;
+}
+
+export function parseChildren(raw: unknown): EnrollChild[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((c) => {
+      if (!c || typeof c !== "object") return null;
+      const obj = c as Record<string, unknown>;
+      const name = trimStr(obj.name, 100);
+      if (!name) return null;
+      const ageNum = typeof obj.age === "number" ? obj.age : Number(obj.age);
+      return {
+        name,
+        age: Number.isFinite(ageNum) ? ageNum : null,
+        gender: parseGender(obj.gender),
+      } satisfies EnrollChild;
+    })
+    .filter((c): c is EnrollChild => c !== null)
+    .slice(0, 10);
+}
+
 export async function submitWebsiteEnrollment(
   payload: EnrollSubmission
 ): Promise<{ id: string }> {
-  const client = await getClient();
-  const result = await client
-    .db(dbName)
-    .collection("enrollments")
-    .insertOne({
+  const trialTime = payload.trialTime ? new Date(payload.trialTime) : null;
+  const row = await prisma.enrollmentRequest.create({
+    data: {
       ...payload,
-      // `trialTime` is stored as a real Date object in the website's own
-      // submissions; preserve that shape so existing admin code that reads
-      // it back doesn't have to special-case our submissions.
-      trialTime: payload.trialTime ? new Date(payload.trialTime) : null,
-      createdAt: new Date(),
-    });
-  return { id: String(result.insertedId) };
+      trialTime: trialTime && !Number.isNaN(trialTime.getTime()) ? trialTime : null,
+    },
+    select: { id: true },
+  });
+  return { id: row.id };
 }
 
-export async function getWebsiteEnrollments(): Promise<WebsiteEnrollment[]> {
-  const client = await getClient();
-  const docs = await client
-    .db(dbName)
-    .collection("enrollments")
-    .find()
-    .sort({ createdAt: -1 })
-    .toArray();
+// inTrials: true = Free Trial list, false = Enroll Requests list (both skip requests
+// already added as students); omitted = every request, for lookups by id.
+export async function getWebsiteEnrollments(
+  opts: { inTrials?: boolean } = {}
+): Promise<WebsiteEnrollment[]> {
+  const rows = await prisma.enrollmentRequest.findMany({
+    where:
+      opts.inTrials === undefined ? undefined : { inTrials: opts.inTrials, convertedAt: null },
+    orderBy: { createdAt: "desc" },
+  });
 
-  return docs.map((d) => ({
-    id: String(d._id),
-    course: typeof d.course === "string" ? d.course : "",
-    courseFor: d.courseFor === "kid" ? "kid" : "adult",
-    tutorGender: d.tutorGender === "female" ? "female" : d.tutorGender === "male" ? "male" : null,
-    gender: d.gender === "female" ? "female" : d.gender === "male" ? "male" : null,
-    fullName: typeof d.fullName === "string" ? d.fullName : "",
-    email: typeof d.email === "string" ? d.email : "",
-    whatsapp: typeof d.whatsapp === "string" ? d.whatsapp : "",
-    city: typeof d.city === "string" ? d.city : "",
-    country: typeof d.country === "string" ? d.country : "",
-    trialTime: d.trialTime ? new Date(d.trialTime).toISOString() : null,
-    children: Array.isArray(d.children)
-      ? d.children.map((ch: { name?: unknown; age?: unknown; gender?: unknown }) => ({
-          name: typeof ch.name === "string" ? ch.name : "",
-          age: typeof ch.age === "number" ? ch.age : null,
-          gender: ch.gender === "female" ? "female" : ch.gender === "male" ? "male" : null,
-        }))
-      : [],
-    createdAt: d.createdAt ? new Date(d.createdAt).toISOString() : null,
+  return rows.map((r) => ({
+    id: r.id,
+    course: r.course,
+    courseFor: r.courseFor === "kid" ? "kid" : "adult",
+    tutorGender: parseGender(r.tutorGender),
+    gender: parseGender(r.gender),
+    fullName: r.fullName,
+    email: r.email,
+    whatsapp: r.whatsapp,
+    city: r.city,
+    country: r.country,
+    trialTime: r.trialTime ? r.trialTime.toISOString() : null,
+    children: parseChildren(r.children),
+    createdAt: r.createdAt.toISOString(),
   }));
 }

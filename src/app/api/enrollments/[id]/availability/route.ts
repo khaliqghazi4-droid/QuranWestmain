@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -102,6 +103,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         : []),
     ]);
 
+    // The Scheduling page serves enrollments from a 10-min cache; without this the
+    // cards and the "Edit Times" editor keep showing the old times after a save
+    revalidatePath("/app/admin/availability");
     return NextResponse.json({ ok: true });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Update failed";

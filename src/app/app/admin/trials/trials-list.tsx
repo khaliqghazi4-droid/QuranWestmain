@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Search,
@@ -18,9 +19,18 @@ import {
   CalendarCheck,
   CheckCircle2,
   Loader2,
+  Undo2,
+  UserPlus,
   X,
+  KeyRound,
+  Lock,
+  RotateCcw,
+  Ban,
+  ShieldCheck,
 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
+import { addStudentHref } from "../enrollments/enrollments-list";
+import { LoginCredentialsModal } from "@/components/admin/login-credentials-modal";
 
 export type TeacherChoice = {
   id: string;
@@ -49,6 +59,15 @@ export type TrialSession = {
   assignedTeacherId: string | null;
   assignedTeacherName: string | null;
   meetingLink: string | null;
+  isStudent: boolean;
+  // Time-limited free-trial login (null when none, e.g. already a full student)
+  account: {
+    id: string;
+    phone: string | null;
+    loginPassword: string | null;
+    accessExpiresAt: string;
+    suspendedAt: string | null;
+  } | null;
 };
 
 function fmt(iso: string | null) {
@@ -121,6 +140,15 @@ export function TrialsList({ trials }: { trials: TrialSession[] }) {
         <div className="rounded-2xl border-2 border-dashed border-border bg-card/50 p-12 text-center">
           <CalendarCheck className="mx-auto h-12 w-12 text-muted-foreground/50" />
           <p className="mt-4 text-sm font-semibold">No trial sessions</p>
+          {trials.length === 0 && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Use &quot;Free Trial&quot; on{" "}
+              <Link href="/app/admin/enrollments" className="font-semibold text-primary hover:underline">
+                Enrollment Requests
+              </Link>{" "}
+              to schedule one.
+            </p>
+          )}
         </div>
       ) : (
         <div className="grid gap-3 lg:grid-cols-2">
@@ -157,6 +185,20 @@ function TrialCard({ t }: { t: TrialSession }) {
       return;
     }
     setPicker(false);
+    router.refresh();
+  }
+
+  async function backToRequests() {
+    if (!confirm("Move this back to Enroll Requests? Any assigned teacher is removed.")) return;
+    setError(null);
+    setBusy("back");
+    const res = await fetch(`/api/trials/${t.id}`, { method: "DELETE" });
+    setBusy(null);
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      setError(d.error ?? "Could not move it back");
+      return;
+    }
     router.refresh();
   }
 
@@ -214,6 +256,16 @@ function TrialCard({ t }: { t: TrialSession }) {
           </div>
           <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{t.email}</p>
         </div>
+        <button
+          type="button"
+          onClick={backToRequests}
+          disabled={busy === "back"}
+          title="Move back to Enroll Requests"
+          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[10px] font-semibold text-muted-foreground hover:border-destructive/40 hover:text-destructive disabled:opacity-50"
+        >
+          {busy === "back" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Undo2 className="h-3 w-3" />}
+          Back to requests
+        </button>
       </div>
 
       {/* Trial details */}
@@ -412,6 +464,185 @@ function TrialCard({ t }: { t: TrialSession }) {
           <Copy className="h-3.5 w-3.5" /> {copied ? "Copied" : "Copy"}
         </button>
       </div>
+
+      {!t.isStudent &&
+        (t.account ? <TrialLogin t={t} account={t.account} /> : <CreateTrialLogin t={t} />)}
+
+      {t.isStudent ? (
+        <Link
+          href="/app/admin/students"
+          className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-700 dark:text-emerald-400"
+        >
+          <CheckCircle2 className="h-3.5 w-3.5" /> Added as student
+        </Link>
+      ) : (
+        <Link
+          href={addStudentHref(t)}
+          className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-primary to-accent px-3 py-2 text-xs font-bold text-primary-foreground shadow-md"
+        >
+          <UserPlus className="h-3.5 w-3.5" /> Add Student
+        </Link>
+      )}
+    </div>
+  );
+}
+
+// Trials sent before trial logins existed have none; this creates it (same call as "Free Trial")
+function CreateTrialLogin({ t }: { t: TrialSession }) {
+  const router = useRouter();
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  async function create() {
+    if (!t.trialTime) return;
+    setError(null);
+    setBusy(true);
+    const res = await fetch(`/api/trials/${t.id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ trialTime: t.trialTime }),
+    });
+    setBusy(false);
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      setError(d.error ?? "Could not create the trial login");
+      return;
+    }
+    router.refresh();
+  }
+
+  return (
+    <div className="mt-3 rounded-xl border border-dashed border-border bg-background p-3">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-[11px] text-muted-foreground">No trial login yet</span>
+        <button
+          onClick={create}
+          disabled={busy || !t.trialTime}
+          className="ml-auto inline-flex items-center gap-1 rounded-full bg-[hsl(var(--primary))] px-2.5 py-1 text-[11px] font-bold text-primary-foreground disabled:opacity-60"
+        >
+          {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <KeyRound className="h-3 w-3" />}
+          Create trial login
+        </button>
+      </div>
+      {error && <p className="mt-2 text-[11px] text-destructive">{error}</p>}
+    </div>
+  );
+}
+
+function TrialLogin({
+  t,
+  account,
+}: {
+  t: TrialSession;
+  account: NonNullable<TrialSession["account"]>;
+}) {
+  const router = useRouter();
+  const [password, setPassword] = React.useState(account.loginPassword);
+  const [open, setOpen] = React.useState(false);
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const locked = new Date(account.accessExpiresAt).getTime() <= Date.now();
+  const suspended = !!account.suspendedAt;
+
+  async function post(path: string, body: unknown, fallbackError: string) {
+    setError(null);
+    setBusy(true);
+    const res = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body ?? {}),
+    });
+    setBusy(false);
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      setError(d.error ?? fallbackError);
+      return;
+    }
+    router.refresh();
+  }
+
+  const allow = () => post(`/api/trials/${t.id}/allow`, {}, "Could not allow access");
+
+  function setSuspended(suspend: boolean) {
+    if (
+      suspend &&
+      !confirm(`Suspend ${t.fullName}'s account? They will be signed out and can't log in until you reactivate it.`)
+    )
+      return;
+    post(`/api/trials/${t.id}/suspend`, { suspend }, suspend ? "Could not suspend" : "Could not reactivate");
+  }
+
+  return (
+    <div className="mt-3 rounded-xl border border-border bg-background p-3">
+      <div className="flex items-center gap-2 flex-wrap">
+        {suspended ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2.5 py-1 text-[11px] font-bold text-destructive">
+            <Ban className="h-3 w-3" /> Suspended by admin
+          </span>
+        ) : locked ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2.5 py-1 text-[11px] font-bold text-destructive">
+            <Lock className="h-3 w-3" /> Locked · trial ended
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
+            <CheckCircle2 className="h-3 w-3" /> Trial login · until {fmt(account.accessExpiresAt)} PKT
+          </span>
+        )}
+        <span className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() => setOpen(true)}
+            title="View / share trial login"
+            className="inline-flex items-center gap-1 text-[11px] font-semibold text-[hsl(var(--primary))] hover:underline"
+          >
+            <KeyRound className="h-3 w-3" /> Login
+          </button>
+        </span>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
+        {busy && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+        {suspended ? (
+          <button
+            onClick={() => setSuspended(false)}
+            disabled={busy}
+            className="inline-flex items-center gap-1 rounded-full bg-[hsl(var(--primary))] px-2.5 py-1 text-[11px] font-bold text-primary-foreground disabled:opacity-60"
+          >
+            <ShieldCheck className="h-3 w-3" /> Reactivate account
+          </button>
+        ) : (
+          <>
+            {locked && (
+              <button
+                onClick={allow}
+                disabled={busy}
+                className="inline-flex items-center gap-1 rounded-full bg-[hsl(var(--primary))] px-2.5 py-1 text-[11px] font-bold text-primary-foreground disabled:opacity-60"
+              >
+                <RotateCcw className="h-3 w-3" /> Allow 3 more days
+              </button>
+            )}
+            <button
+              onClick={() => setSuspended(true)}
+              disabled={busy}
+              className="inline-flex items-center gap-1 rounded-full border border-destructive/40 px-2.5 py-1 text-[11px] font-bold text-destructive hover:bg-destructive/10 disabled:opacity-60"
+            >
+              <Ban className="h-3 w-3" /> Suspend account
+            </button>
+          </>
+        )}
+      </div>
+      {error && <p className="mt-2 text-[11px] text-destructive">{error}</p>}
+      {open && (
+        <LoginCredentialsModal
+          target={{
+            id: account.id,
+            name: t.fullName,
+            email: t.email,
+            phone: account.phone ?? t.whatsapp,
+            password,
+          }}
+          onClose={() => setOpen(false)}
+          onUpdated={setPassword}
+        />
+      )}
     </div>
   );
 }

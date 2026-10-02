@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
   Search,
@@ -17,11 +18,13 @@ import {
   Sun,
   Moon,
   Filter,
+  Video,
+  Check,
 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { AvailabilityEditor } from "@/components/availability/availability-editor";
 import { DAYS, formatTime12h } from "@/lib/timezones";
-import { formatSlotRange } from "@/lib/shifts";
+import { formatSlotRange, SHIFT_RANGES } from "@/lib/shifts";
 
 type Slot = { id: string; dayOfWeek: number; startTime: string; endTime: string };
 type Booking = {
@@ -257,6 +260,18 @@ function AvailabilityModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  React.useLayoutEffect(() => {
+    const main = document.querySelector("main") as HTMLElement | null;
+    const html = document.documentElement;
+    if (main) main.style.overflow = "hidden";
+    html.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    return () => {
+      if (main) main.style.overflow = "";
+      html.style.overflow = "";
+      document.body.style.overflow = "";
+    };
+  }, []);
   return (
     <div
       className="fixed inset-0 z-50 overflow-y-auto bg-foreground/40 backdrop-blur-sm animate-fade-in"
@@ -306,6 +321,7 @@ function AvailabilityModal({
 
 type SlotStatus = {
   time: string;
+  available: boolean;
   booked: boolean;
   bookedBy: { student: string; course: string; isThisStudent: boolean } | null;
   matchesStudent: boolean;
@@ -315,6 +331,9 @@ type TeacherOption = {
   name: string;
   shift: "DAY" | "NIGHT" | null;
   country: string | null;
+  timezone: string;
+  // Where the slots come from: the teacher's own available hours, else their shift
+  source: "availability" | "shift" | "none";
   days: { day: number; slots: SlotStatus[] }[];
 };
 type BookingOptions = {
@@ -330,6 +349,14 @@ type BookingOptions = {
   myBookings: { id: string; teacherId: string; dayOfWeek: number; startTime: string }[];
 };
 
+// The slot the admin clicked, waiting for Done in the confirm box
+type PendingBooking = {
+  teacherId: string;
+  teacherName: string;
+  dayOfWeek: number;
+  startTime: string;
+};
+
 function BookingModal({
   enrollment,
   onClose,
@@ -339,12 +366,26 @@ function BookingModal({
   onClose: () => void;
   onChanged: () => void;
 }) {
+  React.useLayoutEffect(() => {
+    const main = document.querySelector("main") as HTMLElement | null;
+    const html = document.documentElement;
+    if (main) main.style.overflow = "hidden";
+    html.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    return () => {
+      if (main) main.style.overflow = "";
+      html.style.overflow = "";
+      document.body.style.overflow = "";
+    };
+  }, []);
+
   const [data, setData] = React.useState<BookingOptions | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState<string | null>(null);
   const [activeTeacher, setActiveTeacher] = React.useState<string | null>(null);
-  const [onlyMatching, setOnlyMatching] = React.useState(false);
+  const [showAllTeacherSlots, setShowAllTeacherSlots] = React.useState(false);
+  const [pending, setPending] = React.useState<PendingBooking | null>(null);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -365,22 +406,28 @@ function BookingModal({
     load();
   }, [load]);
 
-  async function book(teacherId: string, dayOfWeek: number, startTime: string) {
-    setBusy(`${teacherId}-${dayOfWeek}-${startTime}`);
-    setError(null);
+  // Done in the confirm box. Returns an error message to show in the box, or
+  // null on success.
+  async function confirmBooking(): Promise<string | null> {
+    if (!pending) return null;
     const res = await fetch("/api/bookings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ enrollmentId: enrollment.id, teacherId, dayOfWeek, startTime }),
+      body: JSON.stringify({
+        enrollmentId: enrollment.id,
+        teacherId: pending.teacherId,
+        dayOfWeek: pending.dayOfWeek,
+        startTime: pending.startTime,
+      }),
     });
-    setBusy(null);
     if (!res.ok) {
       const d = await res.json().catch(() => ({}));
-      setError(d.error ?? "Booking failed");
-      return;
+      return d.error ?? "Booking failed";
     }
+    setPending(null);
     onChanged();
     await load();
+    return null;
   }
 
   async function unbook(bookingId: string) {
@@ -398,6 +445,9 @@ function BookingModal({
   }
 
   const teacher = data?.teachers.find((t) => t.id === activeTeacher) ?? null;
+  // Default to times that suit both the student and the teacher; without student
+  // availability there's nothing to match against, so show all teacher slots
+  const matchingOnly = !!data?.enrollment.hasAvailability && !showAllTeacherSlots;
 
   return (
     <div
@@ -436,7 +486,7 @@ function BookingModal({
               </div>
             )}
 
-            {loading ? (
+            {loading && !data ? (
               <div className="flex items-center justify-center py-16 text-muted-foreground">
                 <Loader2 className="h-6 w-6 animate-spin" />
               </div>
@@ -499,11 +549,11 @@ function BookingModal({
                   </div>
                 ) : (
                   <>
-                    {/* Teacher tabs */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {data.teachers.map((t) => {
-                        const noShift = !t.shift;
-                        return (
+                    {/* Teacher list */}
+                    <div>
+                      <p className="text-xs font-semibold mb-2">Choose a teacher</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {data.teachers.map((t) => (
                           <button
                             key={t.id}
                             onClick={() => setActiveTeacher(t.id)}
@@ -513,61 +563,92 @@ function BookingModal({
                                 : "border border-border bg-card hover:bg-muted"
                             }`}
                           >
-                            {t.shift === "DAY" ? (
-                              <Sun className="h-3 w-3" />
-                            ) : t.shift === "NIGHT" ? (
-                              <Moon className="h-3 w-3" />
-                            ) : (
-                              <AlertCircle className="h-3 w-3" />
-                            )}
+                            <TeacherSourceIcon teacher={t} className="h-3 w-3" />
                             {t.name}
-                            {noShift && (
-                              <span className="text-[9px] opacity-70">(no shift)</span>
+                            {t.source === "none" && (
+                              <span className="text-[9px] opacity-70">(no hours)</span>
                             )}
                           </button>
-                        );
-                      })}
+                        ))}
+                      </div>
                     </div>
+
+                    {/* Who the class is being booked with, and which times are shown */}
+                    {teacher && teacher.source !== "none" && (
+                      <div className="flex items-start gap-3 rounded-xl border border-primary/30 bg-primary/5 p-3">
+                        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-md">
+                          <TeacherSourceIcon teacher={teacher} className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold">Booking with {teacher.name}</p>
+                          <p className="mt-0.5 text-[11px] text-muted-foreground">
+                            {matchingOnly
+                              ? `Showing times when ${enrollment.student.name} and ${teacher.name} are both free (PKT).`
+                              : `Showing all of ${teacher.name}'s available hours (PKT).`}
+                            {teacher.source === "shift" && teacher.shift && (
+                              <>
+                                {" "}
+                                {teacher.name} hasn&apos;t set available hours, so their{" "}
+                                {SHIFT_RANGES[teacher.shift].label} shift is used.
+                              </>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Legend + filter */}
                     <div className="flex items-center justify-between gap-3 flex-wrap text-[10px] text-muted-foreground">
                       <div className="flex items-center gap-3 flex-wrap">
                         <span className="inline-flex items-center gap-1">
-                          <span className="h-2.5 w-2.5 rounded-sm bg-emerald-500/70" /> Matches student
+                          <span className="h-2.5 w-2.5 rounded-sm bg-emerald-500/70" />
+                          {matchingOnly ? "Both free — click to book" : "Matches student"}
                         </span>
-                        <span className="inline-flex items-center gap-1">
-                          <span className="h-2.5 w-2.5 rounded-sm border border-border bg-card" /> Free
-                        </span>
+                        {!matchingOnly && (
+                          <span className="inline-flex items-center gap-1">
+                            <span className="h-2.5 w-2.5 rounded-sm border border-border bg-card" /> Teacher free only
+                          </span>
+                        )}
                         <span className="inline-flex items-center gap-1">
                           <span className="h-2.5 w-2.5 rounded-sm bg-muted-foreground/30" /> Booked
                         </span>
+                        <span className="inline-flex items-center gap-1">
+                          <span className="font-bold text-muted-foreground/50">–</span> Not available
+                        </span>
                         <span className="font-semibold text-foreground">All times PKT</span>
                       </div>
-                      {data.enrollment.hasAvailability && (
+                      {data.enrollment.hasAvailability && teacher && teacher.source !== "none" && (
                         <label className="inline-flex items-center gap-1.5 cursor-pointer">
                           <input
                             type="checkbox"
-                            checked={onlyMatching}
-                            onChange={(e) => setOnlyMatching(e.target.checked)}
+                            checked={showAllTeacherSlots}
+                            onChange={(e) => setShowAllTeacherSlots(e.target.checked)}
                             className="rounded border-border"
                           />
-                          Only show matching slots
+                          Show all of {teacher.name}&apos;s slots
                         </label>
                       )}
                     </div>
 
-                    {teacher && !teacher.shift ? (
+                    {teacher && teacher.source === "none" ? (
                       <div className="rounded-xl border border-[hsl(var(--gold))]/40 bg-[hsl(var(--gold)/0.08)] p-4 text-xs text-center">
                         <AlertCircle className="mx-auto h-6 w-6 text-[hsl(var(--gold))] mb-2" />
-                        {teacher.name} has no shift assigned. Set a Day or Night shift in the
+                        {teacher.name} has no available hours or shift set. Set them in the
                         Teachers tab to see bookable slots.
                       </div>
                     ) : teacher ? (
                       <TeacherSlotGrid
                         teacher={teacher}
-                        busy={busy}
-                        onlyMatching={onlyMatching}
-                        onBook={book}
+                        studentName={enrollment.student.name}
+                        matchingOnly={matchingOnly}
+                        onPick={(dayOfWeek, startTime) =>
+                          setPending({
+                            teacherId: teacher.id,
+                            teacherName: teacher.name,
+                            dayOfWeek,
+                            startTime,
+                          })
+                        }
                       />
                     ) : null}
                   </>
@@ -575,31 +656,54 @@ function BookingModal({
               </>
             )}
           </div>
+
+          {pending && (
+            <ConfirmBookingDialog
+              booking={pending}
+              studentName={enrollment.student.name}
+              courseName={enrollment.course.name}
+              onClose={() => setPending(null)}
+              onConfirm={confirmBooking}
+            />
+          )}
         </div>
       </div>
     </div>
   );
 }
 
+// Clock = own available hours, sun/moon = shift fallback, alert = nothing set
+function TeacherSourceIcon({ teacher, className }: { teacher: TeacherOption; className: string }) {
+  if (teacher.source === "availability") return <Clock className={className} />;
+  if (teacher.shift === "DAY") return <Sun className={className} />;
+  if (teacher.shift === "NIGHT") return <Moon className={className} />;
+  return <AlertCircle className={className} />;
+}
+
 function TeacherSlotGrid({
   teacher,
-  busy,
-  onlyMatching,
-  onBook,
+  studentName,
+  matchingOnly,
+  onPick,
 }: {
   teacher: TeacherOption;
-  busy: string | null;
-  onlyMatching: boolean;
-  onBook: (teacherId: string, dayOfWeek: number, startTime: string) => void;
+  studentName: string;
+  // Only times that suit both the student and the teacher are bookable
+  matchingOnly: boolean;
+  onPick: (dayOfWeek: number, startTime: string) => void;
 }) {
-  // All unique slot times across days (shift slots are the same per day)
+  // Every day carries the same row times
   const times = teacher.days[0]?.slots.map((s) => s.time) ?? [];
 
-  const visibleTimes = onlyMatching
+  // In matching mode keep rows with a bookable cell, or one of this student's
+  // existing classes so those stay visible
+  const visibleTimes = matchingOnly
     ? times.filter((time) =>
         teacher.days.some((d) => {
           const s = d.slots.find((x) => x.time === time);
-          return s?.matchesStudent && !s.booked;
+          if (!s) return false;
+          if (s.booked) return !!s.bookedBy?.isThisStudent;
+          return s.available && s.matchesStudent;
         })
       )
     : times;
@@ -607,7 +711,7 @@ function TeacherSlotGrid({
   if (times.length === 0) {
     return (
       <div className="rounded-xl border border-border p-6 text-center text-xs text-muted-foreground">
-        No slots available for this shift.
+        No available slots for this teacher.
       </div>
     );
   }
@@ -634,7 +738,8 @@ function TeacherSlotGrid({
                 colSpan={8}
                 className="px-2 py-6 text-center text-muted-foreground italic"
               >
-                No free slots match the student&apos;s available times.
+                No times when {studentName} and {teacher.name} are both free. Tick
+                &quot;Show all of {teacher.name}&apos;s slots&quot;, or add more availability.
               </td>
             </tr>
           ) : (
@@ -646,8 +751,6 @@ function TeacherSlotGrid({
                 {teacher.days.map((d) => {
                   const slot = d.slots.find((s) => s.time === time);
                   if (!slot) return <td key={d.day} className="px-1 py-1" />;
-                  const key = `${teacher.id}-${d.day}-${time}`;
-                  const isBusy = busy === key;
 
                   if (slot.booked) {
                     return (
@@ -670,29 +773,35 @@ function TeacherSlotGrid({
                     );
                   }
 
+                  if (!slot.available || (matchingOnly && !slot.matchesStudent)) {
+                    return (
+                      <td key={d.day} className="px-1 py-1">
+                        <div
+                          className="py-1.5 text-center text-[9px] text-muted-foreground/40"
+                          title={slot.available ? "Student not available" : "Teacher not available"}
+                        >
+                          –
+                        </div>
+                      </td>
+                    );
+                  }
+
                   return (
                     <td key={d.day} className="px-1 py-1">
                       <button
-                        onClick={() => onBook(teacher.id, d.day, time)}
-                        disabled={isBusy}
+                        onClick={() => onPick(d.day, time)}
                         title={
                           slot.matchesStudent
                             ? "Matches student's available time — click to book"
                             : "Free slot — click to book"
                         }
-                        className={`w-full rounded-md px-1 py-1.5 text-center text-[9px] font-semibold transition-all disabled:opacity-50 ${
+                        className={`w-full rounded-md px-1 py-1.5 text-center text-[9px] font-semibold transition-all ${
                           slot.matchesStudent
                             ? "bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/30 ring-1 ring-emerald-500/40"
                             : "bg-card border border-border text-muted-foreground hover:bg-primary/10 hover:text-primary"
                         }`}
                       >
-                        {isBusy ? (
-                          <Loader2 className="mx-auto h-3 w-3 animate-spin" />
-                        ) : slot.matchesStudent ? (
-                          "Book ✓"
-                        ) : (
-                          "Book"
-                        )}
+                        {slot.matchesStudent ? "Book ✓" : "Book"}
                       </button>
                     </td>
                   );
@@ -703,5 +812,120 @@ function TeacherSlotGrid({
         </tbody>
       </table>
     </div>
+  );
+}
+
+function ConfirmBookingDialog({
+  booking,
+  studentName,
+  courseName,
+  onClose,
+  onConfirm,
+}: {
+  booking: PendingBooking;
+  studentName: string;
+  courseName: string;
+  onClose: () => void;
+  onConfirm: () => Promise<string | null>;
+}) {
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  async function handleConfirm() {
+    setSaving(true);
+    setError(null);
+    // On success the parent closes (unmounts) this dialog
+    const err = await onConfirm();
+    if (err) {
+      setError(err);
+      setSaving(false);
+    }
+  }
+
+  const details = [
+    { label: "Teacher", value: booking.teacherName },
+    { label: "Student", value: studentName },
+    { label: "Course", value: courseName },
+    {
+      label: "When",
+      value: `Every ${DAYS[booking.dayOfWeek].long}, ${formatSlotRange(booking.startTime)} PKT`,
+    },
+  ];
+
+  // Portal to <body>: the booking modal's backdrop-blur would otherwise become the
+  // containing block for this fixed overlay and scroll it out of view. React events
+  // still bubble to the booking modal card, which stops them there.
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-foreground/40 backdrop-blur-sm"
+      onClick={() => {
+        if (!saving) onClose();
+      }}
+    >
+      <div
+        onClick={(ev) => ev.stopPropagation()}
+        className="w-full max-w-md rounded-3xl border border-border bg-card shadow-2xl"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-border">
+          <h2 className="text-base font-bold inline-flex items-center gap-2">
+            <CalendarPlus className="h-4 w-4 text-primary" /> Confirm Class
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="grid h-9 w-9 place-items-center rounded-full hover:bg-muted disabled:opacity-50"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          <dl className="rounded-xl border border-border bg-muted/30 p-3 space-y-1.5 text-xs">
+            {details.map((d) => (
+              <div key={d.label} className="flex gap-3">
+                <dt className="w-16 shrink-0 text-muted-foreground">{d.label}</dt>
+                <dd className="font-semibold min-w-0 break-words">{d.value}</dd>
+              </div>
+            ))}
+          </dl>
+
+          <div className="flex items-start gap-2 rounded-xl border border-primary/30 bg-primary/5 p-3 text-xs">
+            <Video className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
+            <span>
+              This class runs in the academy&apos;s in-app Jitsi room. The teacher and student
+              join from their Classes / Schedule page.
+            </span>
+          </div>
+
+          {error && (
+            <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" /> {error}
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-end gap-2 p-4 border-t border-border">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold hover:bg-muted disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={saving}
+            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-accent px-5 py-2 text-sm font-semibold text-primary-foreground shadow-md hover:shadow-lg transition-all disabled:opacity-60"
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+            Done
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }

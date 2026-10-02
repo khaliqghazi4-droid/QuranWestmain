@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   StickyNote,
@@ -15,11 +16,15 @@ import {
   User,
   Info,
   RefreshCw,
+  Play,
+  Video,
+  Loader2,
+  PhoneOff,
 } from "lucide-react";
 import { DailyMeeting } from "./daily-meeting";
 import { JitsiMeeting } from "./jitsi-meeting";
-import { DailyRecorder } from "./daily-recorder";
-import { ScreenRecorder } from "./screen-recorder";
+import { useClassRecorder } from "./use-class-recorder";
+import { RecordingStatus, UploadProgressBar, percentOf } from "./recording-status";
 
 export type ClassRoomNote = {
   id: string;
@@ -30,13 +35,17 @@ export type ClassRoomNote = {
 };
 
 // In-app class room. When Daily.co is configured we mount Daily's prebuilt
-// UI (no embed cutoff, supports local recording natively). Otherwise we fall
-// back to Jitsi's External API with an auto-rejoin loop so the free
-// meet.jit.si 5-minute cutoff becomes a 2-second hiccup.
+// UI; otherwise Jitsi's External API (JaaS on 8x8.vc, or meet.jit.si with an
+// auto-rejoin loop over its 5-minute embed cutoff).
+//
+// The teacher joins with a Start Class button: that one click joins the
+// meeting and starts recording the class (browsers only allow screen capture
+// from a click). The recording uploads when the class ends.
 export function ClassRoom({
   roomId,
   dailyUrl,
   jitsiRoomName,
+  jaas,
   courseName,
   studentName,
   displayName,
@@ -44,11 +53,12 @@ export function ClassRoom({
   notes,
   backHref,
   startUTC,
-  recorderSlot,
 }: {
   roomId: string;
   dailyUrl: string | null;
   jitsiRoomName: string;
+  // JaaS room token: joins on 8x8.vc so the teacher is moderator
+  jaas?: { appId: string; jwt: string } | null;
   courseName: string;
   studentName: string;
   displayName: string;
@@ -56,21 +66,41 @@ export function ClassRoom({
   notes: ClassRoomNote[];
   backHref: string;
   startUTC: number | null;
-  // Optional pre-rendered recorder (used only when Daily isn't configured —
-  // with Daily we use the integrated DailyRecorder instead).
-  recorderSlot?: React.ReactNode;
 }) {
+  const router = useRouter();
   const [panelOpen, setPanelOpen] = React.useState(isTeacher);
   const [fullscreen, setFullscreen] = React.useState(false);
   const [activeNote, setActiveNote] = React.useState<ClassRoomNote | null>(
     notes[0] ?? null
   );
 
-  // When Daily is wired up we own the call object here so the integrated
-  // recorder can start/stop recording on the live meeting.
-  const [dailyCallObject, setDailyCallObject] = React.useState<unknown>(null);
+  // Students join straight away; the teacher joins with Start Class
+  const [joined, setJoined] = React.useState(!isTeacher);
+  const [ending, setEnding] = React.useState(false);
+  const recorder = useClassRecorder(roomId);
+  const recordingLive = recorder.status === "recording" || recorder.status === "uploading";
 
   const useDaily = !!dailyUrl;
+
+  function startClass() {
+    // start() opens the share prompt first thing, inside this click
+    void recorder.start();
+    setJoined(true);
+  }
+
+  // Stop + upload the recording, then leave
+  async function endClass() {
+    setEnding(true);
+    const ok = await recorder.stop();
+    if (
+      ok ||
+      window.confirm("The recording couldn't be saved. Leave anyway? The recording will be lost.")
+    ) {
+      router.push(backHref);
+    } else {
+      setEnding(false);
+    }
+  }
 
   // Wall-clock label so the teacher knows when class is supposed to end.
   const startLabel = startUTC
@@ -89,13 +119,25 @@ export function ClassRoom({
       }`}
     >
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card shrink-0">
-        <Link
-          href={backHref}
-          className="grid h-9 w-9 place-items-center rounded-full border border-border hover:bg-muted"
-          title="Back"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
+        {isTeacher && recordingLive ? (
+          // Leaving mid-recording goes through End Class so the recording saves
+          <button
+            onClick={endClass}
+            disabled={ending}
+            className="grid h-9 w-9 place-items-center rounded-full border border-border hover:bg-muted disabled:opacity-50"
+            title="End class and save the recording"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+        ) : (
+          <Link
+            href={backHref}
+            className="grid h-9 w-9 place-items-center rounded-full border border-border hover:bg-muted"
+            title="Back"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+        )}
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold truncate inline-flex items-center gap-2">
             <BookOpen className="h-3.5 w-3.5 text-primary" /> {courseName}
@@ -103,8 +145,37 @@ export function ClassRoom({
           <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1.5">
             <User className="h-3 w-3" /> {studentName}
             {startLabel && <span>· starts {startLabel} PKT</span>}
+            {!isTeacher && (
+              <span className="inline-flex items-center gap-1">
+                · <Video className="h-3 w-3" /> This class is recorded
+              </span>
+            )}
           </p>
         </div>
+        {isTeacher && joined && (
+          <>
+            <RecordingStatus recorder={recorder} variant="pill" />
+            <button
+              onClick={endClass}
+              disabled={ending}
+              className="inline-flex items-center gap-1.5 rounded-full bg-red-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-600 disabled:opacity-60"
+              title="End the class and save the recording"
+            >
+              {ending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <PhoneOff className="h-3.5 w-3.5" />
+              )}
+              <span className="hidden sm:inline">
+                {!ending
+                  ? "End Class"
+                  : recorder.status === "uploading"
+                    ? `Saving ${percentOf(recorder.progress)}%`
+                    : "Saving…"}
+              </span>
+            </button>
+          </>
+        )}
         {isTeacher && (
           <button
             onClick={() => setPanelOpen((p) => !p)}
@@ -137,14 +208,58 @@ export function ClassRoom({
 
       <div className="flex-1 flex overflow-hidden">
         <div className="flex-1 relative bg-black min-h-[60vh]">
-          {useDaily ? (
+          {!joined ? (
+            <div className="absolute inset-0 grid place-items-center p-6 text-white">
+              <div className="max-w-sm text-center">
+                <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-white/10">
+                  <Video className="h-6 w-6" />
+                </div>
+                <p className="mt-4 text-lg font-bold">{courseName}</p>
+                <p className="text-xs text-white/70">{studentName}</p>
+                <button
+                  onClick={startClass}
+                  className="mt-5 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-accent px-6 py-3 text-sm font-bold text-primary-foreground shadow-lg hover:shadow-xl"
+                >
+                  <Play className="h-4 w-4" /> Start Class
+                </button>
+                <p className="mt-3 text-[11px] leading-relaxed text-white/60">
+                  The class is recorded for the admin. When your browser asks to share this
+                  tab, click <span className="font-bold text-white/80">Allow</span> /{" "}
+                  <span className="font-bold text-white/80">Share</span>.
+                </p>
+              </div>
+            </div>
+          ) : useDaily ? (
             <DailyMeeting
               url={dailyUrl}
               displayName={displayName}
-              onCallObject={setDailyCallObject}
+              onLeft={isTeacher ? () => void recorder.stop() : undefined}
             />
           ) : (
-            <JitsiMeeting jitsiRoomName={jitsiRoomName} displayName={displayName} />
+            <JitsiMeeting
+              jitsiRoomName={jitsiRoomName}
+              displayName={displayName}
+              jaas={jaas}
+              onHangup={isTeacher ? () => void recorder.stop() : undefined}
+              onRejoin={isTeacher ? () => void recorder.start() : undefined}
+            />
+          )}
+
+          {/* After End Class: the teacher waits here while the recording uploads */}
+          {ending && recorder.status === "uploading" && (
+            <div className="absolute inset-0 z-30 grid place-items-center bg-black/75 p-6 backdrop-blur-sm">
+              <div className="w-full max-w-sm rounded-2xl bg-white/10 p-5 text-white shadow-xl">
+                <p className="text-sm font-bold inline-flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Saving the class recording
+                </p>
+                <p className="mt-1 text-[11px] text-white/70">
+                  Keep this page open until the upload finishes.
+                </p>
+                <div className="mt-4">
+                  <UploadProgressBar progress={recorder.progress} tone="onDark" />
+                </div>
+              </div>
+            </div>
           )}
         </div>
 
@@ -152,22 +267,12 @@ export function ClassRoom({
         {isTeacher && panelOpen && (
           <aside className="hidden sm:flex w-80 lg:w-96 shrink-0 flex-col border-l border-border bg-card overflow-hidden">
             <div className="p-3 border-b border-border">
-              {useDaily ? (
-                <DailyRecorder
-                  roomId={roomId}
-                  courseName={courseName}
-                  studentName={studentName}
-                  callObject={dailyCallObject}
-                />
-              ) : (
-                recorderSlot ?? (
-                  <ScreenRecorder
-                    roomId={roomId}
-                    courseName={courseName}
-                    studentName={studentName}
-                  />
-                )
-              )}
+              <RecordingStatus
+                recorder={recorder}
+                variant="card"
+                courseName={courseName}
+                studentName={studentName}
+              />
             </div>
 
             <div className="p-3 border-b border-border flex items-center gap-2">
@@ -249,9 +354,8 @@ export function ClassRoom({
             <div className="p-3 border-t border-border text-[10px] text-muted-foreground inline-flex items-start gap-1.5">
               <Info className="h-3 w-3 mt-0.5 shrink-0 text-primary" />
               <span>
-                {useDaily
-                  ? "Tip: Click Record above when class starts — the lecture saves to the admin automatically when you stop."
-                  : "Tip: Use the meeting's screen-share button to share your notes window with the student."}
+                Tip: Use the meeting&apos;s screen-share button to share your notes window
+                with the student. Click End Class when you finish so the recording saves.
               </span>
             </div>
           </aside>

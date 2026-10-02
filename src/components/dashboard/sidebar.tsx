@@ -4,7 +4,8 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { BookOpen, LogOut, X } from "lucide-react";
+import Image from "next/image";
+import { LogOut, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { navConfig, roleMeta, type Role } from "@/lib/nav-config";
 
@@ -33,27 +34,26 @@ export function Sidebar({
 
       <aside
         className={cn(
-          "fixed top-0 left-0 z-50 h-screen w-72 bg-card border-r border-border flex flex-col transition-transform duration-300 lg:translate-x-0 lg:sticky lg:top-0",
+          "fixed top-0 left-0 z-50 h-screen w-52 bg-card border-r border-border flex flex-col transition-transform duration-300 lg:relative lg:translate-x-0 lg:h-full",
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="flex items-center justify-between px-6 py-5 border-b border-border">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <a
-            href="https://fe-quran-academy.vercel.app/"
+            href="/"
             target="_blank"
             rel="noopener noreferrer"
             title="Visit the academy website"
-            className="flex items-center gap-2 group"
+            className="flex items-center group"
           >
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-primary to-accent shadow-md shadow-primary/20 transition-transform group-hover:scale-105">
-              <BookOpen className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <div className="flex flex-col leading-tight">
-              <span className="text-sm font-bold tracking-tight">Online Quran</span>
-              <span className="text-[11px] font-medium text-muted-foreground -mt-0.5">
-                Academy
-              </span>
-            </div>
+            <Image
+              src="/quran-academy-logo.png"
+              alt="Quran Academy Logo"
+              width={120}
+              height={40}
+              className="h-9 w-auto object-contain transition-opacity group-hover:opacity-80"
+              priority
+            />
           </a>
           <button
             onClick={onClose}
@@ -64,10 +64,10 @@ export function Sidebar({
           </button>
         </div>
 
-        <div className="px-4 py-4">
-          <div className="flex items-center gap-3 rounded-xl bg-gradient-to-br from-primary/10 to-accent/10 border border-primary/20 p-3">
-            <div className="grid h-10 w-10 place-items-center rounded-lg bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-sm">
-              <meta.icon className="h-5 w-5" />
+        <div className="px-3 py-2">
+          <div className="flex items-center gap-3 rounded-xl bg-gradient-to-br from-primary/10 to-accent/10 border border-primary/20 p-2">
+            <div className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-sm">
+              <meta.icon className="h-4 w-4" />
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Signed in as</p>
@@ -86,9 +86,10 @@ export function Sidebar({
                 <li key={item.href}>
                   <Link
                     href={item.href}
+                    prefetch={true}
                     onClick={onClose}
                     className={cn(
-                      "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
+                      "group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all",
                       active
                         ? "bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-md shadow-primary/20"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -96,7 +97,7 @@ export function Sidebar({
                   >
                     <item.icon
                       className={cn(
-                        "h-4.5 w-4.5 transition-transform group-hover:scale-110",
+                        "h-[18px] w-[18px] shrink-0 transition-transform group-hover:scale-110",
                         active ? "text-primary-foreground" : ""
                       )}
                     />
@@ -111,7 +112,7 @@ export function Sidebar({
         <div className="border-t border-border p-3">
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
-            className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all"
+            className="w-full flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all"
           >
             <LogOut className="h-4 w-4" />
             Sign Out

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { chatMessageInclude, toChatMessage } from "@/lib/chat-message";
 
 // GET /api/messages?with=userId  → fetch conversation thread
 export async function GET(req: Request) {
@@ -31,6 +32,7 @@ export async function GET(req: Request) {
     },
     orderBy: { createdAt: "asc" },
     take: 200,
+    include: chatMessageInclude,
   });
 
   // Mark messages from other → me as read
@@ -39,7 +41,7 @@ export async function GET(req: Request) {
     data: { read: true },
   });
 
-  return NextResponse.json({ messages });
+  return NextResponse.json({ messages: messages.map(toChatMessage) });
 }
 
 // POST /api/messages  → send a message
@@ -56,6 +58,7 @@ export async function POST(req: Request) {
       attachmentName?: string;
       attachmentMime?: string;
       attachmentSize?: number;
+      replyToId?: string;
     };
     const { receiverId } = body;
     const content = (body.content ?? "").trim();
@@ -71,24 +74,47 @@ export async function POST(req: Request) {
       );
     }
 
+    // Both checks run together: each is a round trip to a distant DB
+    const mustMessageAdmin = session.user.role === "STUDENT" || session.user.role === "TEACHER";
+    const [receiver, original] = await Promise.all([
+      mustMessageAdmin
+        ? prisma.user.findUnique({ where: { id: receiverId }, select: { role: true } })
+        : null,
+      body.replyToId
+        ? prisma.message.findUnique({
+            where: { id: body.replyToId },
+            select: { senderId: true, receiverId: true, deletedAt: true },
+          })
+        : null,
+    ]);
+
     // Students and Teachers can only send to Admin
-    if (session.user.role === "STUDENT" || session.user.role === "TEACHER") {
-      const receiver = await prisma.user.findUnique({
-        where: { id: receiverId },
-        select: { role: true },
-      });
-      if (!receiver || receiver.role !== "ADMIN") {
-        return NextResponse.json(
-          { error: "You can only contact the admin" },
-          { status: 403 }
-        );
+    if (mustMessageAdmin && (!receiver || receiver.role !== "ADMIN")) {
+      return NextResponse.json(
+        { error: "You can only contact the admin" },
+        { status: 403 }
+      );
+    }
+
+    // A reply must point at a live message in this same conversation
+    let replyToId: string | null = null;
+    if (body.replyToId) {
+      const me = session.user.id;
+      const sameThread =
+        original &&
+        ((original.senderId === me && original.receiverId === receiverId) ||
+          (original.senderId === receiverId && original.receiverId === me));
+      if (!sameThread || original.deletedAt) {
+        return NextResponse.json({ error: "Can't reply to that message" }, { status: 400 });
       }
+      replyToId = body.replyToId;
     }
 
     const message = await prisma.message.create({
       data: {
         senderId: session.user.id,
         receiverId,
+        replyToId,
         content,
         attachmentUrl: hasAttachment ? body.attachmentUrl ?? null : null,
         attachmentType: hasAttachment ? body.attachmentType ?? null : null,
@@ -96,9 +122,10 @@ export async function POST(req: Request) {
         attachmentMime: hasAttachment ? body.attachmentMime ?? null : null,
         attachmentSize: hasAttachment ? body.attachmentSize ?? null : null,
       },
+      include: chatMessageInclude,
     });
 
-    return NextResponse.json({ message }, { status: 201 });
+    return NextResponse.json({ message: toChatMessage(message) }, { status: 201 });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Failed to send message";
     return NextResponse.json({ error: msg }, { status: 500 });

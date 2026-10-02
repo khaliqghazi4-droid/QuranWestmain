@@ -1,5 +1,4 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getStudentViewer } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { ProfileEditor } from "@/components/profile/profile-editor";
@@ -7,11 +6,11 @@ import { ProfileEditor } from "@/components/profile/profile-editor";
 export const revalidate = 30;
 
 export default async function StudentProfile() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return null;
+  const viewer = await getStudentViewer();
+  if (!viewer) return null;
 
   const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
+    where: { id: viewer.id },
     select: {
       id: true,
       name: true,

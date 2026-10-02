@@ -240,6 +240,19 @@ function CourseModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  React.useLayoutEffect(() => {
+    const main = document.querySelector("main") as HTMLElement | null;
+    const html = document.documentElement;
+    if (main) main.style.overflow = "hidden";
+    html.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    return () => {
+      if (main) main.style.overflow = "";
+      html.style.overflow = "";
+      document.body.style.overflow = "";
+    };
+  }, []);
+
   const [name, setName] = React.useState(course?.name ?? "");
   const [description, setDescription] = React.useState(course?.description ?? "");
   const [level, setLevel] = React.useState(course?.level ?? "Beginner");
@@ -502,6 +515,19 @@ function TeacherStudentsModal({
   teacherId: string;
   onClose: () => void;
 }) {
+  React.useLayoutEffect(() => {
+    const main = document.querySelector("main") as HTMLElement | null;
+    const html = document.documentElement;
+    if (main) main.style.overflow = "hidden";
+    html.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    return () => {
+      if (main) main.style.overflow = "";
+      html.style.overflow = "";
+      document.body.style.overflow = "";
+    };
+  }, []);
+
   const [data, setData] = React.useState<{
     teachers: Array<{ id: string; name: string; students: StudentRow[] }>;
   } | null>(null);

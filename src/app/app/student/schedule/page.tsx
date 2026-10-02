@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getStudentViewer } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Video, Clock, Calendar, BookOpen, User, Film } from "lucide-react";
@@ -19,23 +18,27 @@ export const revalidate = 30;
 const OCCURRENCES_PER_BOOKING = 4;
 
 export default async function StudentSchedule() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return null;
+  const viewer = await getStudentViewer();
+  if (!viewer) return null;
 
   // Look up the student's recurring weekly classes (BookingSlot rows linked
   // through Enrollment) — this is the real schedule, not the legacy Class
   // model which the academy never actually populates.
-  const bookings = await prisma.bookingSlot.findMany({
-    where: { enrollment: { studentId: session.user.id } },
-    include: {
-      teacher: { select: { id: true, name: true } },
-      enrollment: {
-        include: {
-          course: { select: { id: true, name: true, slug: true, level: true } },
+  // enrolledCount drives the friendly "enroll first" empty state
+  const [bookings, enrolledCount] = await Promise.all([
+    prisma.bookingSlot.findMany({
+      where: { enrollment: { studentId: viewer.id } },
+      include: {
+        teacher: { select: { id: true, name: true } },
+        enrollment: {
+          include: {
+            course: { select: { id: true, name: true, slug: true, level: true } },
+          },
         },
       },
-    },
-  });
+    }),
+    prisma.enrollment.count({ where: { studentId: viewer.id } }),
+  ]);
 
   // Fan out each weekly booking to its next N occurrences so the page can
   // group by day (instead of just showing one row per booking).
@@ -81,13 +84,12 @@ export default async function StudentSchedule() {
     byDay.get(pktDay)!.push(o);
   }
 
-  // Past recordings of THIS student's bookings — the teacher uploads them
-  // from inside the class room; we filter by roomId so the student only
-  // sees recordings of classes they were actually in.
+  // Recordings of this student's classes that the admin has shown them;
+  // every other recording stays admin-only
   const roomIds = bookings.map((b) => `booking-${b.id}`);
   const recordings = roomIds.length
     ? await prisma.classRecording.findMany({
-        where: { roomId: { in: roomIds } },
+        where: { roomId: { in: roomIds }, sharedWithStudentAt: { not: null } },
         orderBy: { createdAt: "desc" },
         take: 100,
         include: { teacher: { select: { name: true } } },
@@ -103,12 +105,6 @@ export default async function StudentSchedule() {
     startedAt: r.startedAt.toISOString(),
   }));
 
-  // Show a friendly empty state if the student has zero enrollments — same
-  // copy as before so they know to enroll first.
-  const enrolledCount = await prisma.enrollment.count({
-    where: { studentId: session.user.id },
-  });
-
   return (
     <div className="space-y-8">
       <PageHeader
@@ -116,7 +112,11 @@ export default async function StudentSchedule() {
         description={
           bookings.length === 0
             ? "No classes scheduled yet"
-            : `${bookings.length} weekly ${bookings.length === 1 ? "class" : "classes"} · ${recordings.length} ${recordings.length === 1 ? "recording" : "recordings"} available`
+            : `${bookings.length} weekly ${bookings.length === 1 ? "class" : "classes"}${
+                recordings.length > 0
+                  ? ` · ${recordings.length} ${recordings.length === 1 ? "recording" : "recordings"}`
+                  : ""
+              }`
         }
       />
 
@@ -281,17 +281,19 @@ export default async function StudentSchedule() {
             )}
           </section>
 
-          {/* ───────── Past Recordings ───────── */}
-          <section className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Film className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-bold">Class Recordings</h2>
-              <span className="text-xs text-muted-foreground ml-auto">
-                Rewatch lectures your teacher recorded
-              </span>
-            </div>
-            <MyRecordingsList items={recordingItems} />
-          </section>
+          {/* ───────── Recordings the admin shared ───────── */}
+          {recordingItems.length > 0 && (
+            <section className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Film className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-bold">Class Recordings</h2>
+                <span className="text-xs text-muted-foreground ml-auto">
+                  Rewatch your recorded lessons
+                </span>
+              </div>
+              <MyRecordingsList items={recordingItems} />
+            </section>
+          )}
         </>
       )}
     </div>

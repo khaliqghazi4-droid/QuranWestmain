@@ -1,8 +1,8 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { ProfileEditor } from "@/components/profile/profile-editor";
+import { getTeacherProfile } from "../_caches";
 
 export const revalidate = 30;
 
@@ -13,20 +13,7 @@ export default async function TeacherProfile() {
   const session = await getServerSession(authOptions);
   if (!session?.user) return null;
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      phone: true,
-      country: true,
-      timezone: true,
-      bio: true,
-      role: true,
-      createdAt: true,
-    },
-  });
+  const user = await getTeacherProfile(session.user.id);
 
   if (!user) return null;
 
@@ -36,19 +23,7 @@ export default async function TeacherProfile() {
         title="My Profile"
         description="Manage your personal teaching profile"
       />
-      <ProfileEditor
-        user={{
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-          country: user.country,
-          timezone: user.timezone,
-          bio: user.bio,
-          role: user.role,
-          createdAt: user.createdAt.toISOString(),
-        }}
-      />
+      <ProfileEditor user={user} />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveRoom } from "@/lib/class-room";
+import { saveClassRecording } from "@/lib/recordings";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -70,7 +71,7 @@ export async function POST(req: Request): Promise<Response> {
             "audio/mp4",
             "audio/mpeg",
           ],
-          maximumSizeInBytes: 500 * 1024 * 1024, // 500 MB ceiling
+          maximumSizeInBytes: 1024 * 1024 * 1024, // 1 GB ceiling (~2 h at the recorder's bitrate)
           addRandomSuffix: true,
           // We re-derive teacherId/roomId on the completion call below from
           // tokenPayload so the client can't tamper with attribution.
@@ -86,7 +87,9 @@ export async function POST(req: Request): Promise<Response> {
       },
 
       // After Blob storage receives the file, persist a DB row so the admin
-      // recordings page can list it.
+      // recordings page can list it. Vercel can't call this back on localhost,
+      // so the recorder also saves the row through ./confirm; whichever runs
+      // second is a no-op.
       onUploadCompleted: async ({ blob, tokenPayload }) => {
         if (!tokenPayload) return;
         try {
@@ -98,20 +101,18 @@ export async function POST(req: Request): Promise<Response> {
             startedAt: string;
             durationSec: number | null;
           };
-          await prisma.classRecording.create({
-            data: {
-              teacherId: meta.teacherId,
-              roomId: meta.roomId,
-              studentName: meta.studentName ?? null,
-              courseName: meta.courseName ?? null,
-              url: blob.url,
-              mimeType: blob.contentType ?? null,
-              durationSec: meta.durationSec ?? null,
-              sizeBytes: typeof (blob as { contentLength?: number }).contentLength === "number"
-                ? (blob as { contentLength?: number }).contentLength!
-                : null,
-              startedAt: new Date(meta.startedAt),
-            },
+          await saveClassRecording({
+            teacherId: meta.teacherId,
+            roomId: meta.roomId,
+            studentName: meta.studentName ?? null,
+            courseName: meta.courseName ?? null,
+            url: blob.url,
+            mimeType: blob.contentType ?? null,
+            durationSec: meta.durationSec ?? null,
+            sizeBytes: typeof (blob as { contentLength?: number }).contentLength === "number"
+              ? (blob as { contentLength?: number }).contentLength!
+              : null,
+            startedAt: new Date(meta.startedAt),
           });
         } catch (e) {
           // Don't fail the upload if the DB write fails — the blob is already
@@ -127,22 +128,14 @@ export async function POST(req: Request): Promise<Response> {
   }
 }
 
-// GET /api/upload/recording — admin lists every recording, teacher lists own.
+// GET /api/upload/recording — every recording. Admin only: teachers record
+// and upload classes but don't get to watch them.
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const where =
-    session.user.role === "ADMIN"
-      ? {}
-      : session.user.role === "TEACHER"
-        ? { teacherId: session.user.id }
-        : null;
-
-  if (!where) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (session.user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const recordings = await prisma.classRecording.findMany({
-    where,
     orderBy: { createdAt: "desc" },
     take: 200,
     include: { teacher: { select: { id: true, name: true } } },

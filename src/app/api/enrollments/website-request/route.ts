@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
   submitWebsiteEnrollment,
+  trimStr,
+  parseGender,
+  parseChildren,
   type EnrollSubmission,
-  type EnrollChild,
 } from "@/lib/enroll-source";
 
 export const dynamic = "force-dynamic";
@@ -14,10 +17,8 @@ export const runtime = "nodejs";
 // POST /api/enrollments/website-request
 //
 // In-app version of the public website's "Enroll Now" form. Same fields,
-// same destination (MongoDB enrollments collection) so the admin's existing
-// /app/admin/enrollments review flow keeps working unchanged — they assign
-// a teacher, schedule the trial, and the request becomes a real Enrollment
-// the same way it does for website submissions.
+// same destination (EnrollmentRequest table) so the request shows on
+// /app/admin/enrollments next to website submissions.
 //
 // Auth: any signed-in student (we don't restrict to STUDENT role explicitly
 // since a teacher could conceivably enroll their own family member, but we
@@ -25,34 +26,6 @@ export const runtime = "nodejs";
 type Body = Partial<Omit<EnrollSubmission, "source" | "children">> & {
   children?: unknown;
 };
-
-function trimStr(v: unknown, max = 200): string {
-  if (typeof v !== "string") return "";
-  return v.trim().slice(0, max);
-}
-
-function parseGender(v: unknown): "male" | "female" | null {
-  return v === "male" || v === "female" ? v : null;
-}
-
-function parseChildren(raw: unknown): EnrollChild[] {
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .map((c) => {
-      if (!c || typeof c !== "object") return null;
-      const obj = c as Record<string, unknown>;
-      const name = trimStr(obj.name, 100);
-      if (!name) return null;
-      const ageNum = typeof obj.age === "number" ? obj.age : Number(obj.age);
-      return {
-        name,
-        age: Number.isFinite(ageNum) ? ageNum : null,
-        gender: parseGender(obj.gender),
-      } satisfies EnrollChild;
-    })
-    .filter((c): c is EnrollChild => c !== null)
-    .slice(0, 10);
-}
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -121,6 +94,7 @@ export async function POST(req: Request) {
 
   try {
     const { id } = await submitWebsiteEnrollment(payload);
+    revalidatePath("/app/admin/enrollments");
     return NextResponse.json({ ok: true, id }, { status: 201 });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Failed to submit enrollment";

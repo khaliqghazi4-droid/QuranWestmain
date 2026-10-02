@@ -282,6 +282,19 @@ function EditProfileModal({
   teacher: Teacher;
   onClose: () => void;
 }) {
+  React.useLayoutEffect(() => {
+    const main = document.querySelector("main") as HTMLElement | null;
+    const html = document.documentElement;
+    if (main) main.style.overflow = "hidden";
+    html.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    return () => {
+      if (main) main.style.overflow = "";
+      html.style.overflow = "";
+      document.body.style.overflow = "";
+    };
+  }, []);
+
   const router = useRouter();
   const [name, setName] = React.useState(teacher.name);
   const [phone, setPhone] = React.useState(teacher.phone ?? "");

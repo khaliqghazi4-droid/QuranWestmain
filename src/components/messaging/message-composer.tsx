@@ -18,10 +18,25 @@ import type { MessageAttachment } from "@/components/messaging/message-attachmen
 export function MessageComposer({
   placeholder,
   onSend,
+  compact = false,
+  replyTo,
+  onCancelReply,
 }: {
   placeholder?: string;
   onSend: (payload: { text: string; attachment: MessageAttachment | null }) => Promise<void>;
+  // Slimmer bar: smaller buttons and padding (student/teacher chat box)
+  compact?: boolean;
+  // Message being replied to, shown as a strip above the input
+  replyTo?: { label: string; text: string } | null;
+  onCancelReply?: () => void;
 }) {
+  const btnSize = compact ? "h-9 w-9" : "h-11 w-11";
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  // Picking "Reply" puts the cursor straight in the input
+  React.useEffect(() => {
+    if (replyTo) inputRef.current?.focus();
+  }, [replyTo]);
   const [text, setText] = React.useState("");
   const [sending, setSending] = React.useState(false);
   const [uploading, setUploading] = React.useState(false);
@@ -119,8 +134,26 @@ export function MessageComposer({
 
   return (
     <form onSubmit={handleSend} className="border-t border-border bg-card">
+      {replyTo && (
+        <div className={compact ? "px-3 pt-2" : "px-4 pt-3"}>
+          <div className="flex items-start gap-2 rounded-lg border-l-4 border-primary bg-muted/60 px-3 py-1.5">
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-semibold text-primary">Replying to {replyTo.label}</p>
+              <p className="truncate text-xs text-muted-foreground">{replyTo.text}</p>
+            </div>
+            <button
+              type="button"
+              onClick={onCancelReply}
+              title="Cancel reply"
+              className="grid h-5 w-5 shrink-0 place-items-center rounded-full hover:bg-muted"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        </div>
+      )}
       {(pending || error || uploading) && (
-        <div className="px-4 pt-3 flex items-center gap-2 flex-wrap">
+        <div className={`${compact ? "px-3 pt-2" : "px-4 pt-3"} flex items-center gap-2 flex-wrap`}>
           {pending && (
             <div className="inline-flex items-center gap-2 rounded-xl bg-muted px-3 py-2 text-xs">
               {pending.type === "image" ? (
@@ -153,7 +186,7 @@ export function MessageComposer({
         </div>
       )}
 
-      <div className="p-4 flex items-center gap-2">
+      <div className={`${compact ? "px-3 py-2" : "p-4"} flex items-center gap-2`}>
         <input
           ref={fileRef}
           type="file"
@@ -166,7 +199,7 @@ export function MessageComposer({
           onClick={() => fileRef.current?.click()}
           disabled={recording || sending || uploading}
           title="Attach a file or image"
-          className="grid h-11 w-11 place-items-center rounded-full border border-border bg-card hover:bg-muted disabled:opacity-50"
+          className={`grid ${btnSize} place-items-center rounded-full border border-border bg-card hover:bg-muted disabled:opacity-50`}
         >
           <Paperclip className="h-4 w-4" />
         </button>
@@ -176,7 +209,7 @@ export function MessageComposer({
             type="button"
             onClick={stopRecording}
             title="Stop recording"
-            className="inline-flex items-center gap-1.5 rounded-full bg-destructive/15 text-destructive px-3 h-11 text-sm font-semibold border border-destructive/40"
+            className={`inline-flex items-center gap-1.5 rounded-full bg-destructive/15 text-destructive px-3 ${compact ? "h-9" : "h-11"} text-sm font-semibold border border-destructive/40`}
           >
             <span className="relative flex h-2.5 w-2.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
@@ -191,23 +224,24 @@ export function MessageComposer({
             onClick={startRecording}
             disabled={sending || uploading || !!pending}
             title="Record a voice message"
-            className="grid h-11 w-11 place-items-center rounded-full border border-border bg-card hover:bg-muted disabled:opacity-50"
+            className={`grid ${btnSize} place-items-center rounded-full border border-border bg-card hover:bg-muted disabled:opacity-50`}
           >
             <Mic className="h-4 w-4" />
           </button>
         )}
 
         <input
+          ref={inputRef}
           type="text"
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder={pending ? "Add a caption (optional)…" : placeholder ?? "Type your message…"}
-          className="flex-1 rounded-full border border-border bg-muted/50 px-4 py-2.5 text-sm focus:border-primary focus:bg-card focus:outline-none focus:ring-2 focus:ring-primary/20"
+          className={`flex-1 rounded-full border border-border bg-muted/50 px-4 ${compact ? "py-2" : "py-2.5"} text-sm focus:border-primary focus:bg-card focus:outline-none focus:ring-2 focus:ring-primary/20`}
         />
         <button
           type="submit"
           disabled={sending || uploading || (!text.trim() && !pending)}
-          className="grid h-11 w-11 place-items-center rounded-full bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          className={`grid ${btnSize} place-items-center rounded-full bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed`}
           aria-label="Send"
         >
           {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

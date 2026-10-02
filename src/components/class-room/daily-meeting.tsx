@@ -4,20 +4,20 @@ import * as React from "react";
 import DailyIframe, { type DailyCall } from "@daily-co/daily-js";
 
 // Mounts Daily.co's prebuilt UI into a container and joins the given room URL.
-// On mount we create the call frame, join, and hand the live `DailyCall` back
-// to the parent so the recorder can drive recording start/stop on the same
-// instance.
 export function DailyMeeting({
   url,
   displayName,
-  onCallObject,
+  onLeft,
 }: {
   url: string;
   displayName: string;
-  onCallObject?: (call: DailyCall | null) => void;
+  // The user left the call with Daily's Leave button
+  onLeft?: () => void;
 }) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const callRef = React.useRef<DailyCall | null>(null);
+  const onLeftRef = React.useRef(onLeft);
+  onLeftRef.current = onLeft;
 
   React.useEffect(() => {
     const container = containerRef.current;
@@ -48,14 +48,13 @@ export function DailyMeeting({
       showParticipantsBar: true,
     });
     callRef.current = call;
-    onCallObject?.(call);
+    call.on("left-meeting", () => onLeftRef.current?.());
 
     call
       .join({ url, userName: displayName })
       .catch((e) => console.error("[daily-meeting] join failed", e));
 
     return () => {
-      onCallObject?.(null);
       try {
         call.destroy();
       } catch {

@@ -1,51 +1,36 @@
-import { prisma } from "@/lib/prisma";
+﻿﻿import { Suspense } from "react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { StudentsTable } from "./students-table";
+import { getCachedStudentsData } from "../_caches";
 
-export const revalidate = 30;
+export const revalidate = 600;
 
-export default async function AdminStudentsPage({
+export default function AdminStudentsPage({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string | string[] | undefined };
+}) {
+  return (
+    <div className="space-y-6">
+      <PageHeader title="Students Management" description="Manage all student accounts" />
+      <Suspense fallback={<StudentsShell />}>
+        <StudentsData searchParams={searchParams} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function StudentsData({
   searchParams,
 }: {
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
   const str = (v: string | string[] | undefined) => (typeof v === "string" ? v : undefined);
 
-  const [students, courseRows] = await Promise.all([
-    prisma.user.findMany({
-      where: { role: "STUDENT" },
-      include: {
-        studentEnrollments: {
-          include: {
-            course: { select: { id: true, name: true, duration: true } },
-            teacher: { select: { id: true, name: true } },
-          },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.course.findMany({
-      where: { isActive: true },
-      select: {
-        id: true,
-        name: true,
-        teacher: { select: { id: true, name: true, gender: true } },
-        courseTeachers: {
-          select: {
-            teacher: { select: { id: true, name: true, gender: true } },
-          },
-        },
-      },
-      orderBy: { name: "asc" },
-    }),
-  ]);
+  const { students, courseRows } = await getCachedStudentsData();
 
-  // Flatten course teachers (primary + co-teachers, deduped)
   const allCourses = courseRows.map((c) => {
-    const map = new Map<
-      string,
-      { id: string; name: string; gender: "MALE" | "FEMALE" | null }
-    >();
+    const map = new Map<string, { id: string; name: string; gender: "MALE" | "FEMALE" | null }>();
     if (c.teacher) {
       map.set(c.teacher.id, {
         id: c.teacher.id,
@@ -63,7 +48,6 @@ export default async function AdminStudentsPage({
     return { id: c.id, name: c.name, teachers: Array.from(map.values()) };
   });
 
-  // Pre-fill from "Add as Student" link in Enroll Requests
   const addCourseName = str(searchParams.addCourse);
   const matchedCourse = addCourseName
     ? allCourses.find(
@@ -82,34 +66,50 @@ export default async function AdminStudentsPage({
           phone: str(searchParams.addPhone) ?? "",
           country: str(searchParams.addCountry) ?? "",
           courseId: matchedCourse?.id ?? "",
+          courseName: addCourseName ?? "",
+          requestId: str(searchParams.addRequest) ?? "",
         }
       : null;
 
+  const displayStudents = students.map((s) => ({
+    id: s.id,
+    name: s.name,
+    email: s.email,
+    phone: s.phone,
+    country: s.country,
+    loginPassword: s.loginPassword,
+    suspended: !!s.suspendedAt,
+    createdAt: new Date(s.createdAt).toISOString(),
+    courses: s.studentEnrollments.map((e) => ({
+      id: e.course.id,
+      name: e.course.name,
+      duration: e.course.duration,
+      teacherId: e.teacher?.id ?? null,
+      teacherName: e.teacher?.name ?? null,
+    })),
+  }));
+
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Students Management"
-        description={`${students.length} total students · Manage all student accounts`}
-      />
-      <StudentsTable
-        initialStudents={students.map((s) => ({
-          id: s.id,
-          name: s.name,
-          email: s.email,
-          phone: s.phone,
-          country: s.country,
-          loginPassword: s.loginPassword,
-          createdAt: s.createdAt.toISOString(),
-          courses: s.studentEnrollments.map((e) => ({
-            id: e.course.id,
-            name: e.course.name,
-            duration: e.course.duration,
-            teacherName: e.teacher?.name ?? null,
-          })),
-        }))}
-        allCourses={allCourses}
-        prefill={prefill}
-      />
+    <StudentsTable initialStudents={displayStudents} allCourses={allCourses} prefill={prefill} />
+  );
+}
+
+function StudentsShell() {
+  const cols = ["Student", "Email", "Country", "Course", "Status", "Joined"];
+  return (
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <div className="flex gap-3 px-4 py-3 border-b border-border bg-muted/20">
+        {cols.map((h) => (
+          <span key={h} className="text-xs font-medium text-muted-foreground flex-1">{h}</span>
+        ))}
+      </div>
+      {Array.from({ length: 7 }).map((_, i) => (
+        <div key={i} className="flex gap-3 px-4 py-3 border-b border-border last:border-0">
+          {cols.map((h) => (
+            <span key={h} className="text-xs text-muted-foreground/40 flex-1">—</span>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }

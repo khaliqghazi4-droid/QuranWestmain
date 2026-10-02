@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/dashboard/page-header";
 import {
   Calendar,
@@ -12,21 +11,13 @@ import {
   CalendarCheck,
 } from "lucide-react";
 import { bookingTiming } from "@/lib/shifts";
-import { getWebsiteEnrollments } from "@/lib/enroll-source";
 import {
   ClassesFilterableList,
   type FilterableClass,
 } from "@/components/teacher/classes-filterable-list";
+import { getTeacherClassesData, TRIAL_GRACE_MS } from "../_caches";
 
 export const revalidate = 30;
-
-type TrialItem = {
-  id: string;
-  student: string;
-  courseName: string;
-  trialTime: string;
-  classHref: string;
-};
 
 export default async function TeacherClassesPage() {
   const session = await getServerSession(authOptions);
@@ -34,50 +25,11 @@ export default async function TeacherClassesPage() {
 
   const teacherId = session.user.id;
 
-  const [bookings, myAssignments] = await Promise.all([
-    prisma.bookingSlot.findMany({
-      where: { teacherId },
-      include: {
-        enrollment: {
-          include: {
-            student: { select: { name: true, country: true } },
-            course: { select: { id: true, name: true, slug: true, level: true } },
-          },
-        },
-      },
-    }),
-    prisma.trialAssignment.findMany({
-      where: {
-        teacherId,
-        trialTime: { gte: new Date(Date.now() - 12 * 60 * 60 * 1000) },
-      },
-      orderBy: { trialTime: "asc" },
-    }),
-  ]);
-
-  // Resolve trial sessions the admin has explicitly assigned to this teacher
-  let trials: TrialItem[] = [];
-  if (myAssignments.length > 0) {
-    try {
-      const enrollments = await getWebsiteEnrollments();
-      const enrollById = new Map(enrollments.map((e) => [e.id, e]));
-      trials = myAssignments
-        .map((a) => {
-          const e = enrollById.get(a.mongoEnrollmentId);
-          if (!e) return null;
-          return {
-            id: a.id,
-            student: e.fullName,
-            courseName: e.course,
-            trialTime: a.trialTime.toISOString(),
-            classHref: `/app/teacher/class/trial-${a.id}`,
-          };
-        })
-        .filter((x): x is TrialItem => x !== null);
-    } catch {
-      trials = [];
-    }
-  }
+  const data = await getTeacherClassesData(teacherId);
+  const bookings = data.bookings;
+  // The cached list may be a few minutes old — re-apply the 12h window now
+  const trialCutoff = Date.now() - TRIAL_GRACE_MS;
+  const trials = data.trials.filter((t) => new Date(t.trialTime).getTime() >= trialCutoff);
 
   // Compute next occurrence for each booking and sort soonest-first.
   const classes = bookings

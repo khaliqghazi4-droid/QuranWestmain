@@ -3,7 +3,8 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signIn, getSession } from "next-auth/react";
+import { signIn, signOut, getSession } from "next-auth/react";
+import { WHATSAPP_NUMBER } from "@/components/WhatsappButton";
 import {
   Mail,
   Lock,
@@ -13,6 +14,8 @@ import {
   AlertCircle,
   Loader2,
   BookOpen,
+  Ban,
+  MessageCircle,
 } from "lucide-react";
 
 export default function LoginPage() {
@@ -22,6 +25,9 @@ export default function LoginPage() {
     </React.Suspense>
   );
 }
+
+const TRIAL_ENDED =
+  "Your free trial access has ended. Please contact the academy to continue.";
 
 function roleHome(role?: string) {
   switch ((role ?? "").toUpperCase()) {
@@ -39,13 +45,24 @@ function roleHome(role?: string) {
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const callbackUrl = params.get("callbackUrl") ?? undefined;
+  // Only same-site paths; "//host", "/\host" and absolute URLs would send the user off-site
+  const rawCallback = params.get("callbackUrl");
+  const callbackUrl =
+    rawCallback && /^\/(?![/\\])/.test(rawCallback) ? rawCallback : undefined;
 
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [showPw, setShowPw] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<string | null>(
+    params.get("expired") ? TRIAL_ENDED : null
+  );
+  const [suspendedNotice, setSuspendedNotice] = React.useState(!!params.get("suspended"));
+
+  // Sent here because the account was suspended mid-session: drop that session
+  React.useEffect(() => {
+    if (params.get("suspended")) signOut({ redirect: false });
+  }, [params]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -60,7 +77,11 @@ function LoginForm() {
 
     if (!res || res.error) {
       setLoading(false);
-      setError("Invalid email or password");
+      if (res?.error === "ACCOUNT_SUSPENDED") {
+        setSuspendedNotice(true);
+        return;
+      }
+      setError(res?.error === "TRIAL_EXPIRED" ? TRIAL_ENDED : "Invalid email or password");
       return;
     }
 
@@ -72,6 +93,7 @@ function LoginForm() {
   }
 
   return (
+    <>
     <div className="w-full max-w-md animate-fade-in">
       <div className="glass-card rounded-3xl p-8 shadow-2xl">
         <div className="text-center mb-7">
@@ -174,5 +196,46 @@ function LoginForm() {
         </div>
       </div>
     </div>
+
+      {/* Outside the fade-in wrapper: its transform would anchor this fixed popup while animating */}
+      {suspendedNotice && (
+        <div
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="suspended-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50 p-4 backdrop-blur-sm"
+        >
+          <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 text-center shadow-2xl">
+            <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-destructive/10 text-destructive">
+              <Ban className="h-7 w-7" />
+            </div>
+            <h2 id="suspended-title" className="mt-4 text-lg font-bold">
+              Account suspended
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Quran West admin has suspended your account. Please contact the academy if you think
+              this is a mistake.
+            </p>
+            <div className="mt-5 grid gap-2">
+              <a
+                href={`https://wa.me/${WHATSAPP_NUMBER}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white"
+              >
+                <MessageCircle className="h-4 w-4" /> Contact the academy
+              </a>
+              <button
+                type="button"
+                onClick={() => setSuspendedNotice(false)}
+                className="rounded-xl border border-border px-4 py-2.5 text-sm font-semibold hover:bg-muted"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

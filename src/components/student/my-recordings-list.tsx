@@ -8,10 +8,10 @@ import {
   User,
   BookOpen,
   X,
-  Film,
   Calendar,
   Video,
 } from "lucide-react";
+import { RecordingThumbnail } from "@/components/recording-thumbnail";
 
 export type MyRecordingItem = {
   id: string;
@@ -22,25 +22,10 @@ export type MyRecordingItem = {
   startedAt: string; // ISO
 };
 
-// Slim student-side variant of the admin RecordingsList: just shows the
-// recordings of classes the student attended, opens an in-app <video>
-// modal to watch, and offers a download fallback. No search or filters
-// — the list is naturally small per student.
+// The class recordings the admin has shown to this student. Opens an in-app
+// <video> modal to watch, with a download fallback.
 export function MyRecordingsList({ items }: { items: MyRecordingItem[] }) {
   const [playing, setPlaying] = React.useState<MyRecordingItem | null>(null);
-
-  if (items.length === 0) {
-    return (
-      <div className="rounded-2xl border-2 border-dashed border-border bg-card/50 p-10 text-center">
-        <Film className="mx-auto h-10 w-10 text-muted-foreground/40" />
-        <p className="mt-3 text-sm font-semibold">No recordings yet</p>
-        <p className="mt-1 text-xs text-muted-foreground max-w-md mx-auto">
-          When your teacher records a class from the meeting room, it will show
-          up here so you can review the lesson later.
-        </p>
-      </div>
-    );
-  }
 
   return (
     <>
@@ -52,9 +37,10 @@ export function MyRecordingsList({ items }: { items: MyRecordingItem[] }) {
           >
             <button
               onClick={() => setPlaying(r)}
-              className="relative aspect-video bg-gradient-to-br from-primary/20 via-accent/20 to-primary/10 grid place-items-center group"
+              className="relative aspect-video overflow-hidden bg-gradient-to-br from-primary/20 via-accent/20 to-primary/10 grid place-items-center group"
             >
-              <div className="grid h-14 w-14 place-items-center rounded-full bg-white/90 text-primary shadow-lg group-hover:scale-110 transition-transform">
+              <RecordingThumbnail url={r.url} durationSec={r.durationSec} />
+              <div className="relative grid h-14 w-14 place-items-center rounded-full bg-white/90 text-primary shadow-lg group-hover:scale-110 transition-transform">
                 <PlayCircle className="h-7 w-7" />
               </div>
               {r.durationSec && (

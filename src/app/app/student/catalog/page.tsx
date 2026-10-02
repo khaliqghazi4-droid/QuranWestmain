@@ -1,5 +1,4 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getStudentViewer } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { CatalogClient } from "./catalog-client";
@@ -7,8 +6,8 @@ import { CatalogClient } from "./catalog-client";
 export const revalidate = 30;
 
 export default async function CatalogPage() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return null;
+  const viewer = await getStudentViewer();
+  if (!viewer) return null;
 
   const [courses, enrollments, me] = await Promise.all([
     prisma.course.findMany({
@@ -20,11 +19,11 @@ export default async function CatalogPage() {
       orderBy: { createdAt: "desc" },
     }),
     prisma.enrollment.findMany({
-      where: { studentId: session.user.id },
+      where: { studentId: viewer.id },
       select: { courseId: true },
     }),
     prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: viewer.id },
       select: { name: true, email: true, phone: true, country: true },
     }),
   ]);

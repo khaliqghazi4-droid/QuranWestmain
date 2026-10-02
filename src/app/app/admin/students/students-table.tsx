@@ -10,23 +10,31 @@ import {
   GraduationCap,
   Loader2,
   KeyRound,
-  Copy,
   X,
   BookOpen,
   Clock,
   Filter,
   FileText,
   UserPlus,
-  MessageCircle,
   RefreshCw,
   AlertCircle,
+  Pencil,
+  Plus,
+  Ban,
+  ShieldCheck,
 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
+import {
+  LoginCredentialsModal,
+  useLockPageScroll,
+  type LoginTarget,
+} from "@/components/admin/login-credentials-modal";
 
 type CourseEnrollment = {
   id: string;
   name: string;
   duration: string | null;
+  teacherId: string | null;
   teacherName: string | null;
 };
 
@@ -37,6 +45,7 @@ type Student = {
   phone: string | null;
   country: string | null;
   loginPassword: string | null;
+  suspended: boolean;
   createdAt: string;
   courses: CourseEnrollment[];
 };
@@ -50,15 +59,12 @@ type Prefill = {
   phone: string;
   country: string;
   courseId: string;
+  courseName: string; // course requested on the website; may not exist in the LMS yet
+  requestId: string; // enrollment request being converted; it leaves Enroll Requests / Free Trials
 } | null;
 
-type LoginTarget = {
-  id: string;
-  name: string;
-  email: string;
-  phone: string | null;
-  password: string | null;
-};
+// Select value for a requested course that isn't in the LMS; the API creates it on save.
+const NEW_COURSE = "__new__";
 
 export function StudentsTable({
   initialStudents,
@@ -74,8 +80,10 @@ export function StudentsTable({
   const [query, setQuery] = React.useState("");
   const [courseFilter, setCourseFilter] = React.useState<string>("all"); // "all" | courseId | "none"
   const [deleting, setDeleting] = React.useState<string | null>(null);
+  const [suspending, setSuspending] = React.useState<string | null>(null);
   const [addOpen, setAddOpen] = React.useState<boolean>(!!prefill);
   const [loginTarget, setLoginTarget] = React.useState<LoginTarget | null>(null);
+  const [editTarget, setEditTarget] = React.useState<Student | null>(null);
 
   const filtered = students.filter((s) => {
     const q = query.toLowerCase();
@@ -103,6 +111,28 @@ export function StudentsTable({
     } else {
       const data = await res.json();
       alert(data.error ?? "Delete failed");
+    }
+  }
+
+  async function handleSuspend(s: Student, suspend: boolean) {
+    if (
+      suspend &&
+      !confirm(`Suspend ${s.name}'s account? They will be signed out and can't log in until you reactivate it.`)
+    )
+      return;
+    setSuspending(s.id);
+    const res = await fetch(`/api/admin/students/${s.id}/suspend`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ suspend }),
+    });
+    setSuspending(null);
+    if (res.ok) {
+      setStudents((prev) => prev.map((x) => (x.id === s.id ? { ...x, suspended: suspend } : x)));
+      router.refresh();
+    } else {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error ?? (suspend ? "Could not suspend" : "Could not reactivate"));
     }
   }
 
@@ -223,6 +253,11 @@ export function StudentsTable({
                         <div>
                           <p className="text-sm font-semibold group-hover:text-primary transition-colors">{s.name}</p>
                           <p className="text-[11px] text-muted-foreground">{s.email}</p>
+                          {s.suspended && (
+                            <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-bold text-destructive">
+                              <Ban className="h-2.5 w-2.5" /> Suspended
+                            </span>
+                          )}
                         </div>
                       </Link>
                     </td>
@@ -287,6 +322,13 @@ export function StudentsTable({
                           <Mail className="h-3.5 w-3.5 text-muted-foreground" />
                         </a>
                         <button
+                          onClick={() => setEditTarget(s)}
+                          className="grid h-8 w-8 place-items-center rounded-full hover:bg-primary/10 hover:text-primary"
+                          title="Edit student"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
                           onClick={() =>
                             setLoginTarget({
                               id: s.id,
@@ -301,6 +343,33 @@ export function StudentsTable({
                         >
                           <KeyRound className="h-3.5 w-3.5" />
                         </button>
+                        {s.suspended ? (
+                          <button
+                            onClick={() => handleSuspend(s, false)}
+                            disabled={suspending === s.id}
+                            className="grid h-8 w-8 place-items-center rounded-full text-[hsl(var(--primary))] hover:bg-primary/10 disabled:opacity-50"
+                            title="Reactivate account"
+                          >
+                            {suspending === s.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <ShieldCheck className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleSuspend(s, true)}
+                            disabled={suspending === s.id}
+                            className="grid h-8 w-8 place-items-center rounded-full hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                            title="Suspend account"
+                          >
+                            {suspending === s.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Ban className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                        )}
                         <button
                           onClick={() => handleDelete(s.id, s.name)}
                           disabled={deleting === s.id}
@@ -334,7 +403,7 @@ export function StudentsTable({
           allCourses={allCourses}
           prefill={prefill}
           onClose={() => setAddOpen(false)}
-          onCreated={(student, password) => {
+          onCreated={(student, password, course) => {
             setStudents((prev) => [
               {
                 id: student.id,
@@ -343,8 +412,9 @@ export function StudentsTable({
                 phone: student.phone,
                 country: student.country,
                 loginPassword: password,
+                suspended: false,
                 createdAt: new Date().toISOString(),
-                courses: [],
+                courses: course ? [course] : [],
               },
               ...prev,
             ]);
@@ -361,8 +431,21 @@ export function StudentsTable({
         />
       )}
 
+      {editTarget && (
+        <EditStudentModal
+          student={editTarget}
+          allCourses={allCourses}
+          onClose={() => setEditTarget(null)}
+          onSaved={(updated) => {
+            setStudents((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+            setEditTarget(null);
+            router.refresh();
+          }}
+        />
+      )}
+
       {loginTarget && (
-        <LoginModal
+        <LoginCredentialsModal
           target={loginTarget}
           onClose={() => setLoginTarget(null)}
           onUpdated={(newPw) => {
@@ -400,14 +483,20 @@ function AddStudentModal({
   onClose: () => void;
   onCreated: (
     student: { id: string; name: string; email: string; phone: string | null; country: string | null },
-    password: string
+    password: string,
+    course: CourseEnrollment | null
   ) => void;
 }) {
+  useLockPageScroll();
+
   const [name, setName] = React.useState(prefill?.name ?? "");
   const [email, setEmail] = React.useState(prefill?.email ?? "");
   const [phone, setPhone] = React.useState(prefill?.phone ?? "");
   const [country, setCountry] = React.useState(prefill?.country ?? "");
-  const [courseId, setCourseId] = React.useState(prefill?.courseId ?? "");
+  const newCourseName = prefill && !prefill.courseId && prefill.courseName ? prefill.courseName : null;
+  const [courseId, setCourseId] = React.useState(
+    prefill?.courseId || (newCourseName ? NEW_COURSE : "")
+  );
   const [teacherId, setTeacherId] = React.useState("");
   const [password, setPassword] = React.useState(() => genPassword(10));
   const [loading, setLoading] = React.useState(false);
@@ -437,7 +526,9 @@ function AddStudentModal({
         email,
         phone: phone || undefined,
         country: country || undefined,
-        courseId: courseId || undefined,
+        courseId: courseId && courseId !== NEW_COURSE ? courseId : undefined,
+        courseName: courseId === NEW_COURSE ? newCourseName : undefined,
+        requestId: prefill?.requestId || undefined,
         teacherId: teacherId || undefined,
         password,
       }),
@@ -449,7 +540,7 @@ function AddStudentModal({
       setError(data.error ?? "Failed to add student");
       return;
     }
-    onCreated(data.student, data.password);
+    onCreated(data.student, data.password, data.course ?? null);
   }
 
   return (
@@ -530,7 +621,7 @@ function AddStudentModal({
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-                Enroll in course {prefill?.courseId ? "(from website)" : "(optional)"}
+                Enroll in course {prefill?.courseId || newCourseName ? "(from website)" : "(optional)"}
               </label>
               <select
                 value={courseId}
@@ -538,6 +629,9 @@ function AddStudentModal({
                 className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               >
                 <option value="">No course yet</option>
+                {newCourseName && (
+                  <option value={NEW_COURSE}>{newCourseName} (new course)</option>
+                )}
                 {allCourses.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -625,162 +719,230 @@ function AddStudentModal({
   );
 }
 
-function LoginModal({
-  target,
+function EditStudentModal({
+  student,
+  allCourses,
   onClose,
-  onUpdated,
+  onSaved,
 }: {
-  target: LoginTarget;
+  student: Student;
+  allCourses: CourseOption[];
   onClose: () => void;
-  onUpdated: (newPassword: string) => void;
+  onSaved: (student: Student) => void;
 }) {
-  const [copied, setCopied] = React.useState(false);
-  const [generating, setGenerating] = React.useState(false);
+  useLockPageScroll();
+
+  const [name, setName] = React.useState(student.name);
+  const [email, setEmail] = React.useState(student.email);
+  const [phone, setPhone] = React.useState(student.phone ?? "");
+  const [country, setCountry] = React.useState(student.country ?? "");
+  const [rows, setRows] = React.useState(() =>
+    student.courses.map((c) => ({ courseId: c.id, teacherId: c.teacherId ?? "" }))
+  );
+  const [addCourseId, setAddCourseId] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  const password = target.password;
+  const courseById = new Map(allCourses.map((c) => [c.id, c]));
+  const current = (courseId: string) => student.courses.find((c) => c.id === courseId);
+  const courseName = (courseId: string) =>
+    courseById.get(courseId)?.name ?? current(courseId)?.name ?? "Course";
+  const addable = allCourses.filter((c) => !rows.some((r) => r.courseId === c.id));
 
-  const loginUrl =
-    typeof window !== "undefined" ? `${window.location.origin}/login` : "/login";
-
-  const message =
-    `Assalamu Alaikum ${target.name},\n\n` +
-    `Your Online Quran Academy account is ready. Login details:\n\n` +
-    `Login page: ${loginUrl}\n` +
-    `Email: ${target.email}\n` +
-    `Password: ${password ?? ""}\n\n` +
-    `Please change your password after your first login. JazakAllah Khair.`;
-
-  function copyAll() {
-    navigator.clipboard.writeText(message);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  function setTeacher(courseId: string, teacherId: string) {
+    setRows((prev) => prev.map((r) => (r.courseId === courseId ? { ...r, teacherId } : r)));
   }
 
-  async function generate() {
+  function addCourse() {
+    if (!addCourseId) return;
+    setRows((prev) => [...prev, { courseId: addCourseId, teacherId: "" }]);
+    setAddCourseId("");
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const removed = student.courses.filter((c) => !rows.some((r) => r.courseId === c.id));
     if (
-      password &&
+      removed.length > 0 &&
       !confirm(
-        `Generate a NEW password for ${target.name}? Their current password will stop working.`
+        `Remove ${removed.map((c) => c.name).join(", ")} from ${student.name}? ` +
+          `Their class schedule and attendance for ${removed.length === 1 ? "this course" : "these courses"} will be deleted.`
       )
     )
       return;
+
     setError(null);
-    setGenerating(true);
-    const res = await fetch(`/api/users/${target.id}/reset-password`, {
-      method: "POST",
+    setSaving(true);
+    const res = await fetch(`/api/admin/students/${student.id}`, {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
+      body: JSON.stringify({
+        name,
+        email,
+        phone,
+        country,
+        enrollments: rows.map((r) => ({ courseId: r.courseId, teacherId: r.teacherId || null })),
+      }),
     });
-    setGenerating(false);
+    const data = await res.json().catch(() => ({}));
+    setSaving(false);
     if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "Failed to generate password");
+      setError(data.error ?? "Failed to save changes");
       return;
     }
-    const data = await res.json();
-    onUpdated(data.newPassword);
+    onSaved(data.student);
   }
 
-  const waDigits = (target.phone ?? "").replace(/[^\d]/g, "");
-  const waHref = `https://wa.me/${waDigits}?text=${encodeURIComponent(message)}`;
-  const mailHref = `mailto:${target.email}?subject=${encodeURIComponent(
-    "Your Online Quran Academy Login"
-  )}&body=${encodeURIComponent(message)}`;
+  const inputCls =
+    "w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20";
+  const labelCls = "block text-xs font-semibold text-muted-foreground mb-1.5";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/40 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-md rounded-3xl border border-border bg-card shadow-2xl">
-        <div className="bg-gradient-to-br from-emerald-500 to-teal-500 p-6 text-white rounded-t-3xl relative">
-          <button
-            onClick={onClose}
-            className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full bg-white/15 backdrop-blur-md hover:bg-white/25"
-          >
+      <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl border border-border bg-card shadow-2xl">
+        <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-card z-10">
+          <div>
+            <h2 className="text-lg font-bold">Edit Student</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Update details and courses. Use the key button to change the password.
+            </p>
+          </div>
+          <button onClick={onClose} className="grid h-9 w-9 place-items-center rounded-full hover:bg-muted">
             <X className="h-4 w-4" />
           </button>
-          <div className="grid h-12 w-12 place-items-center rounded-full bg-white/20 backdrop-blur-md mb-3">
-            <KeyRound className="h-6 w-6" />
-          </div>
-          <h2 className="text-xl font-bold">Login Credentials</h2>
-          <p className="text-sm text-white/80 mt-1">
-            Share these with <span className="font-semibold">{target.name}</span>
-          </p>
         </div>
 
-        <div className="p-6 space-y-3">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {error && (
             <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
               <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" /> {error}
             </div>
           )}
 
-          <div className="rounded-xl border border-border bg-background p-3">
-            <p className="text-[10px] uppercase font-semibold text-muted-foreground">Email</p>
-            <p className="text-sm font-mono mt-1 break-all">{target.email}</p>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>Full Name *</label>
+              <input required value={name} onChange={(e) => setName(e.target.value)} className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Email *</label>
+              <input
+                required
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={inputCls}
+              />
+            </div>
           </div>
 
-          {password ? (
-            <div className="rounded-xl border border-border bg-background p-3">
-              <p className="text-[10px] uppercase font-semibold text-muted-foreground">Password</p>
-              <p className="text-base font-mono mt-1 font-bold tracking-wider">{password}</p>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>WhatsApp / Phone</label>
+              <input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputCls} />
             </div>
-          ) : (
-            <div className="rounded-xl border border-[hsl(var(--gold))]/30 bg-[hsl(var(--gold)/0.08)] p-3 text-xs text-foreground">
-              No saved password for this student yet. Click{" "}
-              <span className="font-semibold">Generate password</span> below to create one you can
-              share.
+            <div>
+              <label className={labelCls}>Country</label>
+              <input value={country} onChange={(e) => setCountry(e.target.value)} className={inputCls} />
             </div>
-          )}
+          </div>
 
-          {password && (
-            <div className="grid grid-cols-2 gap-2 pt-1">
-              {waDigits && (
-                <a
-                  href={waHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-2 text-sm font-bold text-white shadow-md"
-                >
-                  <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
-                </a>
-              )}
-              <a
-                href={mailHref}
-                className="inline-flex items-center justify-center gap-1.5 rounded-full border border-border px-4 py-2 text-sm font-bold hover:bg-muted"
-              >
-                <Mail className="h-3.5 w-3.5" /> Email
-              </a>
-              <button
-                onClick={copyAll}
-                className={`inline-flex items-center justify-center gap-1.5 rounded-full border border-border px-4 py-2 text-sm font-bold hover:bg-muted ${
-                  waDigits ? "col-span-2" : ""
-                }`}
-              >
-                <Copy className="h-3.5 w-3.5" /> {copied ? "Copied message!" : "Copy message"}
-              </button>
-            </div>
-          )}
-
-          <button
-            onClick={generate}
-            disabled={generating}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-muted disabled:opacity-60"
-          >
-            {generating ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+          <div>
+            <label className={labelCls}>Courses</label>
+            {rows.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-border px-4 py-3 text-xs text-muted-foreground">
+                Not enrolled in any course
+              </p>
             ) : (
-              <RefreshCw className="h-4 w-4" />
+              <div className="space-y-2">
+                {rows.map((r) => {
+                  const teachers = courseById.get(r.courseId)?.teachers ?? [];
+                  const keepCurrent =
+                    r.teacherId && !teachers.some((t) => t.id === r.teacherId)
+                      ? { id: r.teacherId, name: current(r.courseId)?.teacherName ?? "Current teacher" }
+                      : null;
+                  const options = keepCurrent ? [keepCurrent, ...teachers] : teachers;
+                  return (
+                    <div
+                      key={r.courseId}
+                      className="flex items-center gap-2 rounded-xl border border-border bg-background p-2.5"
+                    >
+                      <BookOpen className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span className="flex-1 min-w-0 truncate text-sm font-semibold">
+                        {courseName(r.courseId)}
+                      </span>
+                      <select
+                        value={r.teacherId}
+                        onChange={(e) => setTeacher(r.courseId, e.target.value)}
+                        disabled={options.length === 0}
+                        aria-label={`Teacher for ${courseName(r.courseId)}`}
+                        className="w-40 rounded-lg border border-border bg-card px-2 py-1.5 text-xs focus:border-primary focus:outline-none disabled:opacity-60"
+                      >
+                        <option value="">{options.length === 0 ? "No teachers" : "No teacher yet"}</option>
+                        {options.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => setRows((prev) => prev.filter((x) => x.courseId !== r.courseId))}
+                        title={`Remove ${courseName(r.courseId)}`}
+                        className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             )}
-            {password ? "Generate new password" : "Generate password"}
-          </button>
+            {addable.length > 0 && (
+              <div className="mt-2 flex items-center gap-2">
+                <select
+                  value={addCourseId}
+                  onChange={(e) => setAddCourseId(e.target.value)}
+                  aria-label="Add a course"
+                  className={inputCls}
+                >
+                  <option value="">Add a course…</option>
+                  {addable.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={addCourse}
+                  disabled={!addCourseId}
+                  className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-muted disabled:opacity-50"
+                >
+                  <Plus className="h-4 w-4" /> Add
+                </button>
+              </div>
+            )}
+          </div>
 
-          <button
-            onClick={onClose}
-            className="w-full rounded-full bg-gradient-to-r from-primary to-accent px-4 py-2 text-sm font-semibold text-primary-foreground shadow-md"
-          >
-            Done
-          </button>
-        </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full border border-border px-5 py-2 text-sm font-semibold hover:bg-muted"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-accent px-6 py-2 text-sm font-semibold text-primary-foreground shadow-md disabled:opacity-60"
+            >
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+              Save changes
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

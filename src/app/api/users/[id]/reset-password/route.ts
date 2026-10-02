@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import bcrypt from "bcryptjs";
-import { authOptions } from "@/lib/auth";
+import { authOptions, isAdminSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 function generatePassword(length = 12) {
@@ -16,11 +16,12 @@ function generatePassword(length = 12) {
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
-  if (!session?.user || session.user.role !== "ADMIN") {
+  const isAdmin = isAdminSession(session);
+  if (!isAdmin) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (session.user.id === params.id) {
+  if (session?.user?.id === params.id) {
     return NextResponse.json(
       { error: "Use the change password option in your profile instead" },
       { status: 400 }

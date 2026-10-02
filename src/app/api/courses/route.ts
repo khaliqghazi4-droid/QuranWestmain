@@ -1,12 +1,9 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { authOptions, isAdminSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-
-function slugify(s: string) {
-  return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-}
+import { slugify } from "@/lib/utils";
 
 export async function GET() {
   const courses = await prisma.course.findMany({
@@ -22,7 +19,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
-  if (!session?.user || session.user.role !== "ADMIN") {
+  if (!isAdminSession(session)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -62,6 +59,7 @@ export async function POST(req: Request) {
     revalidatePath("/app/admin/courses");
     revalidatePath("/app/admin/teachers");
     revalidatePath("/app/admin");
+    revalidatePath("/app/teacher", "layout");
     return NextResponse.json({ course }, { status: 201 });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Failed to create course";

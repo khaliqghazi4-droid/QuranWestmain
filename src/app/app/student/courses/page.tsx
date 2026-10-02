@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getStudentViewer } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { BookOpen, Filter } from "lucide-react";
@@ -9,15 +8,15 @@ import { CoursesList } from "./courses-list";
 export const revalidate = 30;
 
 export default async function StudentCourses() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return null;
+  const viewer = await getStudentViewer();
+  if (!viewer) return null;
 
   // Load enrollments + the published lessons for each enrolled course (with
   // the student's per-lesson completion flag) so the My Courses page can
   // expand each course inline into its full lesson list — no extra
   // navigation to /courses/[id] needed.
   const enrollments = await prisma.enrollment.findMany({
-    where: { studentId: session.user.id },
+    where: { studentId: viewer.id },
     include: {
       course: {
         include: {
@@ -27,7 +26,7 @@ export default async function StudentCourses() {
             orderBy: { order: "asc" },
             include: {
               completions: {
-                where: { studentId: session.user.id },
+                where: { studentId: viewer.id },
                 select: { id: true },
               },
             },

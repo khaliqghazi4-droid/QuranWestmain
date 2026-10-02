@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -56,6 +57,8 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
     data: { progress, status: progress >= 100 ? "completed" : "active" },
   });
 
+  // Teacher's Students / Dashboard / Lessons show progress + completion counts
+  revalidatePath("/app/teacher", "layout");
   return NextResponse.json({
     completed: !existing,
     progress,

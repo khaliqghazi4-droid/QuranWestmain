@@ -1,27 +1,40 @@
 import Link from "next/link";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getStudentViewer } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
   BookOpen,
   Calendar,
+  CalendarClock,
   Trophy,
   TrendingUp,
   ArrowRight,
   Flame,
+  Video,
 } from "lucide-react";
 import { CountUp } from "@/components/count-up";
+import { trialMeetingLink } from "@/lib/meeting";
 
 export const revalidate = 30;
 
+function fmtPKT(d: Date) {
+  return d.toLocaleString("en-US", {
+    timeZone: "Asia/Karachi",
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export default async function StudentDashboard() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return null;
+  const viewer = await getStudentViewer();
+  if (!viewer) return null;
 
-  const userId = session.user.id;
-  const userName = session.user.name ?? "Student";
+  const userId = viewer.id;
+  const userName = viewer.name;
 
-  const [enrollments, totalAttendance] = await Promise.all([
+  const [enrollments, totalAttendance, me] = await Promise.all([
     prisma.enrollment.findMany({
       where: { studentId: userId },
       include: { course: { include: { teacher: { select: { name: true } } } } },
@@ -30,7 +43,17 @@ export default async function StudentDashboard() {
     prisma.attendance.count({
       where: { studentId: userId, status: "PRESENT" },
     }),
+    prisma.user.findUnique({ where: { id: userId }, select: { email: true, accessExpiresAt: true } }),
   ]);
+
+  // Free-trial login: show their trial class and how long access lasts
+  const trialRequest = me?.accessExpiresAt
+    ? await prisma.enrollmentRequest.findFirst({
+        where: { email: me.email, inTrials: true, convertedAt: null },
+        orderBy: { trialTime: "desc" },
+        select: { id: true, course: true, trialTime: true },
+      })
+    : null;
 
   const enrolledCount = enrollments.length;
   const avgProgress =
@@ -91,6 +114,33 @@ export default async function StudentDashboard() {
           </Link>
         </div>
       </div>
+
+      {me?.accessExpiresAt && (
+        <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-[hsl(var(--gold))]/40 bg-[hsl(var(--gold)/0.08)] p-5">
+          <div className="grid h-11 w-11 place-items-center rounded-xl bg-[hsl(var(--gold)/0.2)] text-[hsl(var(--gold))]">
+            <CalendarClock className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold">
+              Your free trial{trialRequest?.course ? ` · ${trialRequest.course}` : ""}
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {trialRequest?.trialTime ? `Class: ${fmtPKT(trialRequest.trialTime)} PKT · ` : ""}
+              Access until {fmtPKT(me.accessExpiresAt)} PKT
+            </p>
+          </div>
+          {trialRequest && (
+            <a
+              href={trialMeetingLink(trialRequest.id)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-full bg-[hsl(var(--primary))] px-4 py-2 text-sm font-semibold text-primary-foreground shadow-md"
+            >
+              <Video className="h-4 w-4" /> Join class
+            </a>
+          )}
+        </div>
+      )}
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((s, i) => (

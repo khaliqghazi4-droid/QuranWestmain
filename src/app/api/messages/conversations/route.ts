@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { messagePreview } from "@/lib/chat-message";
 
 // GET /api/messages/conversations
 // Returns list of unique conversation partners with last message + unread count
@@ -40,14 +41,14 @@ export async function GET() {
 
     const existing = map.get(partner.id);
     if (existing) {
-      if (m.senderId !== me && !m.read) existing.unreadCount++;
+      if (m.senderId !== me && !m.read && !m.deletedAt) existing.unreadCount++;
     } else {
-      const unread = m.senderId !== me && !m.read ? 1 : 0;
+      const unread = m.senderId !== me && !m.read && !m.deletedAt ? 1 : 0;
       map.set(partner.id, {
         partnerId: partner.id,
         partnerName: partner.name,
         partnerRole: partner.role,
-        lastMessage: m.content,
+        lastMessage: messagePreview(m),
         lastAt: m.createdAt,
         unreadCount: unread,
       });

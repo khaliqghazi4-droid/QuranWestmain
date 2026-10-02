@@ -4,15 +4,15 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveRoom } from "@/lib/class-room";
 import { ensureDailyRoom, isDailyConfigured } from "@/lib/daily";
+import { createJaasJwt, getJaasConfig } from "@/lib/jaas";
 import { ClassRoom, type ClassRoomNote } from "@/components/class-room/class-room";
-import { ScreenRecorder } from "@/components/class-room/screen-recorder";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-// In-app class room for the teacher. Opens Jitsi inside the academy page,
-// shows the teacher's own notes for the course, and exposes the screen
-// recorder so the lecture is saved to the admin's recordings tab.
+// In-app class room for the teacher. Opens the meeting inside the academy
+// page and shows the teacher's own notes for the course. Start Class joins
+// and records the class; the recording saves to the admin's recordings tab.
 export default async function TeacherClassRoom({
   params,
 }: {
@@ -47,11 +47,25 @@ export default async function TeacherClassRoom({
     fileName: n.fileName,
   }));
 
+  const displayName = `Ustaz ${session.user.name ?? "Teacher"}`;
+
+  // With JaaS keys configured the teacher joins on 8x8.vc as the moderator
+  // (they were checked above to be this class's teacher). Trials stay on
+  // public meet.jit.si: the trial student joins through an outside
+  // meet.jit.si link, so both sides must use the same server.
+  const jaasConfig = room.kind !== "trial" ? getJaasConfig() : null;
+  const jaas = jaasConfig
+    ? createJaasJwt(jaasConfig, {
+        user: { id: session.user.id, name: displayName, email: session.user.email },
+        moderator: true,
+      })
+    : null;
+
   // Ensure a Daily room exists for this class (idempotent). If Daily isn't
   // configured yet we fall back to the older Jitsi room so the class still
-  // joins — just without the embed improvements.
+  // joins — just without the embed improvements. Skipped when JaaS is in use.
   let dailyUrl: string | null = null;
-  if (isDailyConfigured()) {
+  if (!jaas && isDailyConfigured()) {
     try {
       const dRoom = await ensureDailyRoom(room.roomId);
       dailyUrl = dRoom.url;
@@ -66,20 +80,14 @@ export default async function TeacherClassRoom({
         roomId={room.roomId}
         dailyUrl={dailyUrl}
         jitsiRoomName={room.jitsiRoomName}
+        jaas={jaas}
         courseName={room.courseName}
         studentName={room.studentName}
-        displayName={`Ustaz ${session.user.name ?? "Teacher"}`}
+        displayName={displayName}
         isTeacher
         notes={notes}
         backHref="/app/teacher/classes"
         startUTC={room.startUTC}
-        recorderSlot={
-          <ScreenRecorder
-            roomId={room.roomId}
-            courseName={room.courseName}
-            studentName={room.studentName}
-          />
-        }
       />
     </div>
   );

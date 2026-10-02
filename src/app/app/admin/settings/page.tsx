@@ -1,4 +1,8 @@
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { ProfileEditor } from "@/components/profile/profile-editor";
 import { Settings, Mail, Bell, CreditCard, Shield, Globe } from "lucide-react";
 
 const sections = [
@@ -10,13 +14,38 @@ const sections = [
   { icon: Globe, title: "Localization", desc: "Languages, timezones, regional settings" },
 ];
 
-export default function AdminSettings() {
+export default async function AdminSettings() {
+  const session = await getServerSession(authOptions);
+  const me = session?.user?.id
+    ? await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          country: true,
+          timezone: true,
+          bio: true,
+          role: true,
+          createdAt: true,
+        },
+      })
+    : null;
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Settings"
         description="Configure your academy preferences and integrations"
       />
+
+      {me && (
+        <section className="space-y-3">
+          <h2 className="text-sm font-bold">My Account</h2>
+          <ProfileEditor user={{ ...me, createdAt: me.createdAt.toISOString() }} />
+        </section>
+      )}
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {sections.map((s) => (

@@ -1,11 +1,11 @@
+﻿import { Suspense } from "react";
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { SchedulingBoard } from "./scheduling-board";
 
-export const dynamic = "force-dynamic";
-
-export default async function AdminAvailabilityPage() {
-  const enrollments = await prisma.enrollment.findMany({
+const getCachedAvailability = unstable_cache(
+  () => prisma.enrollment.findMany({
     include: {
       student: { select: { id: true, name: true, email: true, country: true, timezone: true } },
       course: { select: { id: true, name: true, level: true, classDuration: true } },
@@ -17,7 +17,26 @@ export default async function AdminAvailabilityPage() {
       },
     },
     orderBy: [{ student: { name: "asc" } }, { startedAt: "desc" }],
-  });
+  }),
+  ["admin-availability"],
+  { revalidate: 600 }
+);
+
+export const revalidate = 600;
+
+export default function AdminAvailabilityPage() {
+  return (
+    <div className="space-y-6">
+      <PageHeader title="Scheduling & Availability" description="Manage student schedules and teacher bookings" />
+      <Suspense fallback={<AvailabilityShell />}>
+        <AvailabilityData />
+      </Suspense>
+    </div>
+  );
+}
+
+async function AvailabilityData() {
+  const enrollments = await getCachedAvailability();
 
   const data = enrollments.map((e) => ({
     id: e.id,
@@ -50,16 +69,25 @@ export default async function AdminAvailabilityPage() {
     })),
   }));
 
-  const totalBooked = data.reduce((sum, e) => sum + e.bookings.length, 0);
-  const needsAvailability = data.filter((e) => e.availability.length === 0).length;
+  return <SchedulingBoard enrollments={data} />;
+}
 
+function AvailabilityShell() {
+  const cols = ["Student", "Course", "Teacher", "Schedule", "Bookings"];
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Scheduling & Availability"
-        description={`${data.length} enrollments · ${totalBooked} classes booked · ${needsAvailability} awaiting student times`}
-      />
-      <SchedulingBoard enrollments={data} />
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <div className="flex gap-3 px-4 py-3 border-b border-border bg-muted/20">
+        {cols.map((h) => (
+          <span key={h} className="text-xs font-medium text-muted-foreground flex-1">{h}</span>
+        ))}
+      </div>
+      {Array.from({ length: 7 }).map((_, i) => (
+        <div key={i} className="flex gap-3 px-4 py-3 border-b border-border last:border-0">
+          {cols.map((h) => (
+            <span key={h} className="text-xs text-muted-foreground/40 flex-1">—</span>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }

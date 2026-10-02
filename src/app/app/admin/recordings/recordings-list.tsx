@@ -12,7 +12,10 @@ import {
   X,
   Film,
   Calendar,
+  Eye,
 } from "lucide-react";
+import { ShareRecordingButton } from "@/components/admin/share-recording-button";
+import { RecordingThumbnail } from "@/components/recording-thumbnail";
 
 export type RecordingItem = {
   id: string;
@@ -25,11 +28,42 @@ export type RecordingItem = {
   sizeBytes: number | null;
   startedAt: string;
   createdAt: string;
+  // A booked class's recording can be shown to its student; trials can't
+  canShare: boolean;
+  shared: boolean;
 };
 
 export function RecordingsList({ items }: { items: RecordingItem[] }) {
   const [query, setQuery] = React.useState("");
   const [playing, setPlaying] = React.useState<RecordingItem | null>(null);
+  const [sharedIds, setSharedIds] = React.useState(
+    () => new Set(items.filter((r) => r.shared).map((r) => r.id))
+  );
+  React.useEffect(
+    () => setSharedIds(new Set(items.filter((r) => r.shared).map((r) => r.id))),
+    [items]
+  );
+  function markShared(id: string, shared: boolean) {
+    setSharedIds((prev) => {
+      const next = new Set(prev);
+      if (shared) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
+  React.useLayoutEffect(() => {
+    const main = document.querySelector("main") as HTMLElement | null;
+    const html = document.documentElement;
+    if (main) main.style.overflow = playing ? "hidden" : "";
+    html.style.overflow = playing ? "hidden" : "";
+    document.body.style.overflow = playing ? "hidden" : "";
+    return () => {
+      if (main) main.style.overflow = "";
+      html.style.overflow = "";
+      document.body.style.overflow = "";
+    };
+  }, [playing]);
 
   const filtered = items.filter((r) => {
     if (!query) return true;
@@ -81,9 +115,15 @@ export function RecordingsList({ items }: { items: RecordingItem[] }) {
             >
               <button
                 onClick={() => setPlaying(r)}
-                className="relative aspect-video bg-gradient-to-br from-primary/20 via-accent/20 to-primary/10 grid place-items-center group"
+                className="relative aspect-video overflow-hidden bg-gradient-to-br from-primary/20 via-accent/20 to-primary/10 grid place-items-center group"
               >
-                <div className="grid h-14 w-14 place-items-center rounded-full bg-white/90 text-primary shadow-lg group-hover:scale-110 transition-transform">
+                <RecordingThumbnail url={r.url} durationSec={r.durationSec} />
+                {sharedIds.has(r.id) && (
+                  <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white shadow">
+                    <Eye className="h-2.5 w-2.5" /> Shared with student
+                  </span>
+                )}
+                <div className="relative grid h-14 w-14 place-items-center rounded-full bg-white/90 text-primary shadow-lg group-hover:scale-110 transition-transform">
                   <PlayCircle className="h-7 w-7" />
                 </div>
                 {r.durationSec && (
@@ -132,6 +172,13 @@ export function RecordingsList({ items }: { items: RecordingItem[] }) {
                     <Download className="h-3.5 w-3.5" />
                   </a>
                 </div>
+                {r.canShare && (
+                  <ShareRecordingButton
+                    recordingId={r.id}
+                    shared={r.shared}
+                    onChange={(shared) => markShared(r.id, shared)}
+                  />
+                )}
                 {r.sizeBytes && (
                   <p className="text-[10px] text-muted-foreground">
                     {formatSize(r.sizeBytes)}

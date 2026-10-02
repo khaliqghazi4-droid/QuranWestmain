@@ -6,6 +6,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { getWebsiteEnrollments } from "@/lib/enroll-source";
+import { trialRoomName } from "@/lib/meeting";
 
 export type ClassRoomContext = {
   roomId: string;            // canonical (`booking-x` etc.)
@@ -81,7 +82,7 @@ export async function resolveRoom(roomId: string): Promise<ClassRoomContext | nu
     }
     return {
       roomId,
-      jitsiRoomName: `OnlineQuranAcademy-trial-${safeSlug(a.mongoEnrollmentId)}`,
+      jitsiRoomName: trialRoomName(a.mongoEnrollmentId),
       studentName,
       courseName,
       courseId: null,

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Search,
   Filter,
@@ -11,12 +12,17 @@ import {
   User,
   Inbox,
   UserPlus,
+  CalendarPlus,
+  X,
 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import type { WebsiteEnrollment } from "@/lib/enroll-source";
 
-function addStudentHref(e: WebsiteEnrollment) {
+export function addStudentHref(
+  e: Pick<WebsiteEnrollment, "id" | "fullName" | "email" | "whatsapp" | "country" | "course">
+) {
   const params = new URLSearchParams({
+    addRequest: e.id,
     addName: e.fullName,
     addEmail: e.email,
     addPhone: e.whatsapp,
@@ -29,6 +35,14 @@ function addStudentHref(e: WebsiteEnrollment) {
 function waLink(num: string) {
   const digits = num.replace(/[^\d]/g, "");
   return `https://wa.me/${digits}`;
+}
+
+// ISO timestamp -> "YYYY-MM-DDTHH:mm" in the browser's timezone, for <input type="datetime-local">
+function toLocalInput(iso: string | null) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function fmtDate(iso: string | null, withTime = false) {
@@ -244,6 +258,7 @@ function EnrollmentRow({ e }: { e: WebsiteEnrollment }) {
           >
             <Mail className="h-3.5 w-3.5" />
           </a>
+          <TrialAction e={e} />
           <Link
             href={addStudentHref(e)}
             title="Add as student"
@@ -254,5 +269,81 @@ function EnrollmentRow({ e }: { e: WebsiteEnrollment }) {
         </div>
       </td>
     </tr>
+  );
+}
+
+function TrialAction({ e }: { e: WebsiteEnrollment }) {
+  const router = useRouter();
+  const [picking, setPicking] = React.useState(false);
+  const [time, setTime] = React.useState(() => toLocalInput(e.trialTime));
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  async function schedule() {
+    setError(null);
+    setBusy(true);
+    const res = await fetch(`/api/trials/${e.id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ trialTime: new Date(time).toISOString() }),
+    });
+    setBusy(false);
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      setError(d.error ?? "Something went wrong");
+      return;
+    }
+    setPicking(false);
+    router.refresh();
+  }
+
+  let control: React.ReactNode;
+  if (picking) {
+    control = (
+      <div className="inline-flex items-center gap-1">
+        <input
+          type="datetime-local"
+          value={time}
+          onChange={(ev) => setTime(ev.target.value)}
+          aria-label="Trial class time"
+          className="rounded-lg border border-border bg-background px-2 py-1 text-xs focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+        />
+        <button
+          type="button"
+          onClick={schedule}
+          disabled={busy || !time}
+          className="rounded-full bg-[hsl(var(--primary))] px-3 py-1.5 text-[11px] font-bold text-primary-foreground whitespace-nowrap disabled:opacity-50"
+        >
+          {busy ? "Saving…" : "Confirm"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setPicking(false)}
+          disabled={busy}
+          title="Cancel"
+          className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground hover:bg-muted"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    );
+  } else {
+    control = (
+      <button
+        type="button"
+        onClick={() => setPicking(true)}
+        title="Schedule a free trial class"
+        className="inline-flex items-center gap-1 rounded-full border border-primary/40 px-3 py-1.5 text-[11px] font-bold text-[hsl(var(--primary))] hover:bg-primary/10 whitespace-nowrap"
+      >
+        <CalendarPlus className="h-3 w-3" /> Free Trial
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      {control}
+      {error && <p className="text-[10px] text-destructive">{error}</p>}
+    </div>
   );
 }

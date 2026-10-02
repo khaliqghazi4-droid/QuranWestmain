@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -33,6 +34,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       where: { id: params.id },
       data,
     });
+    revalidatePath("/app/teacher", "layout");
     return NextResponse.json({ enrollment: updated });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Update failed";
