@@ -242,6 +242,11 @@ export function ClassRoom({
               jaas={jaas}
               onHangup={isTeacher ? () => void recorder.stop() : undefined}
               onRejoin={isTeacher ? () => void recorder.start() : undefined}
+              waitingLabel={isTeacher ? `Waiting for ${studentName} to join…` : undefined}
+              enableLobby={isTeacher}
+              waitForTeacherLabel={
+                isTeacher ? undefined : "Waiting for your teacher to start the class…"
+              }
             />
           )}
 
