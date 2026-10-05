@@ -254,7 +254,7 @@ const Page = () => {
                                     </h2>
                                     <p>
                                         Our students consistently praise the transformative learning
-                                        experience we provide. Here's what they say about our courses
+                                        experience we provide. Here&apos;s what they say about our courses
                                     </p>
                                 </motion.div>
                             </div>

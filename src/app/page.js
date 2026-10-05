@@ -193,7 +193,7 @@ export default function Home() {
                   </motion.div>
                   <motion.div className="m-b30 mt-5" {...fadeRight(0.2)}>
                     <ul className="list-style1 text-white m-0">
-                      <li className="text-balance">One Teacher, One Student real relationship with your child's teacher</li>
+                      <li className="text-balance">One Teacher, One Student real relationship with your child&apos;s teacher</li>
                       <li className="text-balance">Qualified & Verified Teachers formal Ijazah certification</li>
                     </ul>
                   </motion.div>

@@ -163,7 +163,7 @@ const Footer = () => {
                                         </li>
                                         <li className='!mt-3'>
                                             <p className="!text-white !font-semibold !text-sm !mb-0">Address 2</p>
-                                            <span className="!text-white/75 !text-sm !leading-relaxed"> 372-B, Block B People's Colony No 1,<br /> Faisalabad, 38000, Pakistan</span>
+                                            <span className="!text-white/75 !text-sm !leading-relaxed"> 372-B, Block B People&apos;s Colony No 1,<br /> Faisalabad, 38000, Pakistan</span>
                                         </li>
                                     </ul>
                                 </motion.section>

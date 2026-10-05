@@ -1,8 +1,5 @@
 {
-  "crons": [
-    {
-      "path": "/api/admin/warmup",
-      "schedule": "*/5 * * * *"
-    }
-  ]
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "regions": ["cle1"]
 }

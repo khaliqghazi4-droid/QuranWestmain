@@ -169,7 +169,7 @@ const Page = () => {
                             <div className="col-lg-6 m-b30">
                                 <motion.div className="heading-bx style1" {...fadeRight(0.1)}>
                                     <h3>
-                                        Let's Learn About New Knowledge and Abilities.
+                                        Let&apos;s Learn About New Knowledge and Abilities.
                                     </h3>
                                     <p className="mw-100">
                                         At <span className="!font-semibold underline">Quran West</span>, we believe that Quranic education should be accessible, engaging, and spiritually enriching for everyone. Our mission is to provide high-quality online Quran classes with experienced teachers, helping students of all ages strengthen their Quran recitation, Tajweed, memorization, Arabic, and Islamic knowledge while growing closer to Allah.
@@ -432,7 +432,7 @@ const Page = () => {
                                     </h2>
                                     <p>
                                         Our students consistently praise the transformative learning
-                                        experience we provide. Here's what they say about our courses
+                                        experience we provide. Here&apos;s what they say about our courses
                                     </p>
                                 </motion.div>
                             </div>

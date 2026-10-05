@@ -5,7 +5,7 @@ import Header from '@/components/header/header'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { useParams } from 'next/navigation'
-import { getCourseById, courses } from '../../data'
+import { getCourseById, courses } from '@/app/(pages)/(courses)/data'
 import { motion, AnimatePresence } from "framer-motion"
 import { IoClose } from "react-icons/io5"
 import { useState } from "react"

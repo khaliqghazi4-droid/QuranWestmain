@@ -515,7 +515,7 @@ const EnrollNow = ({ defaultCourse }) => {
             )}
             {success && (
                 <div className="flex items-center gap-2 px-4 py-3 mb-3 bg-[#0A1837]/5 border border-[#0A1837]/20 rounded-lg text-sm text-[#0A1837] font-medium">
-                    ✓ Enrolment submitted successfully! We'll be in touch soon.
+                    ✓ Enrolment submitted successfully! We&apos;ll be in touch soon.
                 </div>
             )}
 

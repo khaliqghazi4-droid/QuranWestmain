@@ -510,7 +510,7 @@ const EnrollNow = () => {
             )}
             {success && (
                 <div className="flex items-center gap-2 px-4 py-3 mb-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800 font-medium">
-                    ✓ Enrolment submitted successfully! We'll be in touch soon.
+                    ✓ Enrolment submitted successfully! We&apos;ll be in touch soon.
                 </div>
             )}
 
