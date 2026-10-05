@@ -36,6 +36,7 @@ export default async function TeacherClassRoom({
       teacherId: session.user.id,
       ...(room.courseId ? { OR: [{ courseId: room.courseId }, { courseId: null }] } : {}),
     },
+    include: { course: { select: { name: true } } },
     orderBy: { updatedAt: "desc" },
     take: 50,
   });
@@ -45,6 +46,9 @@ export default async function TeacherClassRoom({
     content: n.content,
     fileUrl: n.fileUrl,
     fileName: n.fileName,
+    courseId: n.courseId,
+    courseName: n.course?.name ?? null,
+    updatedAt: n.updatedAt.toISOString(),
   }));
 
   const displayName = `Ustaz ${session.user.name ?? "Teacher"}`;
@@ -74,21 +78,21 @@ export default async function TeacherClassRoom({
     }
   }
 
+  // The dashboard shell gives class room pages the whole area under the header
   return (
-    <div className="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 lg:-mt-8 -mb-8">
-      <ClassRoom
-        roomId={room.roomId}
-        dailyUrl={dailyUrl}
-        jitsiRoomName={room.jitsiRoomName}
-        jaas={jaas}
-        courseName={room.courseName}
-        studentName={room.studentName}
-        displayName={displayName}
-        isTeacher
-        notes={notes}
-        backHref="/app/teacher/classes"
-        startUTC={room.startUTC}
-      />
-    </div>
+    <ClassRoom
+      roomId={room.roomId}
+      dailyUrl={dailyUrl}
+      jitsiRoomName={room.jitsiRoomName}
+      jaas={jaas}
+      courseName={room.courseName}
+      courseId={room.courseId}
+      studentName={room.studentName}
+      displayName={displayName}
+      isTeacher
+      notes={notes}
+      backHref="/app/teacher/classes"
+      startUTC={room.startUTC}
+    />
   );
 }

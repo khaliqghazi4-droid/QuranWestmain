@@ -64,6 +64,8 @@ export function TeacherClassReminder() {
   }, [pathname]);
 
   if (!data) return null;
+  // Already in a class room: the banner would only push the meeting down
+  if (pathname?.startsWith("/app/teacher/class/")) return null;
 
   // Compute minutes-until live (don't trust server value once any time passes)
   const minutesUntil = Math.round((data.startUTC - (Date.now() - tick * 0)) / 60_000);
@@ -100,7 +102,8 @@ export function TeacherClassReminder() {
 
   return (
     <div
-      className={`-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 lg:-mt-8 mb-6 px-4 sm:px-6 lg:px-8 py-3 border-b ${
+      // Edge to edge: cancels exactly the dashboard <main> padding (16px / 24px)
+      className={`-mx-[16px] -mt-[24px] mb-6 px-[24px] py-3 border-b ${
         isLive
           ? "bg-gradient-to-r from-emerald-500/15 via-emerald-500/10 to-emerald-500/15 border-emerald-500/30"
           : "bg-gradient-to-r from-[hsl(var(--gold)/0.18)] via-[hsl(var(--gold)/0.12)] to-[hsl(var(--gold)/0.18)] border-[hsl(var(--gold))]/40"

@@ -49,7 +49,9 @@ export function PdfUploader({
     if (file) uploadFile(file);
   }
 
-  const filename = value ? value.split("/").pop()?.replace(/^\d+-/, "") ?? "file.pdf" : null;
+  const filename = value
+    ? (value.split("/").pop()?.replace(/^\d+-/, "") ?? "file.pdf")
+    : null;
 
   return (
     <div className="space-y-2">
@@ -114,9 +116,12 @@ export function PdfUploader({
             <>
               <Upload className="h-6 w-6 text-primary" />
               <p className="text-sm font-semibold">
-                Drag &amp; drop a PDF here, or <span className="text-primary">browse</span>
+                Drag &amp; drop a PDF here, or{" "}
+                <span className="text-primary">browse</span>
               </p>
-              <p className="text-[10px] text-muted-foreground">Max 10 MB · PDF only</p>
+              <p className="text-[10px] text-muted-foreground">
+                Max 10 MB · PDF only
+              </p>
             </>
           )}
         </div>
@@ -129,7 +134,11 @@ export function PdfUploader({
       )}
 
       {viewing && value && (
-        <PdfViewer url={value} title={filename ?? "PDF"} onClose={() => setViewing(false)} />
+        <PdfViewer
+          url={value}
+          title={filename ?? "PDF"}
+          onClose={() => setViewing(false)}
+        />
       )}
     </div>
   );

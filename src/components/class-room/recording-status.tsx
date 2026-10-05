@@ -11,13 +11,9 @@ import type { ClassRecorder, UploadProgress } from "./use-class-recorder";
 export function RecordingStatus({
   recorder,
   variant,
-  courseName,
-  studentName,
 }: {
   recorder: ClassRecorder;
   variant: "pill" | "card";
-  courseName?: string;
-  studentName?: string;
 }) {
   const { status, elapsed, progress, error, canRetryUpload } = recorder;
 
@@ -90,41 +86,43 @@ export function RecordingStatus({
         {action && (
           <button
             onClick={action.run}
-            className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-semibold hover:bg-muted whitespace-nowrap"
+            title={action.label}
+            className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-semibold hover:bg-muted whitespace-nowrap"
           >
-            <action.icon className="h-3 w-3" /> {action.label}
+            {/* Icon only on narrow screens, so the class header doesn't overflow */}
+            <action.icon className="h-3 w-3" />
+            <span className="hidden sm:inline">{action.label}</span>
           </button>
         )}
       </div>
     );
   }
 
+  // Compact block for the narrow side panel (the page header already names
+  // the course and student)
   return (
-    <div className="rounded-2xl border border-border bg-card overflow-hidden">
-      <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center gap-2">
-        <div className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-red-500 to-rose-500 text-white">
-          <Video className="h-4 w-4" />
+    <div className="rounded-xl border border-border bg-card px-3 py-2.5">
+      <div className="flex items-center gap-2">
+        <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-red-500 to-rose-500 text-white">
+          <Video className="h-3.5 w-3.5" />
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold">Lecture Recording</p>
-          <p className="text-[10px] text-muted-foreground truncate">
-            {courseName} · {studentName}
-          </p>
-        </div>
+        <p className="flex-1 min-w-0 text-xs font-bold">Recording</p>
         {badge}
       </div>
-      <div className="p-4 space-y-3">
-        <p className="text-xs text-muted-foreground leading-relaxed">{state.text}</p>
-        {status === "uploading" && <UploadProgressBar progress={progress} />}
-        {action && (
-          <button
-            onClick={action.run}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-primary to-accent px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-md hover:shadow-lg"
-          >
-            <action.icon className="h-4 w-4" /> {action.label}
-          </button>
-        )}
-      </div>
+      <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">{state.text}</p>
+      {status === "uploading" && (
+        <div className="mt-2">
+          <UploadProgressBar progress={progress} />
+        </div>
+      )}
+      {action && (
+        <button
+          onClick={action.run}
+          className="mt-2 w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-primary/10 py-1.5 text-[11px] font-bold text-primary hover:bg-primary/20"
+        >
+          <action.icon className="h-3 w-3" /> {action.label}
+        </button>
+      )}
     </div>
   );
 }

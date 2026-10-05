@@ -18,6 +18,7 @@ import {
   Inbox,
   CalendarCheck,
   Film,
+  Video,
   type LucideIcon,
 } from "lucide-react";
 
@@ -60,6 +61,7 @@ export const navConfig: Record<Role, NavItem[]> = {
     { href: "/app/admin/teachers", label: "Teachers", icon: Users },
     { href: "/app/admin/teacher-attendance", label: "Teacher Attendance", icon: CalendarClock },
     { href: "/app/admin/availability", label: "Scheduling", icon: Calendar },
+    { href: "/app/admin/classes", label: "Classes", icon: Video },
     { href: "/app/admin/courses", label: "Courses", icon: BookOpen },
     { href: "/app/admin/payments", label: "Payments", icon: DollarSign },
     { href: "/app/admin/reports", label: "Reports", icon: LineChart },

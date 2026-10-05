@@ -1,7 +1,6 @@
 import { redirect, notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { authOptions, isAdminSession } from "@/lib/auth";
 import { resolveRoom } from "@/lib/class-room";
 import { ensureDailyRoom, isDailyConfigured } from "@/lib/daily";
 import { createJaasJwt, getJaasConfig } from "@/lib/jaas";
@@ -10,39 +9,29 @@ import { ClassRoom } from "@/components/class-room/class-room";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-// In-app class room for the student. Same Jitsi room as the teacher (so
-// they meet), no recording controls, no side panel.
-export default async function StudentClassRoom({
+// Admin joins any class to look in. On JaaS the admin is a moderator, so they
+// skip the lobby; they join with camera and mic off. No recording or notes.
+export default async function AdminClassRoom({
   params,
 }: {
   params: { id: string };
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
-  if (session.user.role !== "STUDENT") redirect("/app");
+  if (!isAdminSession(session)) redirect("/app");
 
   const room = await resolveRoom(params.id);
   if (!room) notFound();
 
-  // Guardrail: students may only join classes for courses they're enrolled in
-  // (we skip this check for trial rooms since those aren't tied to enrollments).
-  if (room.kind !== "trial" && room.courseId) {
-    const enrolled = await prisma.enrollment.findFirst({
-      where: { studentId: session.user.id, courseId: room.courseId },
-      select: { id: true },
-    });
-    if (!enrolled) redirect("/app/student/schedule");
-  }
+  const displayName = `${session.user.name ?? "Admin"} (Admin)`;
 
-  const displayName = session.user.name ?? "Student";
-
-  // With JaaS keys configured the student joins the teacher's 8x8.vc room as a
-  // regular participant. Trials stay on public meet.jit.si (see teacher page).
+  // Same server as the teacher and student: JaaS for regular classes,
+  // public meet.jit.si for trials
   const jaasConfig = room.kind !== "trial" ? getJaasConfig() : null;
   const jaas = jaasConfig
     ? createJaasJwt(jaasConfig, {
         user: { id: session.user.id, name: displayName, email: session.user.email },
-        moderator: false,
+        moderator: true,
       })
     : null;
 
@@ -52,7 +41,7 @@ export default async function StudentClassRoom({
       const dRoom = await ensureDailyRoom(room.roomId);
       dailyUrl = dRoom.url;
     } catch (e) {
-      console.error("[student/class] Daily room create failed", e);
+      console.error("[admin/class] Daily room create failed", e);
     }
   }
 
@@ -68,8 +57,9 @@ export default async function StudentClassRoom({
       studentName={room.studentName}
       displayName={displayName}
       isTeacher={false}
+      isAdmin
       notes={[]}
-      backHref="/app/student/schedule"
+      backHref="/app/admin/classes"
       startUTC={room.startUTC}
     />
   );

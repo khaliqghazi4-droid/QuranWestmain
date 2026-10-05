@@ -31,7 +31,7 @@ export function Navbar() {
         "fixed top-0 inset-x-0 z-50 transition-all duration-300",
         scrolled
           ? "bg-background/80 backdrop-blur-xl border-b border-border shadow-sm"
-          : "bg-transparent"
+          : "bg-transparent",
       )}
     >
       <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -40,7 +40,9 @@ export function Navbar() {
             <BookOpen className="h-5 w-5 text-primary-foreground" />
           </div>
           <div className="flex flex-col leading-tight">
-            <span className="text-sm font-bold tracking-tight">Online Quran</span>
+            <span className="text-sm font-bold tracking-tight">
+              Online Quran
+            </span>
             <span className="text-[11px] font-medium text-muted-foreground -mt-0.5">
               Academy
             </span>
@@ -80,7 +82,11 @@ export function Navbar() {
             className="md:hidden grid h-10 w-10 place-items-center rounded-full border border-border bg-muted/60"
             aria-label="Menu"
           >
-            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            {mobileOpen ? (
+              <X className="h-5 w-5" />
+            ) : (
+              <Menu className="h-5 w-5" />
+            )}
           </button>
         </div>
       </nav>

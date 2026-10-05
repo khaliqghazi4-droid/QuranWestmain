@@ -27,6 +27,10 @@ type JitsiApi = {
   addEventListener: (event: string, handler: (...args: unknown[]) => void) => void;
   dispose: () => void;
   executeCommand: (cmd: string, ...args: unknown[]) => void;
+  // Participants with their roles (missing on old Jitsi builds)
+  getRoomsInfo?: () => Promise<{
+    rooms?: { participants?: { id?: string; role?: string }[] }[];
+  }>;
 };
 type JitsiApiCtor = new (
   domain: string,
@@ -59,6 +63,7 @@ export function JitsiMeeting({
   waitingLabel,
   enableLobby,
   waitForTeacherLabel,
+  startMuted,
 }: {
   jitsiRoomName: string;
   displayName: string;
@@ -73,6 +78,8 @@ export function JitsiMeeting({
   enableLobby?: boolean;
   // Student: shown while the teacher isn't in the class
   waitForTeacherLabel?: string;
+  // Join with camera and mic off (an admin looking in)
+  startMuted?: boolean;
 }) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const apiRef = React.useRef<JitsiApi | null>(null);
@@ -153,7 +160,8 @@ export function JitsiMeeting({
             // Older and newer Jitsi spellings of "skip the Join meeting screen"
             prejoinPageEnabled: false,
             prejoinConfig: { enabled: false },
-            startWithVideoMuted: false,
+            startWithVideoMuted: !!startMuted,
+            startWithAudioMuted: !!startMuted,
             disableDeepLinking: true,
             requireDisplayName: false,
             // Students in the lobby ask to join straight away (no prejoin click)
@@ -174,10 +182,21 @@ export function JitsiMeeting({
         // Teacher: when we joined, and who got in before our lobby was on
         let joinedAt: number | null = null;
         const early: string[] = [];
+        // Another moderator (an admin looking in) never goes to the lobby
+        const isModerator = async (id: string) => {
+          try {
+            const info = await api.getRoomsInfo?.();
+            const people = info?.rooms?.flatMap((r) => r.participants ?? []) ?? [];
+            return people.some((p) => p.id === id && p.role === "moderator");
+          } catch {
+            return false;
+          }
+        };
         const sendToLobby = (id: string) => {
           const at = (joinedAt ?? Date.now()) + SEND_TO_LOBBY_AFTER_MS;
-          later(() => {
-            if (remoteIds.has(id)) api.executeCommand("kickParticipant", id);
+          later(async () => {
+            if (!remoteIds.has(id) || (await isModerator(id))) return;
+            if (!cancelled && remoteIds.has(id)) api.executeCommand("kickParticipant", id);
           }, Math.max(0, at - Date.now()));
         };
 
@@ -268,7 +287,7 @@ export function JitsiMeeting({
       if (container) container.innerHTML = "";
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [version, jitsiRoomName, displayName, appId, jwt, lobbyOn, holdForTeacher]);
+  }, [version, jitsiRoomName, displayName, appId, jwt, lobbyOn, holdForTeacher, startMuted]);
 
   React.useEffect(() => {
     if (reconnecting) {

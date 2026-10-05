@@ -7,7 +7,9 @@ import {
   ArrowLeft,
   StickyNote,
   FileText,
-  ExternalLink,
+  Eye,
+  Pencil,
+  Plus,
   Maximize2,
   Minimize2,
   ChevronRight,
@@ -25,14 +27,11 @@ import { DailyMeeting } from "./daily-meeting";
 import { JitsiMeeting } from "./jitsi-meeting";
 import { useClassRecorder } from "./use-class-recorder";
 import { RecordingStatus, UploadProgressBar, percentOf } from "./recording-status";
+import { PdfViewer } from "@/components/pdf-viewer";
+import { NoteEditorForm, type NoteItem } from "@/app/app/teacher/notes/notes-manager";
 
-export type ClassRoomNote = {
-  id: string;
-  title: string;
-  content: string | null;
-  fileUrl: string | null;
-  fileName: string | null;
-};
+// Same shape as My Notes, so the in-class panel can reuse its note editor
+export type ClassRoomNote = NoteItem;
 
 // In-app class room. When Daily.co is configured we mount Daily's prebuilt
 // UI; otherwise Jitsi's External API (JaaS on 8x8.vc, or meet.jit.si with an
@@ -47,9 +46,11 @@ export function ClassRoom({
   jitsiRoomName,
   jaas,
   courseName,
+  courseId,
   studentName,
   displayName,
   isTeacher,
+  isAdmin = false,
   notes,
   backHref,
   startUTC,
@@ -60,9 +61,14 @@ export function ClassRoom({
   // JaaS room token: joins on 8x8.vc so the teacher is moderator
   jaas?: { appId: string; jwt: string } | null;
   courseName: string;
+  // The class's course; new notes from the panel are filed under it
+  courseId: string | null;
   studentName: string;
   displayName: string;
   isTeacher: boolean;
+  // Admin looking in: joins straight away with camera/mic off, no student
+  // "waiting for teacher" hold, no recording or notes
+  isAdmin?: boolean;
   notes: ClassRoomNote[];
   backHref: string;
   startUTC: number | null;
@@ -70,9 +76,20 @@ export function ClassRoom({
   const router = useRouter();
   const [panelOpen, setPanelOpen] = React.useState(isTeacher);
   const [fullscreen, setFullscreen] = React.useState(false);
+  // Notes are added/edited from the panel without leaving the class
+  const [noteList, setNoteList] = React.useState(notes);
   const [activeNote, setActiveNote] = React.useState<ClassRoomNote | null>(
     notes[0] ?? null
   );
+  // Open note editor: `note` is null for a new note
+  const [editor, setEditor] = React.useState<{ note: ClassRoomNote | null } | null>(null);
+  const [pdf, setPdf] = React.useState<{ url: string; title: string } | null>(null);
+
+  function noteSaved(saved: ClassRoomNote) {
+    setNoteList((prev) => [saved, ...prev.filter((n) => n.id !== saved.id)]);
+    setActiveNote(saved);
+    setEditor(null);
+  }
 
   // Students join straight away; the teacher joins with Start Class
   const [joined, setJoined] = React.useState(!isTeacher);
@@ -113,18 +130,22 @@ export function ClassRoom({
     : null;
 
   return (
+    // Fills the dashboard's area under the header (or the whole window in
+    // fullscreen), so the class fits one screen with no page scroll
     <div
-      className={`flex flex-col bg-background ${
-        fullscreen ? "fixed inset-0 z-50" : "min-h-[calc(100vh-200px)]"
+      className={`flex flex-col min-w-0 bg-background ${
+        fullscreen ? "fixed inset-0 z-50" : "flex-1 min-h-0"
       }`}
     >
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card shrink-0">
+      {/* Arbitrary spacing: the website's Bootstrap stylesheet overrides
+          .px-4/.py-3/.gap-3 with !important */}
+      <div className="flex items-center gap-[8px] sm:gap-[12px] px-[12px] sm:px-[16px] py-[10px] border-b border-border bg-card shrink-0">
         {isTeacher && recordingLive ? (
           // Leaving mid-recording goes through End Class so the recording saves
           <button
             onClick={endClass}
             disabled={ending}
-            className="grid h-9 w-9 place-items-center rounded-full border border-border hover:bg-muted disabled:opacity-50"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border hover:bg-muted disabled:opacity-50"
             title="End class and save the recording"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -132,21 +153,26 @@ export function ClassRoom({
         ) : (
           <Link
             href={backHref}
-            className="grid h-9 w-9 place-items-center rounded-full border border-border hover:bg-muted"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border hover:bg-muted"
             title="Back"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
         )}
+        {/* Long names are cut with "…" instead of widening the page */}
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold truncate inline-flex items-center gap-2">
-            <BookOpen className="h-3.5 w-3.5 text-primary" /> {courseName}
+          <p className="flex items-center gap-2 text-sm font-bold">
+            <BookOpen className="h-3.5 w-3.5 shrink-0 text-primary" />
+            <span className="truncate">{courseName}</span>
           </p>
-          <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1.5">
-            <User className="h-3 w-3" /> {studentName}
-            {startLabel && <span>· starts {startLabel} PKT</span>}
-            {!isTeacher && (
-              <span className="inline-flex items-center gap-1">
+          <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <User className="h-3 w-3 shrink-0" />
+            <span className="truncate">
+              {studentName}
+              {startLabel && ` · starts ${startLabel} PKT`}
+            </span>
+            {!isTeacher && !isAdmin && (
+              <span className="hidden sm:inline-flex shrink-0 items-center gap-1">
                 · <Video className="h-3 w-3" /> This class is recorded
               </span>
             )}
@@ -158,7 +184,7 @@ export function ClassRoom({
             <button
               onClick={endClass}
               disabled={ending}
-              className="inline-flex items-center gap-1.5 rounded-full bg-red-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-600 disabled:opacity-60"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-red-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-600 disabled:opacity-60"
               title="End the class and save the recording"
             >
               {ending ? (
@@ -195,7 +221,7 @@ export function ClassRoom({
         )}
         <button
           onClick={() => setFullscreen((f) => !f)}
-          className="grid h-9 w-9 place-items-center rounded-full border border-border hover:bg-muted"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border hover:bg-muted"
           title={fullscreen ? "Exit fullscreen" : "Fullscreen"}
         >
           {fullscreen ? (
@@ -206,8 +232,8 @@ export function ClassRoom({
         </button>
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
-        <div className="flex-1 relative bg-black min-h-[60vh]">
+      <div className="flex-1 min-h-0 flex overflow-hidden">
+        <div className="flex-1 min-w-0 relative bg-black">
           {!joined ? (
             <div className="absolute inset-0 grid place-items-center p-6 text-white">
               <div className="max-w-sm text-center">
@@ -245,8 +271,9 @@ export function ClassRoom({
               waitingLabel={isTeacher ? `Waiting for ${studentName} to join…` : undefined}
               enableLobby={isTeacher}
               waitForTeacherLabel={
-                isTeacher ? undefined : "Waiting for your teacher to start the class…"
+                isTeacher || isAdmin ? undefined : "Waiting for your teacher to start the class…"
               }
+              startMuted={isAdmin}
             />
           )}
 
@@ -270,102 +297,138 @@ export function ClassRoom({
 
         {/* Side panel (teacher-only): notes + recorder */}
         {isTeacher && panelOpen && (
-          <aside className="hidden sm:flex w-80 lg:w-96 shrink-0 flex-col border-l border-border bg-card overflow-hidden">
-            <div className="p-3 border-b border-border">
-              <RecordingStatus
-                recorder={recorder}
-                variant="card"
-                courseName={courseName}
-                studentName={studentName}
-              />
+          <aside className="hidden sm:flex w-72 xl:w-80 shrink-0 flex-col border-l border-border bg-card overflow-hidden">
+            <div className="p-2.5 border-b border-border">
+              <RecordingStatus recorder={recorder} variant="card" />
             </div>
 
-            <div className="p-3 border-b border-border flex items-center gap-2">
-              <div className="grid h-7 w-7 place-items-center rounded-lg bg-primary/15 text-primary">
-                <StickyNote className="h-3.5 w-3.5" />
-              </div>
-              <p className="text-sm font-bold">My Notes</p>
-              <span className="text-[10px] text-muted-foreground ml-auto">
-                {notes.length} {notes.length === 1 ? "note" : "notes"}
+            <div className="px-3 py-2 border-b border-border flex items-center gap-2">
+              <StickyNote className="h-3.5 w-3.5 text-primary" />
+              <p className="text-xs font-bold">Notes</p>
+              <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                {noteList.length}
               </span>
+              {!editor && (
+                <button
+                  onClick={() => setEditor({ note: null })}
+                  className="ml-auto inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary hover:bg-primary/20"
+                  title="Write a new note"
+                >
+                  <Plus className="h-3 w-3" /> New
+                </button>
+              )}
             </div>
 
-            {notes.length === 0 ? (
-              <div className="p-6 text-center">
-                <StickyNote className="mx-auto h-10 w-10 text-muted-foreground/30" />
-                <p className="mt-3 text-xs font-semibold">
-                  No notes for this course yet
+            {editor ? (
+              // Written right here in the panel, so the meeting stays in view
+              <div className="flex-1 overflow-y-auto">
+                <p className="px-3 pt-2.5 text-[11px] font-bold uppercase tracking-wide text-primary">
+                  {editor.note ? "Edit note" : "New note"}
                 </p>
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  Add notes from{" "}
-                  <Link
-                    href="/app/teacher/notes"
-                    className="text-primary underline"
-                  >
-                    My Notes
-                  </Link>{" "}
-                  and they&apos;ll appear here.
+                <NoteEditorForm
+                  key={editor.note?.id ?? "new"}
+                  compact
+                  note={editor.note}
+                  courses={courseId ? [{ id: courseId, name: courseName }] : []}
+                  defaultCourseId={courseId}
+                  onCancel={() => setEditor(null)}
+                  onSaved={noteSaved}
+                />
+              </div>
+            ) : noteList.length === 0 ? (
+              <div className="p-4 text-center">
+                <StickyNote className="mx-auto h-8 w-8 text-muted-foreground/30" />
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  No notes for this course yet.
                 </p>
+                <button
+                  onClick={() => setEditor({ note: null })}
+                  className="mt-2.5 inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1.5 text-[11px] font-bold text-primary hover:bg-primary/20"
+                >
+                  <Plus className="h-3 w-3" /> New note
+                </button>
               </div>
             ) : (
-              <div className="flex-1 flex overflow-hidden">
-                <ul className="w-32 lg:w-36 shrink-0 border-r border-border overflow-y-auto">
-                  {notes.map((n) => (
-                    <li key={n.id}>
-                      <button
-                        onClick={() => setActiveNote(n)}
-                        className={`w-full text-left px-3 py-2 text-[11px] font-semibold border-b border-border/60 transition-colors line-clamp-2 ${
-                          activeNote?.id === n.id
-                            ? "bg-primary/10 text-primary"
-                            : "hover:bg-muted/50"
-                        }`}
-                      >
-                        {n.title}
-                      </button>
-                    </li>
-                  ))}
+              <div className="flex-1 flex flex-col min-h-0">
+                <ul className="max-h-40 shrink-0 overflow-y-auto border-b border-border">
+                  {noteList.map((n) => {
+                    const selected = activeNote?.id === n.id;
+                    return (
+                      <li key={n.id}>
+                        <button
+                          onClick={() => setActiveNote(n)}
+                          className={`flex w-full items-center gap-2 border-l-2 px-3 py-2 text-left text-xs transition-colors ${
+                            selected
+                              ? "border-primary bg-primary/10 font-semibold text-primary"
+                              : "border-transparent hover:bg-muted/50"
+                          }`}
+                        >
+                          <span className="flex-1 min-w-0 truncate">{n.title}</span>
+                          {n.fileUrl && (
+                            <FileText className="h-3 w-3 shrink-0 text-muted-foreground" />
+                          )}
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
-                <div className="flex-1 overflow-y-auto p-3 text-xs">
+                <div className="flex-1 overflow-y-auto p-3">
                   {activeNote ? (
                     <>
-                      <p className="font-bold text-sm mb-2">{activeNote.title}</p>
+                      <div className="flex items-start gap-2">
+                        <p className="flex-1 min-w-0 text-sm font-semibold leading-snug">
+                          {activeNote.title}
+                        </p>
+                        <button
+                          onClick={() => setEditor({ note: activeNote })}
+                          className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                          title="Edit note"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </button>
+                      </div>
                       {activeNote.content ? (
-                        <pre className="whitespace-pre-wrap font-sans leading-relaxed text-foreground/90">
+                        // m-0: the website stylesheet adds a bottom margin to <pre>
+                        <pre className="m-0 mt-1.5 whitespace-pre-wrap font-sans text-xs leading-relaxed text-foreground/90">
                           {activeNote.content}
                         </pre>
                       ) : (
-                        <p className="italic text-muted-foreground">(No text)</p>
+                        <p className="mt-1.5 text-xs italic text-muted-foreground">(No text)</p>
                       )}
                       {activeNote.fileUrl && (
-                        <a
-                          href={activeNote.fileUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        // Opens over the class instead of a new tab, so the
+                        // teacher stays on the recorded class tab
+                        <button
+                          onClick={() =>
+                            setPdf({
+                              url: activeNote.fileUrl!,
+                              title: activeNote.fileName || activeNote.title,
+                            })
+                          }
                           className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-[11px] font-bold text-primary hover:bg-primary/20"
                         >
                           <FileText className="h-3 w-3" />
                           {activeNote.fileName || "Attached PDF"}
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
+                          <Eye className="h-3 w-3" />
+                        </button>
                       )}
                     </>
                   ) : (
-                    <p className="italic text-muted-foreground">Pick a note</p>
+                    <p className="text-xs italic text-muted-foreground">Pick a note</p>
                   )}
                 </div>
               </div>
             )}
 
-            <div className="p-3 border-t border-border text-[10px] text-muted-foreground inline-flex items-start gap-1.5">
-              <Info className="h-3 w-3 mt-0.5 shrink-0 text-primary" />
-              <span>
-                Tip: Use the meeting&apos;s screen-share button to share your notes window
-                with the student. Click End Class when you finish so the recording saves.
-              </span>
+            <div className="px-3 py-2 border-t border-border flex items-center gap-1.5 text-[10px] text-muted-foreground">
+              <Info className="h-3 w-3 shrink-0 text-primary" />
+              <span>Use screen-share to show a note to the student.</span>
             </div>
           </aside>
         )}
       </div>
+
+      {pdf &&<PdfViewer url={pdf.url} title={pdf.title} onClose={() => setPdf(null)} />}
       <RefreshCw className="hidden" /> {/* keep RefreshCw import valid for future use */}
     </div>
   );
