@@ -2,12 +2,50 @@
 
 import Footer from "@/components/footer/footer";
 import Header from "@/components/header/header";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { FiChevronDown } from "react-icons/fi";
+import {
+    FaEnvelope,
+    FaWhatsapp,
+} from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import Goldenlines from "@/components/goldenlines";
+import { Accent, PageTitle, SectionHeading, Words, leadClass } from "@/components/lux/effects";
+import FaqAccordion from "@/components/faq-accordion";
+import { EMAIL, faqGroups } from "./data";
+import Typewriter from "@/components/typewriter";
+import EnrollModal from "@/components/enroll-modal";
+import { WHATSAPP_NUMBER } from "@/components/WhatsappButton";
 
-// ─── FAQ Data ────────────────────────────────────────────────────────────────
+const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}`;
+
+// Typed in the banner above the WhatsApp button, one after another. Kept to
+// 30 characters or less so each fits on one line on a phone.
+const BANNER_QUESTIONS = [
+    "Have you any questions?",
+    "How much do classes cost?",
+    "Are female teachers available?",
+    "Is it safe for my child?",
+    "Can adults learn too?",
+];
+
+// All the questions above as FAQPage structured data for search engines
+const faqJsonLd = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqGroups.flatMap(({ items }) =>
+        items.map(({ q, a }) => ({
+            "@type": "Question",
+            name: q,
+            acceptedAnswer: { "@type": "Answer", text: a },
+        })),
+    ),
+}).replace(/</g, "\\u003c");
+
+// ─── Older FAQ Data (the tabbed block further down the page) ─────────────────
+// That block is hidden for now; set to true to show it again
+const SHOW_OLD_FAQS = false;
+
 const faqSections = [
     {
         id: "general",
@@ -20,15 +58,15 @@ const faqSections = [
             },
             {
                 q: "Who are these courses for?",
-                a: "Our courses are suitable for everyone, including children, adults, beginners, and advanced learners. Whether you're starting your Quranic journey or looking to strengthen your existing knowledge, we have a program for you.",
+                a: "Our courses are suitable for everyone, including children, adults, beginners, and advanced learners. Whether you're starting your Quranic journey or looking to strengthen your existing knowledge, we have a programme for you.",
             },
             {
-                q: "How do I enroll in a course?",
+                q: "How do I enrol in a course?",
                 a: "Simply click the 'Enroll Now' button on our website, fill out the registration form, and our team will contact you within 24 hours to help you choose the right course and schedule your free trial class.",
             },
             {
                 q: "Can I join at any time?",
-                a: "Yes. Enrollment is open throughout the year, allowing you to start your preferred course whenever you're ready.",
+                a: "Yes. Enrolment is open throughout the year, allowing you to start your preferred course whenever you're ready.",
             },
         ],
     },
@@ -39,11 +77,11 @@ const faqSections = [
         faqs: [
             {
                 q: "How are your courses structured?",
-                a: "Each course follows a well-organized curriculum with personalized one-on-one or small group classes, practical exercises, regular assessments, and continuous guidance from experienced teachers.",
+                a: "Each course follows a well-organised curriculum with personalised one-on-one or small group classes, practical exercises, regular assessments, and continuous guidance from experienced teachers.",
             },
             {
                 q: "How long does it take to complete a course?",
-                a: "Course duration depends on the program you choose and your learning pace. Some courses can be completed within a few months, while others are designed for continuous learning and long-term progress.",
+                a: "Course duration depends on the programme you choose and your learning pace. Some courses can be completed within a few months, while others are designed for continuous learning and long-term progress.",
             },
             {
                 q: "Do you offer flexible class schedules?",
@@ -51,7 +89,7 @@ const faqSections = [
             },
             {
                 q: "Do I need any previous knowledge?",
-                a: "No prior knowledge is required for beginner courses. We also offer intermediate and advanced programs for students who already have experience.",
+                a: "No prior knowledge is required for beginner courses. We also offer intermediate and advanced programmes for students who already have experience.",
             },
         ],
     },
@@ -66,7 +104,7 @@ const faqSections = [
             },
             {
                 q: "What are the benefits of learning with your academy?",
-                a: "Our academy offers qualified teachers, personalized learning plans, flexible schedules, affordable fees, regular progress reports, and a supportive learning environment for students worldwide.",
+                a: "Our academy offers qualified teachers, personalised learning plans, flexible schedules, affordable fees, regular progress reports, and a supportive learning environment for students worldwide.",
             },
         ],
     },
@@ -96,7 +134,7 @@ const faqSections = [
         faqs: [
             {
                 q: "How can I get help during my course?",
-                a: "Our support team is available via WhatsApp, email, and live chat. Teachers also provide regular guidance and answer questions during classes.",
+                a: "Our support team is available via WhatsApp and email. Teachers also provide regular guidance and answer questions during classes.",
             },
             {
                 q: "Can I switch to another course later?",
@@ -155,6 +193,81 @@ const Page = () => {
         setOpenIndex(0);
     };
 
+    // Free-trial form, opened from answers and the closing section
+    const [enrollOpen, setEnrollOpen] = useState(false);
+    const openTrial = () => setEnrollOpen(true);
+
+    // Jump bar: pinned just under the site header (which stays at the top of
+    // the screen, 84px tall and 68px once scrolled) while the five groups are
+    // in view. CSS sticky can't do it here: the theme sets overflow-x: hidden
+    // on body, which stops position: sticky working, so it switches to fixed.
+    // The header's height is measured, not assumed, and followed as it
+    // shrinks, so the bar never slips behind it.
+    const navRef = useRef(null);
+    const barRef = useRef(null);
+    const groupsRef = useRef(null);
+    const [stuck, setStuck] = useState(false);
+    const [barHeight, setBarHeight] = useState(0);
+    const [headerBottom, setHeaderBottom] = useState(0);
+    useEffect(() => {
+        const header = document.querySelector("header");
+        const update = () => {
+            const nav = navRef.current;
+            const bar = barRef.current;
+            const groups = groupsRef.current;
+            if (!nav || !bar || !groups) return;
+            const below = header ? Math.max(0, header.getBoundingClientRect().bottom) : 0;
+            setHeaderBottom(below);
+            setBarHeight(bar.offsetHeight);
+            setStuck(
+                nav.getBoundingClientRect().top < below &&
+                    groups.getBoundingClientRect().bottom > below + bar.offsetHeight,
+            );
+        };
+        update();
+        window.addEventListener("scroll", update, { passive: true });
+        window.addEventListener("resize", update);
+        const resized = header ? new ResizeObserver(update) : null;
+        if (header) resized.observe(header);
+        return () => {
+            window.removeEventListener("scroll", update);
+            window.removeEventListener("resize", update);
+            resized?.disconnect();
+        };
+    }, []);
+
+    // It also highlights the group being read and keeps its pill in view on
+    // phones, where the bar scrolls sideways
+    const jumpRef = useRef(null);
+    const [activeGroup, setActiveGroup] = useState(faqGroups[0].id);
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) setActiveGroup(entry.target.id);
+                });
+            },
+            { rootMargin: "-30% 0px -60% 0px" },
+        );
+        faqGroups.forEach(({ id }) => {
+            const el = document.getElementById(id);
+            if (el) observer.observe(el);
+        });
+        return () => observer.disconnect();
+    }, []);
+    useEffect(() => {
+        const bar = jumpRef.current;
+        const pill = bar?.querySelector(`[data-id="${activeGroup}"]`);
+        if (bar && pill) bar.scrollTo({ left: pill.offsetLeft - 16, behavior: "smooth" });
+    }, [activeGroup]);
+
+    const jumpTo = (e, id) => {
+        e.preventDefault();
+        const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        document.getElementById(id)?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth" });
+        window.history.replaceState(null, "", `#${id}`);
+    };
+
     return (
         <>
             <Header />
@@ -168,16 +281,15 @@ const Page = () => {
                     position: relative;
                     overflow: hidden;
                 }
+                /* the type of the title comes from PageTitle (the home page style) */
                 .faq-banner h1 {
-                    color: #fff;
-                    font-size: clamp(1.8rem, 5vw, 3rem);
-                    font-weight: 700;
-                    margin-bottom: 12px;
+                    max-width: 860px;
+                    margin: 0 auto;
                 }
                 .faq-banner p {
                     color: rgba(255,255,255,0.75);
-                    font-size: clamp(0.875rem, 2vw, 1rem);
-                    max-width: 500px;
+                    font-size: clamp(15px, 1.25vw, 17px);
+                    max-width: 600px;
                     margin: 0 auto;
                     line-height: 1.6;
                 }
@@ -296,31 +408,10 @@ const Page = () => {
                     background: #fff;
                     border-top: 1px solid #f0f0f0;
                 }
-
-                /* ── CTA ────────────────────────────────── */
-                .faq-cta {
-                    background: #fff;
-                    text-align: center;
-                    padding: 60px 16px;
-                    border-top: 1px solid #ebebeb;
-                }
-                .faq-cta h2 {
-                    font-size: clamp(1.4rem, 4vw, 2rem);
-                    font-weight: 700;
-                    color: #0B1A37;
-                    margin-bottom: 10px;
-                }
-                .faq-cta p {
-                    color: #666;
-                    font-size: clamp(0.875rem, 2vw, 1rem);
-                    max-width: 480px;
-                    margin: 0 auto 28px;
-                    line-height: 1.6;
-                }
             `}</style>
 
             <section className="page-content">
-                <section className="faq-banner !py-[8.75rem]">
+                <section className="faq-banner !py-[64px] md:!py-[88px]">
                     <Goldenlines />
                     <motion.div
                         initial={{ opacity: 0, y: 40 }}
@@ -328,16 +419,122 @@ const Page = () => {
                         viewport={{ once: false, amount: 0.3 }}
                         transition={{ duration: 0.7, ease: 'easeOut' }}>
 
-                        <h1 className="hidden md:block">Frequently Asked Questions</h1>
-                        <h2 className="text-white md:hidden">Frequently Asked Questions</h2>
-                        <p className="text-balance">
-                            Find answers to common questions about our courses, enrollment,
-                            payments, and support.
+                        <PageTitle tone="dark">
+                            <Words text="Online Quran Classes:" />
+                            <Accent text="Your Questions Answered" tone="dark" delay={0.2} />
+                        </PageTitle>
+                        <p className={`mt-[14px] text-balance ${leadClass("dark")}`}>
+                            Everything parents and adult learners ask before booking: ages,
+                            prices, teachers, safety and time zones.
                         </p>
+                        {/* Types and deletes parent questions in turn, one line high so
+                            the button below never moves */}
+                        <Typewriter
+                            phrases={BANNER_QUESTIONS}
+                            className="mt-[18px] min-h-[1.4em] whitespace-nowrap text-[clamp(18px,4.6vw,24px)] font-semibold leading-[1.4] text-[#EECC65]"
+                        />
+                        {/* Same button style as Book a Free Trial, glowing gold on hover */}
+                        <a
+                            href={WHATSAPP_URL}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn btn-secondary btn-standard btn-lg mt-[18px] w-full hover:!shadow-[0_0_0_4px_rgba(238,204,101,0.22),0_0_32px_6px_rgba(238,204,101,0.5)] focus-visible:!shadow-[0_0_0_4px_rgba(238,204,101,0.22),0_0_32px_6px_rgba(238,204,101,0.5)] sm:w-auto"
+                        >
+                            Message us on WhatsApp
+                            <span className="btn-icon">
+                                <FaWhatsapp className="h-[22px] w-[22px]" aria-hidden="true" />
+                            </span>
+                        </a>
                     </motion.div>
                 </section>
 
-                {/* FAQ Body */}
+                {/* Jump links to the five groups; the nav keeps the bar's
+                    height in the page while the bar itself is pinned */}
+                <nav
+                    ref={navRef}
+                    aria-label="FAQ sections"
+                    className="relative z-30 min-h-[61px]"
+                    style={{ height: barHeight || undefined }}
+                >
+                    <div
+                        ref={barRef}
+                        // top-[0px], not top-0: the theme's .top-0 is
+                        // !important and would beat the pinned top here
+                        style={stuck ? { top: headerBottom } : undefined}
+                        className={`${
+                            stuck
+                                ? "fixed shadow-[0_6px_20px_rgba(11,26,55,0.08)]"
+                                : "absolute top-[0px]"
+                        } inset-x-0 border-b-[1px] border-solid border-[#0B1A37]/10 bg-white/95 backdrop-blur-[6px]`}
+                    >
+                        <div
+                            ref={jumpRef}
+                            className="mx-auto flex max-w-[1100px] gap-[8px] overflow-x-auto px-[16px] py-[12px] [scrollbar-width:none] lg:justify-center [&::-webkit-scrollbar]:hidden"
+                        >
+                            {faqGroups.map(({ id, nav }) => {
+                                const active = activeGroup === id;
+                                return (
+                                    <a
+                                        key={id}
+                                        href={`#${id}`}
+                                        data-id={id}
+                                        onClick={(e) => jumpTo(e, id)}
+                                        aria-current={active ? "true" : undefined}
+                                        className={`shrink-0 whitespace-nowrap rounded-full px-[16px] py-[8px] text-[14px] font-semibold !no-underline transition-colors md:text-[15px] ${
+                                            active
+                                                ? "bg-[#0B1A37] !text-[#EECC65]"
+                                                : "bg-[#0B1A37]/[0.05] !text-[#0B1A37] hover:bg-[#EECC65]/30"
+                                        }`}
+                                    >
+                                        {nav}
+                                    </a>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </nav>
+
+                {/* The five groups. Every answer is in the HTML; the first
+                    question of each group starts open */}
+                <div ref={groupsRef} className="bg-[#F3F5F9] px-[16px] py-[56px] lg:py-[72px]">
+                    <div className="mx-auto flex max-w-[860px] flex-col gap-[56px] lg:gap-[64px]">
+                        {faqGroups.map(({ id, title, Icon, items }) => (
+                            <section
+                                key={id}
+                                id={id}
+                                aria-labelledby={`${id}-title`}
+                                // clear of the header (68px) and the jump bar under it
+                                className="scroll-mt-[150px]"
+                            >
+                                <div className="mb-[20px] flex items-center gap-[14px]">
+                                    <span className="grid h-[46px] w-[46px] shrink-0 place-items-center rounded-[14px] bg-[#0B1A37] text-[#EECC65]">
+                                        <Icon className="h-[19px] w-[19px]" aria-hidden="true" />
+                                    </span>
+                                    <div>
+                                        <h2
+                                            id={`${id}-title`}
+                                            className="!m-0 !text-[24px] !font-extrabold !leading-tight !tracking-[-0.02em] !text-[#0B1A37] md:!text-[28px]"
+                                        >
+                                            {title}
+                                        </h2>
+                                        <p className="!mt-[2px] !mb-0 !text-[14px] !font-semibold !text-[#9B7930]">
+                                            {items.length} questions
+                                        </p>
+                                    </div>
+                                </div>
+                                <FaqAccordion items={items} idPrefix={`faq-${id}`} onTrial={openTrial} />
+                            </section>
+                        ))}
+                    </div>
+                    <script
+                        type="application/ld+json"
+                        dangerouslySetInnerHTML={{ __html: faqJsonLd }}
+                    />
+                </div>
+
+                {/* Older FAQs (tabbed). Hidden for now; set SHOW_OLD_FAQS to
+                    true to bring them back */}
+                {SHOW_OLD_FAQS && (
                 <div className="faq-page">
                     <div className="faq-inner">
 
@@ -388,30 +585,70 @@ const Page = () => {
 
                     </div>
                 </div>
+                )}
 
-                {/* CTA */}
-                <section className="faq-cta">
-                    <div>
-                        <h2>Get Started for Free</h2>
-                        <p>
-                            Best online education platforms offer flexible learning, quality
-                            courses, and expert instructors.
-                        </p>
-                        <a
-                            href="/coursesGrid"
-                            className="btn btn-primary btn-lg btn-standard"
-                        >
-                            See Courses
-                            <span className="btn-icon">
-                                <img src="/assets/images/icon/arrow.svg" alt="" />
-                            </span>
-                        </a>
-                    </div>
+                {/* Closing call to action */}
+                <section className="bg-white px-[16px] py-[56px] lg:py-[72px]">
+                    <motion.div
+                        initial={{ opacity: 0, y: 30 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true, amount: 0.3 }}
+                        transition={{ duration: 0.6, ease: "easeOut" }}
+                        className="relative mx-auto max-w-[1100px] overflow-hidden rounded-[24px] bg-[#0B1A37] px-[24px] py-[44px] text-center md:px-[48px] md:py-[56px]"
+                    >
+                        <div
+                            aria-hidden="true"
+                            className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(238,204,101,0.14),transparent_65%)]"
+                        />
+                        <div className="relative mx-auto max-w-[640px]">
+                            <SectionHeading tone="dark">
+                                <Words text="Still Have" />
+                                <Accent text="Questions?" tone="dark" delay={0.12} />
+                            </SectionHeading>
+                            <p className={`!mt-[14px] ${leadClass("dark")}`}>
+                                Talk to us or book a free trial class. Meet your teacher before you
+                                commit.
+                            </p>
+                            <button
+                                type="button"
+                                onClick={openTrial}
+                                className="btn btn-secondary btn-standard btn-lg mt-[28px] w-full sm:w-auto"
+                            >
+                                Book a Free Trial
+                                <span className="btn-icon">
+                                    <img src="/assets/images/icon/arrow.svg" alt="" aria-hidden="true" />
+                                </span>
+                            </button>
+                            <p className="!mt-[20px] !mb-0 flex flex-wrap items-center justify-center gap-x-[12px] gap-y-[6px] !text-[15px] !text-white/60">
+                                <a
+                                    href={WHATSAPP_URL}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-[6px] font-semibold !text-[#EECC65] !no-underline hover:!text-white"
+                                >
+                                    <FaWhatsapp aria-hidden="true" />
+                                    WhatsApp us
+                                </a>
+                                {/* on phones the two links take a line each,
+                                    so the dot would hang at the end of the first */}
+                                <span aria-hidden="true" className="max-sm:hidden">·</span>
+                                <a
+                                    href={`mailto:${EMAIL}`}
+                                    className="inline-flex items-center gap-[6px] font-semibold !text-[#EECC65] !no-underline hover:!text-white"
+                                >
+                                    <FaEnvelope aria-hidden="true" />
+                                    Email {EMAIL}
+                                </a>
+                            </p>
+                        </div>
+                    </motion.div>
                 </section>
 
             </section>
 
             <Footer />
+
+            <EnrollModal open={enrollOpen} onClose={() => setEnrollOpen(false)} />
         </>
     );
 };

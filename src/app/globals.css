@@ -1,10 +1,91 @@
-@import url('https://fonts.googleapis.com/css2?family=Finlandica+Headline:ital,wght@0,100..900;1,100..900&family=Roboto:ital,wght@0,100..900;1,100..900&family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* One typeface across the whole site, the home page's: Manrope for headings
+   and text (loaded by next/font in layout.tsx as --font-lux) and Instrument
+   Serif for the gold accent words (.font-accent, which outranks `*`).
+   !important because the theme's styles.css sets its own fonts on headings,
+   buttons and so on. */
 * {
-  font-family: "Ubuntu", sans-serif !important;
+  font-family: var(--font-lux), system-ui, sans-serif !important;
+}
+
+.font-accent,
+.font-accent * {
+  font-family: var(--font-accent), Georgia, serif !important;
+}
+
+/* Gold text with a slow sheen running through it (used on each word, since
+   background-clip:text breaks on a parent of moving spans) */
+.lux-gold-text {
+  background: linear-gradient(100deg, #C59E5B 0%, #EECC65 30%, #FFF3C4 45%, #EECC65 60%, #C59E5B 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: lux-sheen 6s linear infinite;
+}
+
+@keyframes lux-sheen {
+  from { background-position: 100% 0; }
+  to { background-position: -120% 0; }
+}
+
+/* The hero's background lines, swaying slowly */
+@keyframes lux-lines {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-2%, 3%, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lux-gold-text { animation: none; }
+}
+
+/* A light running round a rim (a conic gradient spun behind a 1px gap) */
+@keyframes noor-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* A hanging lantern swinging gently on its chain (run alternate) */
+@keyframes noor-sway {
+  from { transform: rotate(-2.5deg); }
+  to { transform: rotate(2.5deg); }
+}
+
+/* The footer logo's white glow. drop-shadow follows the logo's own outline
+   (the PNG is transparent): a fine rim that stays, so the logo always reads,
+   and a soft glow beyond it swelling and fading like a slow pulse. */
+@keyframes footer-logo-glow {
+  0%, 100% { filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.85)) drop-shadow(0 0 4px rgba(255, 255, 255, 0.12)); }
+  50% { filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.85)) drop-shadow(0 0 10px rgba(255, 255, 255, 0.32)); }
+}
+
+/* The pricing table's "Swipe" hint: its arrows keep nudging to the right */
+@keyframes swipe-nudge {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(6px); }
+}
+
+/* Amiri for the Arabic letters drawn in the courses' icons (Manrope has no
+   Arabic). It has to outrank `*` like .font-accent does. */
+.font-arabic-glyph {
+  font-family: var(--font-amiri, "Amiri"), "Noto Naskh Arabic", "Traditional Arabic", serif !important;
+}
+
+/* Home page on laptops and up: each section fills one screen, and the page
+   always settles on one, just under the slim (68px) header. Every snap point
+   is a stop the scroll can't fly past, so even a quick swipe on a touchpad
+   only goes on to the next section (or the next step of a pinned one). */
+@media (min-width: 1024px) and (min-height: 600px) {
+  html:has(.noor-snap) {
+    scroll-snap-type: y mandatory;
+    scroll-padding-top: 68px;
+  }
+
+  .noor-snap [class*="lg:snap-start"] {
+    scroll-snap-stop: always;
+  }
 }
 
 
@@ -52,8 +133,19 @@ html, body {
   overflow-x: clip;
 }
 
+/* The theme's styles.css sets body { overflow-x: hidden }, which (with html
+   not `visible`) makes body a scroll box of its own that never scrolls, so
+   nothing inside can be position: sticky. `html body` outranks that rule;
+   clip hides sideways overflow the same way without making a scroll box. */
+html body {
+  overflow-x: clip;
+}
+
+/* No bounce or pull-to-refresh at the top and bottom of the page. Only the
+   vertical axis: `none` on the horizontal one also switches off the browser's
+   two-finger swipe back/forward on touchpads. */
 html {
-  overscroll-behavior: none;
+  overscroll-behavior-y: none;
 }
 
 body {
@@ -69,18 +161,62 @@ video {
   display: block;
 }
 
-.scroller::-webkit-scrollbar {
-  width: 6px;
+/* Site-wide scrollbar: a gold thumb on a see-through track, for the page and
+   every scrollable box. Only with a mouse or trackpad: on phones and tablets
+   any styled scrollbar replaces the thin one that shows only while scrolling
+   with a bar that is always there. */
+@media (hover: hover) and (pointer: fine) {
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #EECC65, #C9A13B);
+    /* the transparent border makes the thumb slimmer than the bar */
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #C9A13B;
+    background-clip: padding-box;
+  }
+
+  /* Firefox has no ::-webkit-scrollbar, so it gets the standard properties.
+     Only there: in Chrome they would switch off the rounded gold thumb above. */
+  @supports not selector(::-webkit-scrollbar) {
+    * {
+      scrollbar-color: #D9B54F transparent;
+      scrollbar-width: thin;
+    }
+  }
+
+  /* Narrower scrollbar inside the free-trial pop-up */
+  .scroller::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .scroller::-webkit-scrollbar-thumb {
+    border-width: 1px;
+  }
 }
 
-.scroller::-webkit-scrollbar-track {
-  background: #f1f1f100;
-}
+/* Phones and tablets (everything the query above leaves out): no scrollbar at
+   all, not even the thin one that shows while scrolling. Swiping still scrolls. */
+@media not all and (hover: hover) and (pointer: fine) {
+  * {
+    scrollbar-width: none;
+  }
 
-.scroller::-webkit-scrollbar-thumb {
-  background-color: #838383;
-  /* Tailwind blue-500 */
-  border-radius: 9999px;
+  ::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 

@@ -65,6 +65,7 @@ model User {
   bookingAttendance     BookingAttendance[] @relation("BookingAttendanceStudent")
   workdayAttendance     TeacherAttendance[] @relation("TeacherWorkdayAttendance")
   notes                 TeacherNote[]       @relation("TeacherNotes")
+  sharedNotes           TeacherNoteShare[]  @relation("SharedNotes")
   classRecordings       ClassRecording[]    @relation("TeacherRecordings")
   parentChildren        ParentChild[]   @relation("Parent")
   childOfParents        ParentChild[]   @relation("Child")
@@ -403,9 +404,25 @@ model TeacherNote {
 
   teacher User    @relation("TeacherNotes", fields: [teacherId], references: [id], onDelete: Cascade)
   course  Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  shares  TeacherNoteShare[]
 
   @@index([teacherId])
   @@index([courseId])
+}
+
+// A teacher's note made visible to one of their students: shown in that
+// student's class room and on their Notes page until the teacher unshares it.
+model TeacherNoteShare {
+  id        String   @id @default(cuid())
+  noteId    String
+  studentId String
+  createdAt DateTime @default(now())
+
+  note    TeacherNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  student User        @relation("SharedNotes", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([noteId, studentId])
+  @@index([studentId])
 }
 
 // Recording of a class session — captured client-side from the teacher's

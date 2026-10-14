@@ -38,6 +38,7 @@ export const navConfig: Record<Role, NavItem[]> = {
     { href: "/app/student/schedule", label: "Schedule", icon: Calendar },
     { href: "/app/student/attendance", label: "Attendance", icon: ClipboardCheck },
     { href: "/app/student/progress", label: "Progress", icon: LineChart },
+    { href: "/app/student/notes", label: "Notes", icon: StickyNote },
     { href: "/app/student/quran", label: "Quran Reader", icon: BookMarked },
     { href: "/app/student/messages", label: "Messages", icon: MessageSquare },
     { href: "/app/student/profile", label: "Profile", icon: User },

@@ -3,16 +3,18 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
+import { Lock, ArrowRight, Eye, EyeOff, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import {
-  Lock,
-  ArrowRight,
-  Eye,
-  EyeOff,
-  Loader2,
-  AlertCircle,
-  CheckCircle2,
-  KeyRound,
-} from "lucide-react";
+  AUTH_FIELD_ICON,
+  AUTH_INPUT,
+  AUTH_LABEL,
+  AUTH_LINK,
+  AuthAlert,
+  AuthButton,
+  AuthCard,
+  AuthHeading,
+  AuthStatus,
+} from "@/components/auth/auth-ui";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -67,148 +69,129 @@ export default function ResetPasswordPage() {
 
   if (valid === null) {
     return (
-      <div className="w-full max-w-md animate-fade-in">
-        <div className="glass-card rounded-3xl p-8 shadow-2xl text-center">
-          <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
-          <p className="mt-4 text-sm text-muted-foreground">Validating reset link...</p>
-        </div>
-      </div>
+      <AuthCard className="text-center">
+        <Loader2 className="mx-auto h-[2rem] w-[2rem] animate-spin text-[#9B7930]" aria-hidden="true" />
+        <p className="!mb-0 mt-[1rem] !text-[0.92rem] !text-[#0B1A37]/70">Validating reset link...</p>
+      </AuthCard>
     );
   }
 
   if (!valid) {
     return (
-      <div className="w-full max-w-md animate-fade-in">
-        <div className="glass-card rounded-3xl p-8 shadow-2xl text-center">
-          <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-destructive/10 text-destructive">
-            <AlertCircle className="h-8 w-8" />
-          </div>
-          <h1 className="mt-5 text-2xl font-bold tracking-tight">Invalid or Expired Link</h1>
-          <p className="mt-3 text-sm text-muted-foreground">
-            This password reset link is no longer valid. It may have expired or already been used.
-          </p>
-          <div className="mt-6 flex flex-col gap-2">
-            <Link
-              href="/forgot-password"
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-primary to-accent px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-md"
-            >
-              Request New Link
-            </Link>
-            <Link
-              href="/login"
-              className="text-sm font-medium text-muted-foreground hover:text-primary"
-            >
-              Back to Login
-            </Link>
-          </div>
-        </div>
-      </div>
+      <AuthCard className="text-center">
+        <AuthStatus tone="bad">
+          <AlertCircle className="h-[1.9rem] w-[1.9rem]" aria-hidden="true" />
+        </AuthStatus>
+        <AuthHeading
+          center
+          title="Invalid or"
+          accent="Expired Link"
+          lead="This password reset link is no longer valid. It may have expired or already been used."
+        />
+        <Link
+          href="/forgot-password"
+          className="group flex h-[clamp(2.9rem,7vh,3.25rem)] w-full items-center justify-between rounded-full bg-[#0B1A37] pl-[1.5rem] pr-[0.4rem] text-[0.95rem] font-semibold !text-white !no-underline transition-[box-shadow,background-color] duration-300 hover:bg-[#13254A] hover:shadow-[0_12px_26px_-12px_rgba(11,26,55,0.75)]"
+        >
+          Request New Link
+          <span className="grid aspect-square h-[calc(100%-0.8rem)] place-items-center rounded-full bg-[#EECC65] text-[#0B1A37] transition-transform duration-300 group-hover:-rotate-45">
+            <ArrowRight className="h-[1rem] w-[1rem]" aria-hidden="true" />
+          </span>
+        </Link>
+        <Link href="/login" className={`mt-[1.25rem] inline-flex text-[0.9rem] ${AUTH_LINK}`}>
+          Back to Login
+        </Link>
+      </AuthCard>
     );
   }
 
   if (success) {
     return (
-      <div className="w-full max-w-md animate-fade-in">
-        <div className="glass-card rounded-3xl p-8 shadow-2xl text-center">
-          <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-emerald-500/10 text-emerald-600">
-            <CheckCircle2 className="h-8 w-8" />
-          </div>
-          <h1 className="mt-5 text-2xl font-bold tracking-tight">Password Reset!</h1>
-          <p className="mt-3 text-sm text-muted-foreground">
-            Your password has been successfully reset. Redirecting to login...
-          </p>
-          <Loader2 className="mx-auto mt-4 h-5 w-5 animate-spin text-primary" />
-        </div>
-      </div>
+      <AuthCard className="text-center">
+        <AuthStatus>
+          <CheckCircle2 className="h-[1.9rem] w-[1.9rem]" aria-hidden="true" />
+        </AuthStatus>
+        <AuthHeading
+          center
+          title="Password"
+          accent="Reset!"
+          lead="Your password has been successfully reset. Redirecting to login..."
+        />
+        <Loader2 className="mx-auto -mt-[0.5rem] h-[1.25rem] w-[1.25rem] animate-spin text-[#9B7930]" aria-hidden="true" />
+      </AuthCard>
     );
   }
 
   return (
-    <div className="w-full max-w-md animate-fade-in">
-      <div className="glass-card rounded-3xl p-8 shadow-2xl">
-        <div className="text-center mb-7">
-          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-primary/10 text-primary mb-3">
-            <KeyRound className="h-7 w-7" />
+    <AuthCard>
+      <AuthHeading
+        eyebrow="Account help"
+        title="Set New"
+        accent="Password"
+        lead={
+          email ? (
+            <>
+              For <span className="font-semibold text-[#0B1A37]">{email}</span>
+            </>
+          ) : null
+        }
+      />
+
+      {error && <AuthAlert>{error}</AuthAlert>}
+
+      <form onSubmit={handleSubmit} className="space-y-[clamp(0.7rem,2vh,1.1rem)]">
+        <div>
+          <label htmlFor="reset-password" className={AUTH_LABEL}>
+            New Password * (min 8 characters)
+          </label>
+          <div className="relative">
+            <Lock className={AUTH_FIELD_ICON} aria-hidden="true" />
+            <input
+              id="reset-password"
+              type={showPw ? "text" : "password"}
+              required
+              minLength={8}
+              autoFocus
+              autoComplete="new-password"
+              value={pw}
+              onChange={(e) => setPw(e.target.value)}
+              placeholder="Enter new password"
+              className={`${AUTH_INPUT} !pr-[3rem]`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPw(!showPw)}
+              className="absolute right-[0.5rem] top-1/2 grid h-[2.25rem] w-[2.25rem] -translate-y-1/2 place-items-center rounded-full !p-0 text-[#0B1A37]/55 transition-colors hover:bg-[#0B1A37]/5 hover:text-[#0B1A37]"
+              aria-label={showPw ? "Hide password" : "Show password"}
+            >
+              {showPw ? <EyeOff className="h-[1.05rem] w-[1.05rem]" /> : <Eye className="h-[1.05rem] w-[1.05rem]" />}
+            </button>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-            Set New <span className="text-gradient-primary">Password</span>
-          </h1>
-          {email && (
-            <p className="mt-2 text-sm text-muted-foreground">
-              For <span className="font-semibold text-foreground">{email}</span>
-            </p>
-          )}
         </div>
 
-        {error && (
-          <div className="mb-4 flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
-            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" /> {error}
+        <div>
+          <label htmlFor="reset-confirm" className={AUTH_LABEL}>
+            Confirm Password *
+          </label>
+          <div className="relative">
+            <Lock className={AUTH_FIELD_ICON} aria-hidden="true" />
+            <input
+              id="reset-confirm"
+              type={showPw ? "text" : "password"}
+              required
+              minLength={8}
+              autoComplete="new-password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              placeholder="Re-enter password"
+              className={AUTH_INPUT}
+            />
           </div>
-        )}
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-              New Password * (min 8 characters)
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type={showPw ? "text" : "password"}
-                required
-                minLength={8}
-                autoFocus
-                value={pw}
-                onChange={(e) => setPw(e.target.value)}
-                placeholder="Enter new password"
-                className="w-full rounded-xl border border-border bg-card pl-10 pr-11 py-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPw(!showPw)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-              Confirm Password *
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type={showPw ? "text" : "password"}
-                required
-                minLength={8}
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                placeholder="Re-enter password"
-                className="w-full rounded-xl border border-border bg-card pl-10 pr-4 py-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="group w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-accent px-6 py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-60 disabled:translate-y-0"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" /> Resetting...
-              </>
-            ) : (
-              <>
-                Reset Password
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </>
-            )}
-          </button>
-        </form>
-      </div>
-    </div>
+        <AuthButton loading={loading} loadingText="Resetting...">
+          Reset Password
+        </AuthButton>
+      </form>
+    </AuthCard>
   );
 }

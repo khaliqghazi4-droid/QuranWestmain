@@ -5,18 +5,18 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, signOut, getSession } from "next-auth/react";
 import { WHATSAPP_NUMBER } from "@/components/WhatsappButton";
+import { Mail, Lock, Eye, EyeOff, Ban, MessageCircle } from "lucide-react";
 import {
-  Mail,
-  Lock,
-  ArrowRight,
-  Eye,
-  EyeOff,
-  AlertCircle,
-  Loader2,
-  BookOpen,
-  Ban,
-  MessageCircle,
-} from "lucide-react";
+  AUTH_FIELD_ICON,
+  AUTH_INPUT,
+  AUTH_LABEL,
+  AUTH_LINK,
+  AuthAlert,
+  AuthButton,
+  AuthCard,
+  AuthHeading,
+  AuthStatus,
+} from "@/components/auth/auth-ui";
 
 export default function LoginPage() {
   return (
@@ -94,141 +94,119 @@ function LoginForm() {
 
   return (
     <>
-    <div className="w-full max-w-md animate-fade-in">
-      <div className="glass-card rounded-3xl p-8 shadow-2xl">
-        <div className="text-center mb-7">
-          <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-primary to-accent shadow-lg shadow-primary/20">
-            <BookOpen className="h-7 w-7 text-primary-foreground" />
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-            Online Quran <span className="text-gradient-primary">Academy</span>
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Sign in to your account to continue
-          </p>
-        </div>
+      <AuthCard>
+        <AuthHeading
+          eyebrow="Welcome back"
+          title="Sign in to"
+          accent="Quran West"
+          // the error takes this line's place, so the page still fits one screen
+          lead={error ? null : "Your classes, schedule and progress are waiting."}
+        />
 
-        {error && (
-          <div className="mb-4 flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
-            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-            <p>{error}</p>
-          </div>
-        )}
+        {error && <AuthAlert>{error}</AuthAlert>}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-[clamp(0.7rem,2vh,1.1rem)]">
           <div>
-            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+            <label htmlFor="login-email" className={AUTH_LABEL}>
               Email
             </label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Mail className={AUTH_FIELD_ICON} aria-hidden="true" />
               <input
+                id="login-email"
                 type="email"
                 required
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full rounded-xl border border-border bg-card pl-10 pr-4 py-3 text-sm placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                className={AUTH_INPUT}
               />
             </div>
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-semibold text-muted-foreground">
+            <div className="mb-[0.4rem] flex items-center justify-between">
+              <label htmlFor="login-password" className={`${AUTH_LABEL} !mb-0`}>
                 Password
               </label>
-              <Link href="/forgot-password" className="text-xs font-medium text-primary hover:text-accent">
-                Forgot?
+              <Link href="/forgot-password" className={`text-[0.82rem] ${AUTH_LINK}`}>
+                Forgot password?
               </Link>
             </div>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Lock className={AUTH_FIELD_ICON} aria-hidden="true" />
               <input
+                id="login-password"
                 type={showPw ? "text" : "password"}
                 required
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full rounded-xl border border-border bg-card pl-10 pr-11 py-3 text-sm placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                className={`${AUTH_INPUT} !pr-[3rem]`}
               />
               <button
                 type="button"
                 onClick={() => setShowPw(!showPw)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                aria-label="Toggle password visibility"
+                className="absolute right-[0.5rem] top-1/2 grid h-[2.25rem] w-[2.25rem] -translate-y-1/2 place-items-center rounded-full !p-0 text-[#0B1A37]/55 transition-colors hover:bg-[#0B1A37]/5 hover:text-[#0B1A37]"
+                aria-label={showPw ? "Hide password" : "Show password"}
               >
-                {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {showPw ? <EyeOff className="h-[1.05rem] w-[1.05rem]" /> : <Eye className="h-[1.05rem] w-[1.05rem]" />}
               </button>
             </div>
           </div>
 
-          <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded border-border text-primary focus:ring-primary/30"
-            />
+          <label className="flex cursor-pointer items-center gap-[0.55rem] text-[0.85rem] text-[#0B1A37]/75">
+            <input type="checkbox" className="h-[1rem] w-[1rem] cursor-pointer accent-[#0B1A37]" />
             Remember me for 30 days
           </label>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="group w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-accent px-6 py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/40 hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed disabled:translate-y-0"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" /> Signing in...
-              </>
-            ) : (
-              <>
-                Sign In
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </>
-            )}
-          </button>
+          <AuthButton loading={loading} loadingText="Signing in...">
+            Sign In
+          </AuthButton>
         </form>
 
-        <div className="mt-6 text-center text-xs text-muted-foreground">
-          Accounts are created by the academy. Contact the admin if you need access.
-        </div>
-      </div>
-    </div>
+        <p className="!mb-0 mt-[clamp(0.9rem,2.5vh,1.5rem)] border-t-[1px] border-[#0B1A37]/10 pt-[clamp(0.8rem,2.2vh,1.25rem)] text-center !text-[0.85rem] !leading-[1.6] !text-[#0B1A37]/65 [text-wrap:balance]">
+          Need an account?{" "}
+          <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noopener noreferrer" className={AUTH_LINK}>
+            Message us on WhatsApp
+          </a>
+        </p>
+      </AuthCard>
 
-      {/* Outside the fade-in wrapper: its transform would anchor this fixed popup while animating */}
+      {/* Outside the card: its fade-in transform would anchor this fixed popup while animating */}
       {suspendedNotice && (
         <div
           role="alertdialog"
           aria-modal="true"
           aria-labelledby="suspended-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#0B1A37]/60 p-[1rem] backdrop-blur-sm"
         >
-          <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 text-center shadow-2xl">
-            <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-destructive/10 text-destructive">
-              <Ban className="h-7 w-7" />
-            </div>
-            <h2 id="suspended-title" className="mt-4 text-lg font-bold">
+          <div className="w-full max-w-[24rem] rounded-[1.25rem] border-[1px] border-[#D4AF37]/40 bg-white p-[1.75rem] text-center shadow-[0_30px_60px_-24px_rgba(11,26,55,0.55)]">
+            <AuthStatus tone="bad">
+              <Ban className="h-[1.75rem] w-[1.75rem]" aria-hidden="true" />
+            </AuthStatus>
+            <h2 id="suspended-title" className="!mb-0 !text-[1.35rem] !font-extrabold !tracking-[-0.02em] text-[#0B1A37]">
               Account suspended
             </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="!mb-0 mt-[0.6rem] !text-[0.92rem] !leading-[1.6] !text-[#0B1A37]/70">
               Quran West admin has suspended your account. Please contact the academy if you think
               this is a mistake.
             </p>
-            <div className="mt-5 grid gap-2">
+            <div className="mt-[1.4rem] grid gap-[0.6rem]">
               <a
                 href={`https://wa.me/${WHATSAPP_NUMBER}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white"
+                className="inline-flex items-center justify-center gap-[0.5rem] rounded-full bg-[#25D366] px-[1rem] py-[0.75rem] text-[0.9rem] font-semibold !text-white !no-underline"
               >
-                <MessageCircle className="h-4 w-4" /> Contact the academy
+                <MessageCircle className="h-[1rem] w-[1rem]" aria-hidden="true" /> Contact the academy
               </a>
               <button
                 type="button"
                 onClick={() => setSuspendedNotice(false)}
-                className="rounded-xl border border-border px-4 py-2.5 text-sm font-semibold hover:bg-muted"
+                className="!rounded-full border-[1px] border-[#0B1A37]/15 px-[1rem] py-[0.75rem] text-[0.9rem] font-semibold text-[#0B1A37] transition-colors hover:border-[#0B1A37]"
               >
                 OK
               </button>

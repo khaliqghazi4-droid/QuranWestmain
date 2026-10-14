@@ -12,6 +12,7 @@ export type ClassRoomContext = {
   roomId: string;            // canonical (`booking-x` etc.)
   jitsiRoomName: string;     // the Jitsi room slug everyone joins
   studentName: string;
+  studentId: string | null;  // the class's student account; null for trials and course rooms
   courseName: string;
   courseId: string | null;   // null for trials that don't map to a course in DB
   durationMin: number;
@@ -55,6 +56,7 @@ export async function resolveRoom(roomId: string): Promise<ClassRoomContext | nu
       roomId,
       jitsiRoomName: `OnlineQuranAcademy-${safeSlug(b.enrollment.course.slug)}-${safeSlug(b.id)}`,
       studentName: b.enrollment.student.name,
+      studentId: b.enrollment.studentId,
       courseName: b.enrollment.course.name,
       courseId: b.enrollment.course.id,
       durationMin: b.duration,
@@ -84,6 +86,7 @@ export async function resolveRoom(roomId: string): Promise<ClassRoomContext | nu
       roomId,
       jitsiRoomName: trialRoomName(a.mongoEnrollmentId),
       studentName,
+      studentId: null,
       courseName,
       courseId: null,
       durationMin: 30,
@@ -103,6 +106,7 @@ export async function resolveRoom(roomId: string): Promise<ClassRoomContext | nu
     roomId,
     jitsiRoomName: `OnlineQuranAcademy-${safeSlug(course.slug)}`,
     studentName: "Course room",
+    studentId: null,
     courseName: course.name,
     courseId: course.id,
     durationMin: 60,

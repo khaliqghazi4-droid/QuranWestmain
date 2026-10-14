@@ -15602,7 +15602,7 @@ footer .widget_services ul li:hover {
   content: "";
   height: 98%;
   width: 98%;
-  background-image: url(../images/footer-thumbnail-border.html);
+  background-image: none;
   position: absolute;
   top: 50%;
   left: 50%;
@@ -15930,7 +15930,7 @@ footer .widget_services ul li:hover {
   bottom: 0;
   width: 100%;
   height: 100%;
-  background-image: url(../images/banner/shape.html);
+  background-image: none;
   z-index: -1;
   transform: translateX(-50%);
   background-repeat: no-repeat;
@@ -16069,7 +16069,7 @@ footer .widget_services ul li:hover {
 .bg-ovrl1 {
   position: relative;
   z-index: 1;
-  background-image: url(../images/banner/bg-lines.html);
+  background-image: none;
 }
 
 .bg-ovrl1::before {
@@ -16079,7 +16079,7 @@ footer .widget_services ul li:hover {
   bottom: -1px;
   width: 100%;
   height: 110px;
-  background-image: url(../images/banner/bg.html);
+  background-image: none;
   z-index: 9;
   background-repeat: no-repeat;
   background-position: center bottom;
@@ -16089,7 +16089,7 @@ footer .widget_services ul li:hover {
 .bg-ovrl2 {
   position: relative;
   z-index: 1;
-  background-image: url(../images/banner/bg-lines2.html);
+  background-image: none;
 }
 
 .bg-ovrl2::before {
@@ -16099,7 +16099,7 @@ footer .widget_services ul li:hover {
   bottom: -1px;
   width: 100%;
   height: 110px;
-  background-image: url(../images/banner/bg.html);
+  background-image: none;
   z-index: 9;
   background-repeat: no-repeat;
   background-position: center bottom;
@@ -19841,7 +19841,7 @@ footer .widget_services ul li:hover {
   bottom: 0;
   width: 100%;
   height: 100%;
-  background-image: url(../images/hero-banner/shape.html);
+  background-image: none;
   z-index: -1;
   transform: translateX(-50%);
   background-repeat: no-repeat;
@@ -20285,7 +20285,7 @@ footer .widget_services ul li:hover {
   position: absolute;
   left: 56%;
   bottom: 0;
-  background-image: url(../images/banner/shape1.html);
+  background-image: none;
   transform: translateX(-50%);
   width: 541px;
   height: 280px;
@@ -20589,7 +20589,7 @@ footer .widget_services ul li:hover {
   top: 0;
   opacity: 1;
   z-index: 999999999;
-  background-image: url(../images/loading.html);
+  background-image: none;
   background-repeat: no-repeat;
   background-size: 80px;
   background-position: center;
@@ -22052,7 +22052,7 @@ blockquote.blockquote::before {
   height: 40px;
   width: 40px;
   display: inline-block;
-  background-image: url("../images/quote.html");
+  background-image: none;
   background-position: center;
   background-repeat: no-repeat;
   background-size: 100%;
@@ -22063,7 +22063,7 @@ blockquote.blockquote::before {
 
 [data-bs-theme=dark] .blockquote::before,
 [data-bs-theme=dark] blockquote.blockquote::before {
-  background-image: url("../images/quote-white.html");
+  background-image: none;
 }
 
 .blockquote::after,
@@ -22726,7 +22726,7 @@ button.back-to-top.active {
   position: absolute;
   right: 50px;
   bottom: 40px;
-  background-image: url(../images/testimonial/quote.html);
+  background-image: none;
   background-repeat: no-repeat;
   z-index: -1;
   width: 130px;
@@ -25339,7 +25339,7 @@ ul[class*=list-].fs16 {
 
 .list-style2 li::before {
   content: "";
-  background-image: url(../images/check.html);
+  background-image: none;
   position: absolute;
   left: 20px;
   width: 20px;
@@ -27676,7 +27676,7 @@ figure figcaption {
   bottom: -1px;
   width: 100%;
   height: 110px;
-  background-image: url(../images/banner/bg.html);
+  background-image: none;
   z-index: 9;
   background-repeat: no-repeat;
   background-position: center bottom;
@@ -28010,7 +28010,7 @@ figure figcaption {
   position: absolute;
   left: 0;
   top: -2px;
-  background-image: url(../images/ai/shape.html);
+  background-image: none;
   width: 100%;
   height: 70px;
   z-index: 1;
@@ -28192,7 +28192,7 @@ figure figcaption {
 
 .video-item::after {
   content: "";
-  background-image: url(../images/dots.html);
+  background-image: none;
   position: absolute;
   top: 0;
   left: 0;
@@ -28434,7 +28434,7 @@ figure figcaption {
 }
 
 .course-section::after {
-  background-image: url(../images/ai/blur.html);
+  background-image: none;
   height: 500px;
   z-index: 0;
   background-position: center;
@@ -28694,7 +28694,7 @@ figure figcaption {
   height: 564px;
   left: 0;
   bottom: 0;
-  background-image: url(../images/bg-half-circle.html);
+  background-image: none;
   z-index: -1;
   background-size: 100%;
   background-position: bottom center;

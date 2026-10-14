@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Amiri } from "next/font/google";
+import { Inter, Amiri, Manrope, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import Script from "next/script";
 import { siteConfig } from "@/lib/siteConfig";
@@ -20,6 +20,23 @@ const amiri = Amiri({
   subsets: ["arabic"],
   weight: ["400", "700"],
   variable: "--font-amiri",
+  display: "swap",
+});
+
+// The whole site: Manrope for headings and text (put on every element in
+// globals.css), Instrument Serif italic for the gold accent words (`.font-accent`)
+const manrope = Manrope({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-lux",
+  display: "swap",
+});
+
+const instrumentSerif = Instrument_Serif({
+  subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
+  variable: "--font-accent",
   display: "swap",
 });
 
@@ -100,7 +117,7 @@ const websiteJsonLd = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`h-full antialiased ${inter.variable} ${amiri.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`h-full antialiased ${inter.variable} ${amiri.variable} ${manrope.variable} ${instrumentSerif.variable}`} suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
         <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com" />
@@ -135,7 +152,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           height="0" width="0" style={{ display: 'none', visibility: 'hidden' }}></iframe></noscript>
         {/* <!-- End Google Tag Manager (noscript) --> */}
         
-        <NextTopLoader color="hsl(160 70% 28%)" showSpinner={false} height={2} />
+        {/* The page-loading bar along the top, in the site's gold (the deeper
+            shade, so it shows against the white header) */}
+        <NextTopLoader color="#C9A13B" showSpinner={false} height={2} />
         <AuthSessionProvider>
           <ThemeProvider
             attribute="class"
@@ -157,9 +176,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <Script src="https://cdnjs.cloudflare.com/ajax/libs/imagesloaded/5.0.0/imagesloaded.pkgd.min.js" strategy="lazyOnload" />
       <Script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.isotope/3.0.6/isotope.pkgd.min.js" strategy="lazyOnload" />
       <Script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js" strategy="afterInteractive" />
-      <Script src="/assets/js/functions.js" strategy="afterInteractive" />
       <Script src="/assets/js/slider.js" strategy="afterInteractive" />
-      <Script src="/assets/js/contact.js" strategy="afterInteractive" />
     </html>
   );
 }

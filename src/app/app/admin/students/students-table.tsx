@@ -13,7 +13,6 @@ import {
   X,
   BookOpen,
   Clock,
-  Filter,
   FileText,
   UserPlus,
   RefreshCw,
@@ -29,6 +28,15 @@ import {
   useLockPageScroll,
   type LoginTarget,
 } from "@/components/admin/login-credentials-modal";
+import {
+  ActiveStudentFilters,
+  NO_FILTERS,
+  StudentsFilterMenu,
+  activeFilterCount,
+  localDateKey,
+  type FilterOption,
+  type StudentFilters,
+} from "./students-filter";
 
 type CourseEnrollment = {
   id: string;
@@ -78,12 +86,58 @@ export function StudentsTable({
   const router = useRouter();
   const [students, setStudents] = React.useState(initialStudents);
   const [query, setQuery] = React.useState("");
-  const [courseFilter, setCourseFilter] = React.useState<string>("all"); // "all" | courseId | "none"
+  const [filters, setFilters] = React.useState<StudentFilters>(NO_FILTERS);
   const [deleting, setDeleting] = React.useState<string | null>(null);
   const [suspending, setSuspending] = React.useState<string | null>(null);
   const [addOpen, setAddOpen] = React.useState<boolean>(!!prefill);
   const [loginTarget, setLoginTarget] = React.useState<LoginTarget | null>(null);
   const [editTarget, setEditTarget] = React.useState<Student | null>(null);
+
+  // Teachers on any active course plus anyone currently teaching an enrolled student
+  const teacherOptions = React.useMemo(() => {
+    const map = new Map<string, FilterOption>();
+    for (const c of allCourses) {
+      for (const t of c.teachers) {
+        if (!map.has(t.id)) map.set(t.id, { id: t.id, name: t.name, count: 0 });
+      }
+    }
+    for (const s of students) {
+      const ids = new Set<string>();
+      for (const c of s.courses) {
+        if (!c.teacherId) continue;
+        ids.add(c.teacherId);
+        if (!map.has(c.teacherId)) {
+          map.set(c.teacherId, { id: c.teacherId, name: c.teacherName ?? "Teacher", count: 0 });
+        }
+      }
+      ids.forEach((id) => map.get(id)!.count++);
+    }
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [allCourses, students]);
+
+  const courseOptions = React.useMemo<FilterOption[]>(() => {
+    const names = new Map(allCourses.map((c) => [c.id, c.name]));
+    // Students can still be enrolled in a course that has since been deactivated
+    for (const s of students) {
+      for (const c of s.courses) if (!names.has(c.id)) names.set(c.id, c.name);
+    }
+    return Array.from(names, ([id, name]) => ({
+      id,
+      name,
+      count: students.filter((s) => s.courses.some((sc) => sc.id === id)).length,
+    }));
+  }, [allCourses, students]);
+
+  const filterCounts = React.useMemo(
+    () => ({
+      total: students.length,
+      notEnrolled: students.filter((s) => s.courses.length === 0).length,
+      unassigned: students.filter((s) => s.courses.some((c) => !c.teacherId)).length,
+    }),
+    [students]
+  );
+
+  const filtersActive = activeFilterCount(filters) > 0;
 
   const filtered = students.filter((s) => {
     const q = query.toLowerCase();
@@ -92,12 +146,24 @@ export function StudentsTable({
       s.email.toLowerCase().includes(q) ||
       (s.country?.toLowerCase().includes(q) ?? false);
 
-    const matchesCourse =
-      courseFilter === "all" ||
-      (courseFilter === "none" && s.courses.length === 0) ||
-      s.courses.some((c) => c.id === courseFilter);
+    // Teacher and course are checked against the same enrollment, so
+    // "Course A + Teacher X" means X teaches this student in A.
+    const matchesEnrollment =
+      filters.course === "none"
+        ? s.courses.length === 0 && filters.teacher === "all"
+        : (filters.course === "all" && filters.teacher === "all") ||
+          s.courses.some(
+            (c) =>
+              (filters.course === "all" || c.id === filters.course) &&
+              (filters.teacher === "all" ||
+                (filters.teacher === "none" ? !c.teacherId : c.teacherId === filters.teacher))
+          );
 
-    return matchesQuery && matchesCourse;
+    const joined = filters.from || filters.to ? localDateKey(s.createdAt) : "";
+    const matchesDate =
+      (!filters.from || joined >= filters.from) && (!filters.to || joined <= filters.to);
+
+    return matchesQuery && matchesEnrollment && matchesDate;
   });
 
   async function handleDelete(id: string, name: string) {
@@ -136,46 +202,16 @@ export function StudentsTable({
     }
   }
 
-  const selectedCourseName =
-    courseFilter === "all"
-      ? null
-      : courseFilter === "none"
-      ? "Not Enrolled"
-      : allCourses.find((c) => c.id === courseFilter)?.name ?? null;
-
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border border-border bg-card p-4 flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-primary/15 to-accent/15 text-primary">
-            <Filter className="h-4 w-4" />
-          </div>
-          <label className="text-xs font-semibold text-muted-foreground">
-            Filter by Course:
-          </label>
-        </div>
-        <select
-          value={courseFilter}
-          onChange={(e) => setCourseFilter(e.target.value)}
-          className="flex-1 sm:flex-initial min-w-[200px] rounded-full border border-border bg-background px-4 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-        >
-          <option value="all">All Courses ({students.length})</option>
-          <option value="none">
-            Not Enrolled ({students.filter((s) => s.courses.length === 0).length})
-          </option>
-          <optgroup label="Courses">
-            {allCourses.map((c) => {
-              const count = students.filter((s) =>
-                s.courses.some((sc) => sc.id === c.id)
-              ).length;
-              return (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({count})
-                </option>
-              );
-            })}
-          </optgroup>
-        </select>
+        <StudentsFilterMenu
+          value={filters}
+          onChange={setFilters}
+          teachers={teacherOptions}
+          courses={courseOptions}
+          counts={filterCounts}
+        />
 
         <div className="flex-1" />
 
@@ -198,27 +234,18 @@ export function StudentsTable({
         </button>
       </div>
 
-      {selectedCourseName && (
-        <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 flex items-center justify-between">
-          <p className="text-xs text-foreground inline-flex items-center gap-2">
-            <BookOpen className="h-3.5 w-3.5 text-primary" />
-            Showing students enrolled in{" "}
-            <span className="font-bold text-primary">{selectedCourseName}</span>
-          </p>
-          <button
-            onClick={() => setCourseFilter("all")}
-            className="text-xs font-semibold text-primary hover:text-accent inline-flex items-center gap-1"
-          >
-            <X className="h-3 w-3" /> Clear filter
-          </button>
-        </div>
-      )}
+      <ActiveStudentFilters
+        value={filters}
+        onChange={setFilters}
+        teachers={teacherOptions}
+        courses={courseOptions}
+      />
 
       {filtered.length === 0 ? (
         <div className="rounded-2xl border-2 border-dashed border-border bg-card/50 p-12 text-center">
           <GraduationCap className="mx-auto h-12 w-12 text-muted-foreground/50" />
           <p className="mt-4 text-sm text-muted-foreground">
-            {query || courseFilter !== "all"
+            {query || filtersActive
               ? "No students match your filter"
               : "No students yet"}
           </p>
@@ -392,7 +419,7 @@ export function StudentsTable({
           <div className="flex items-center justify-between p-4 border-t border-border text-xs text-muted-foreground">
             <p>
               Showing {filtered.length} of {students.length} students
-              {(query || courseFilter !== "all") && " (filtered)"}
+              {(query || filtersActive) && " (filtered)"}
             </p>
           </div>
         </div>

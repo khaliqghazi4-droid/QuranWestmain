@@ -76,7 +76,7 @@ It is never too late to open the Quran and begin. Whatever your age or backgroun
         videoUrl: 'https://www.youtube.com/embed/Y9XykxECG4A',
     },
     {
-        id: '15',
+        id: '17',
         title: 'The Etiquette (Adab) of Reciting and Handling the Quran',
         excerpt: 'The Quran is the word of Allah, and Islam teaches a complete code of manners for reciting, holding, and honoring it. Learn the essential Adab every Muslim should know.',
         content: `The Quran is not an ordinary book — it is the literal word of Allah, and Islam teaches a comprehensive set of manners (Adab) for how it should be recited, handled, and respected. Understanding this etiquette deepens the spiritual experience of engaging with the Quran.

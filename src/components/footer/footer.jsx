@@ -1,245 +1,289 @@
-﻿"use client";
+"use client";
 
-import Image from 'next/image'
-import React from 'react'
-import Link from 'next/link'
-import { motion } from 'framer-motion'
+import { useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import { BookOpen, Mail, MapPin, Phone } from "lucide-react";
+import { FaStar, FaStarHalfAlt, FaWhatsapp } from "react-icons/fa";
+import EnrollModal from "@/components/enroll-modal";
+import { WHATSAPP_NUMBER } from "@/components/WhatsappButton";
 
 const fadeUp = (delay = 0) => ({
-    initial: { opacity: 0, y: 30 },
-    whileInView: { opacity: 1, y: 0 },
-    viewport: { once: false, amount: 0.3 },
-    transition: { duration: 0.6, ease: 'easeOut', delay },
-})
+  initial: { opacity: 0, y: 30 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: false, amount: 0.3 },
+  transition: { duration: 0.6, ease: "easeOut", delay },
+});
 
-const Footer = () => {
-    return (
-        <footer className="footer-style1">
-            {/* decorative background */}
-            <svg
-                className="pointer-events-none absolute inset-0 w-full h-full z-0"
-                style={{ position: 'absolute', top: 0, left: 0 }}
-                viewBox="0 0 1440 600"
-                preserveAspectRatio="none"
-                aria-hidden="true"
-            >
-                <defs>
-                    <radialGradient id="ft-glow-l" cx="0%" cy="100%" r="55%">
-                        <stop offset="0%" stopColor="#EECC65" stopOpacity="0.10" />
-                        <stop offset="100%" stopColor="#EECC65" stopOpacity="0" />
-                    </radialGradient>
-                    <radialGradient id="ft-glow-r" cx="100%" cy="0%" r="55%">
-                        <stop offset="0%" stopColor="#EECC65" stopOpacity="0.08" />
-                        <stop offset="100%" stopColor="#EECC65" stopOpacity="0" />
-                    </radialGradient>
-                </defs>
-                <ellipse cx="0" cy="600" rx="500" ry="380" fill="url(#ft-glow-l)" />
-                <ellipse cx="1440" cy="0" rx="500" ry="380" fill="url(#ft-glow-r)" />
+// The first revealed verse (Al-Alaq 96:1): "Read in the name of your Lord who created"
+const VERSE = "اقْرَأْ بِاسْمِ رَبِّكَ الَّذِي خَلَقَ";
 
-                {/* subtle grid */}
-                {[120, 240, 360, 480, 600, 720, 840, 960, 1080, 1200, 1320].map((x, i) => (
-                    <line key={`vg-${i}`} x1={x} y1="0" x2={x} y2="600" stroke="#EECC65" strokeWidth="0.4" opacity="0.05" />
-                ))}
-                {[100, 200, 300, 400, 500].map((y, i) => (
-                    <line key={`hg-${i}`} x1="0" y1={y} x2="1440" y2={y} stroke="#EECC65" strokeWidth="0.4" opacity="0.05" />
-                ))}
+const LINK_COLUMNS = [
+  {
+    title: "Academy",
+    links: [
+      { href: "/", label: "Home" },
+      { href: "/about", label: "About" },
+      { href: "/coursesGrid", label: "Courses" },
+      { href: "/blogs", label: "Blogs" },
+      { href: "/faqs", label: "FAQs" },
+    ],
+  },
+  {
+    title: "Quran",
+    links: [
+      { href: "/coursesGrid/quran-reading-nazra", label: "Quran Reading" },
+      { href: "/coursesGrid/quran-memorization", label: "Quran Memorization" },
+      { href: "/coursesGrid/tajweed-mastery", label: "Tajweed Rules" },
+    ],
+  },
+  {
+    title: "Studies",
+    links: [
+      {
+        href: "/coursesGrid/islamic-studies-fundamentals",
+        label: "Islamic Studies",
+      },
+      { href: "/coursesGrid/arabic-for-quran", label: "Arabic Language" },
+    ],
+  },
+];
 
-                {/* constellation dots */}
-                {[
-                    [60, 80], [200, 180], [420, 60], [650, 200], [900, 50], [1150, 170], [1380, 90],
-                    [100, 420], [350, 500], [600, 380], [850, 480], [1100, 400], [1360, 520],
-                    [720, 290], [1440, 300],
-                ].map(([cx, cy], i) => (
-                    <circle key={`fd-${i}`} cx={cx} cy={cy} r="1.8" fill="#EECC65" opacity="0.28" />
-                ))}
-                <line x1="60" y1="80" x2="200" y2="180" stroke="#EECC65" strokeWidth="0.5" opacity="0.1" />
-                <line x1="200" y1="180" x2="420" y2="60" stroke="#EECC65" strokeWidth="0.5" opacity="0.1" />
-                <line x1="420" y1="60" x2="650" y2="200" stroke="#EECC65" strokeWidth="0.5" opacity="0.1" />
-                <line x1="650" y1="200" x2="900" y2="50" stroke="#EECC65" strokeWidth="0.5" opacity="0.1" />
-                <line x1="900" y1="50" x2="1150" y2="170" stroke="#EECC65" strokeWidth="0.5" opacity="0.1" />
-                <line x1="1150" y1="170" x2="1380" y2="90" stroke="#EECC65" strokeWidth="0.5" opacity="0.1" />
-                <line x1="100" y1="420" x2="350" y2="500" stroke="#EECC65" strokeWidth="0.5" opacity="0.08" />
-                <line x1="350" y1="500" x2="600" y2="380" stroke="#EECC65" strokeWidth="0.5" opacity="0.08" />
-                <line x1="600" y1="380" x2="850" y2="480" stroke="#EECC65" strokeWidth="0.5" opacity="0.08" />
-                <line x1="850" y1="480" x2="1100" y2="400" stroke="#EECC65" strokeWidth="0.5" opacity="0.08" />
-                <line x1="1100" y1="400" x2="1360" y2="520" stroke="#EECC65" strokeWidth="0.5" opacity="0.08" />
-
-                {/* arc accents */}
-                <path d="M 0 600 Q 360 200 720 300 T 1440 200" stroke="#EECC65" strokeWidth="0.7" fill="none" opacity="0.07" />
-                <path d="M 0 400 Q 400 150 800 350 T 1440 150" stroke="#EECC65" strokeWidth="0.7" fill="none" opacity="0.05" />
-
-                {/* diamond accents */}
-                {[[720, 20], [100, 560], [1340, 560]].map(([cx, cy], i) => (
-                    <polygon key={`fdi-${i}`}
-                        points={`${cx},${cy - 6} ${cx + 5},${cy} ${cx},${cy + 6} ${cx - 5},${cy}`}
-                        fill="none" stroke="#EECC65" strokeWidth="0.8" opacity="0.25" />
-                ))}
-            </svg>
-            <div className="container" style={{ position: 'relative', zIndex: 1 }}>
-                <div className="footer-action">
-                    <div className="row align-items-center justify-content-between">
-                        <motion.div className="col-xl-5 col-lg-6 m-b30" {...fadeUp(0)}>
-                            <h2 className="text-white !font-light m-b0 !tracking-tight !leading-tight">
-                                Sign Up to Receive <br /> Our Latest Updates
-                            </h2>
-                        </motion.div>
-                        <motion.div className="col-xl-5 col-lg-6 m-b30" {...fadeUp(0.15)}>
-                            <form
-                                className="subscribe-form1"
-                                action="https://eduthink.layoutdrop.com/demo/assets/script/mailchamp.php"
-                                method="post"
-                            >
-                                <div className="ajax-message" />
-                                <div className="position-relative">
-                                    <input
-                                        name="email"
-                                        className="form-control"
-                                        placeholder="Your email here"
-                                        type="email"
-                                        required=""
-                                    />
-                                    <button
-                                        name="submit"
-                                        value="Submit"
-                                        type="submit"
-                                        className="btn btn-primary btn-standard btn-lg submit-btn"
-                                    >
-                                        Submit
-                                        <span className="btn-icon bg-[#EECC65]">
-                                            <img src="/assets/images/icon/arrow.svg" alt="" aria-hidden="true" />
-                                        </span>
-                                    </button>
-                                </div>
-                            </form>
-                        </motion.div>
-                    </div>
-                </div>
-            </div>
-            <div className="container" style={{ position: 'relative', zIndex: 1 }}>
-                <div className="row">
-                    <div>
-                        <div className="footer-top !rounded-2xl !overflow-hidden !relative">
-                            <Image
-                                src="https://images.unsplash.com/photo-1609599006353-e629aaabfeae?w=1400&q=80"
-                                alt=""
-                                fill
-                                style={{ objectFit: 'cover', opacity: 0.18, zIndex: 0 }}
-                                aria-hidden="true"
-                            />
-                            {/* <div className="!absolute !inset-0" style={{ background: 'rgba(10,20,50,0.82)', zIndex: 1 }} /> */}
-                            <div className="!flex flex-col md:flex-row !justify-between gap-12 !w-full !px-8 !relative" style={{ zIndex: 2 }}>
-                                <motion.section {...fadeUp(0)}>
-                                    <Link href="/" className="!relative !inline-block">
-                                        <motion.span
-                                            aria-hidden="true"
-                                            className="!absolute !rounded-full !pointer-events-none"
-                                            style={{
-                                                top: '50%',
-                                                left: '50%',
-                                                width: 240,
-                                                height: 240,
-                                                marginTop: -120,
-                                                marginLeft: -120,
-                                                background: 'radial-gradient(circle, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.18) 45%, rgba(255,255,255,0) 75%)',
-                                                filter: 'blur(20px)',
-                                                zIndex: 0,
-                                            }}
-                                            animate={{ opacity: [0.35, 0.9, 0.35], scale: [0.85, 1.15, 0.85] }}
-                                            transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
-                                        />
-                                        <Image
-                                            src="/quran-academy-logo.png"
-                                            alt="Quran West Academy"
-                                            width={180}
-                                            height={180}
-                                            style={{ position: 'relative', zIndex: 1 }}
-                                        />
-                                    </Link>
-                                    <ul className='!mt-10 !px-0'>
-                                        <h3 className="footer-title !text-[#C59E5B] !tracking-wider !uppercase !text-xs !font-semibold !mb-3">Address</h3>
-                                        <li>
-                                            <p className="!text-white !font-semibold !text-sm !mb-0">Address 1</p>
-                                            <span className="!text-white/75 !text-sm !leading-relaxed"> Watford Education Centre, Leavesden <br /> Road, Watford, WD24 5ER</span>
-                                        </li>
-                                        <li className='!mt-3'>
-                                            <p className="!text-white !font-semibold !text-sm !mb-0">Address 2</p>
-                                            <span className="!text-white/75 !text-sm !leading-relaxed"> 372-B, Block B People&apos;s Colony No 1,<br /> Faisalabad, 38000, Pakistan</span>
-                                        </li>
-                                    </ul>
-                                </motion.section>
-                                <section className="!flex !gap-20 !flex-wrap">
-                                    {[
-                                        {
-                                            delay: 0.1,
-                                            title: 'Links',
-                                            links: [
-                                                { href: '/', label: 'Home' },
-                                                { href: '/about', label: 'About' },
-                                                { href: '/coursesGrid', label: 'Courses' },
-                                                { href: '/blogs', label: 'Blogs' },
-                                                { href: '/faqs', label: 'FAQs' },
-                                            ],
-                                        },
-                                        {
-                                            delay: 0.2,
-                                            title: 'Popular Courses',
-                                            links: [
-                                                { href: '/coursesGrid', label: 'Quran Reading' },
-                                                { href: '/coursesGrid', label: 'Quran Memorization' },
-                                                { href: '/coursesGrid', label: 'Tajweed rules' },
-                                                { href: '/coursesGrid', label: 'Islamic studies' },
-                                                { href: '/coursesGrid', label: 'Arabic language' },
-                                            ],
-                                        },
-                                    ].map(({ delay, title, links }) => (
-                                        <motion.div key={title} {...fadeUp(delay)}>
-                                            <div className="widget footer_widget">
-                                                <h4 className="!text-[#C59E5B] !tracking-wider !uppercase !text-xs !font-semibold !mb-3">{title}</h4>
-                                                <ul>
-                                                    {links.map(({ href, label }) => (
-                                                        <li key={label}>
-                                                            <Link className="!text-white/70 hover:!text-white !text-sm !font-medium !transition-colors !duration-150" href={href}>
-                                                                {label}
-                                                            </Link>
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                        </motion.div>
-                                    ))}
-                                    <motion.div {...fadeUp(0.3)}>
-                                        <div className="widget footer_widget contact-info">
-                                            <h4 className="footer-title !text-[#C59E5B] !tracking-wider !uppercase !text-xs !font-semibold !mb-3">Get in touch</h4>
-                                            <ul>
-                                                <li>
-                                                    <p className="!text-white !font-semibold !text-sm !mb-1">Call us directly</p>
-                                                    <Link className="!text-white/70 !text-sm !block hover:!text-white hover:!underline" href="tel:921234567890">+44 7508 803086</Link>
-                                                    <Link className="!text-white/70 !text-sm !block hover:!text-white hover:!underline" href="tel:92 3188 068074">+92 3188 068074</Link>
-                                                </li>
-                                                <li className="!mt-3">
-                                                    <p className="!text-white !font-semibold !text-sm !mb-1">Support</p>
-                                                    <Link className="!text-white/70 !text-sm hover:!text-white hover:!underline" href="mailto:info@quranwest.com">info@quranwest.com</Link>
-                                                </li>
-                                            </ul>
-                                        </div>
-                                    </motion.div>
-                                </section>
-                            </div>
-                        </div>
-                        <motion.div
-                            className="footer-bottom text-center text-xl-start"
-                            {...fadeUp(0.2)}
-                        >
-                            <p className="m-b0 !text-white/70 !tracking-wide !text-sm">
-                                Copyright © {new Date().getFullYear()} Quran West. All Rights Reserved.
-                            </p>
-                        </motion.div>
-                    </div>
-                </div>
-            </div>
-        </footer>
-    )
+// A black badge in the style of an app-store button: a small line over a big one.
+// `compact` is a smaller one that fills its column (on phones, beside the
+// Studies links)
+function Badge({ icon, small, big, compact = false, ...props }) {
+  const Tag = props.href ? "a" : "button";
+  return (
+    <Tag
+      {...props}
+      className={`flex items-center rounded-[0.7rem] border-[1px] border-white/30 bg-black text-left !text-white shadow-[0_8px_18px_-8px_rgba(0,0,0,0.6)] transition-[transform,border-color] duration-300 hover:-translate-y-[2px] hover:border-[#E3C26B] ${compact ? "w-full gap-[0.5rem] px-[0.65rem] py-[0.4rem]" : "w-[11.5rem] gap-[0.7rem] px-[0.95rem] py-[0.5rem]"}`}
+    >
+      {icon}
+      <span className="flex flex-col">
+        <span
+          className={`${compact ? "text-[0.6rem] tracking-[0.03em]" : "text-[0.6rem] tracking-[0.08em]"} font-semibold uppercase leading-[1.3] text-white/80`}
+        >
+          {small}
+        </span>
+        <span
+          className={`${compact ? "text-[0.95rem]" : "text-[1.12rem]"} font-bold leading-[1.15] tracking-[-0.01em]`}
+        >
+          {big}
+        </span>
+      </span>
+    </Tag>
+  );
 }
 
-export default Footer
+const contactIcon = "mt-[0.2rem] h-[1.1rem] w-[1.1rem] shrink-0 text-[#E3C26B]";
 
+const Footer = () => {
+  const [trialOpen, setTrialOpen] = useState(false);
+
+  // The two ways to get started, full size or `compact`
+  const startBadges = (compact) => (
+    <>
+      <Badge
+        compact={compact}
+        href={`https://wa.me/${WHATSAPP_NUMBER}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        icon={
+          <FaWhatsapp
+            className={`${compact ? "h-[1.5rem] w-[1.5rem]" : "h-[1.9rem] w-[1.9rem]"} shrink-0 text-[#25D366]`}
+            aria-hidden="true"
+          />
+        }
+        small="Chat with us on"
+        big="WhatsApp"
+      />
+      <Badge
+        compact={compact}
+        type="button"
+        onClick={() => setTrialOpen(true)}
+        icon={
+          <BookOpen
+            className={`${compact ? "h-[1.4rem] w-[1.4rem]" : "h-[1.8rem] w-[1.8rem]"} shrink-0 text-[#E3C26B]`}
+            aria-hidden="true"
+          />
+        }
+        small="Book your"
+        big="Free Trial"
+      />
+    </>
+  );
+
+  return (
+    <footer className="relative isolate overflow-hidden bg-[#111D37]">
+      {/* the artwork across the top: the white crown with the verse in gold,
+                the gold band and the blue, at its own proportions (on phones a
+                fixed height, cropped at the sides); below it the footer carries
+                on in the artwork's last colour */}
+      <div className="absolute inset-x-0 top-0 -z-10 h-[16rem] sm:h-auto sm:aspect-[3168/1344]">
+        <Image
+          src="/footer-bg.jpg"
+          alt=""
+          fill
+          sizes="100vw"
+          quality={90}
+          className="object-cover object-top"
+        />
+      </div>
+      <p lang="ar" dir="rtl" className="sr-only">
+        {VERSE}
+      </p>
+
+      {/* the content starts just under the point of the band (45.5% of the
+                artwork's height, which is 19.3% of its width) */}
+      <div className="mx-auto w-full max-w-[78rem] px-[1rem] pt-[8.5rem] sm:px-[1.5rem] sm:pt-[calc(19.3%+1.75rem)] lg:px-[2.5rem]">
+        <div className="grid gap-[2.75rem] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_auto_auto] lg:gap-x-[1.75rem] xl:grid-cols-[minmax(0,1.1fr)_auto_minmax(0,1.45fr)_auto_auto] xl:gap-x-[2.5rem]">
+          {/* the logo and how to reach us */}
+          <motion.section {...fadeUp(0)}>
+            <Link
+              href="/"
+              className="inline-block"
+              aria-label="Quran West home"
+            >
+              {/* a fine white rim round the logo's shapes lifts the navy
+                                letters off the navy footer; a softer white glow
+                                beyond it pulses slowly (held still for reduced motion) */}
+              <Image
+                src="/quran-academy-logo.png"
+                alt="Quran West Academy"
+                width={230}
+                height={93}
+                className="h-auto w-[12.5rem] animate-[footer-logo-glow_3s_ease-in-out_infinite] [filter:drop-shadow(0_0_1px_rgba(255,255,255,0.85))_drop-shadow(0_0_8px_rgba(255,255,255,0.3))] motion-reduce:animate-none lg:w-[14.5rem]"
+              />
+            </Link>
+
+            <ul className="!mb-0 mt-[1.75rem] list-none space-y-[1rem] !pl-0">
+              <li className="flex gap-[0.75rem]">
+                <Phone className={contactIcon} aria-hidden="true" />
+                <div className="text-[0.94rem] font-medium leading-[1.5]">
+                  <span className="block text-white">Call us directly:</span>
+                  <a
+                    href="tel:+447508803086"
+                    className="block !text-white/85 transition-colors hover:!text-[#E3C26B]"
+                  >
+                    +44 7508 803086
+                  </a>
+                  <a
+                    href="tel:+923188068074"
+                    className="block !text-white/85 transition-colors hover:!text-[#E3C26B]"
+                  >
+                    +92 3188 068074
+                  </a>
+                </div>
+              </li>
+              <li className="flex gap-[0.75rem]">
+                <MapPin className={contactIcon} aria-hidden="true" />
+                <div className="space-y-[0.5rem] text-[0.94rem] font-medium leading-[1.5] text-white/85">
+                  {/* <p className="!mb-0 !text-[0.94rem] !leading-[1.5] !text-white/85">Watford Education Centre, Leavesden Road,<br />Watford, WD24 5ER</p> */}
+                  <p className="!mb-0 !text-[0.94rem] !leading-[1.5] !text-white/85">
+                    372-B, Block B People&apos;s Colony No 1,
+                    <br />
+                    Faisalabad, 38000, Pakistan
+                  </p>
+                </div>
+              </li>
+              <li className="flex gap-[0.75rem]">
+                <Mail className={contactIcon} aria-hidden="true" />
+                <a
+                  href="mailto:info@quranwest.com"
+                  className="text-[0.94rem] font-medium leading-[1.5] !text-white/85 transition-colors hover:!text-[#E3C26B]"
+                >
+                  info@quranwest.com
+                </a>
+              </li>
+            </ul>
+          </motion.section>
+
+          <span
+            aria-hidden="true"
+            className="hidden w-[1px] self-stretch bg-[linear-gradient(180deg,transparent,#D4AF37_20%,#D4AF37_80%,transparent)] xl:block"
+          />
+
+          {/* quick links, in three columns */}
+          <motion.nav {...fadeUp(0.1)} aria-label="Footer">
+            <h2 className="!mb-0 !text-[1.6rem] !font-extrabold !leading-tight !tracking-[-0.02em] !text-white">
+              Quick{" "}
+              <span className="font-accent lux-gold-text pr-[0.06em] !text-[1.15em] !font-normal italic">
+                links
+              </span>
+            </h2>
+            <div className="mt-[1.25rem] grid grid-cols-2 gap-x-[1.5rem] gap-y-[1.75rem] sm:grid-cols-[repeat(3,max-content)] sm:gap-x-[2.25rem] lg:gap-x-[1.5rem] xl:gap-x-[2.25rem]">
+              {LINK_COLUMNS.map(({ title, links }) => (
+                <div key={title}>
+                  <h3 className="!mb-0 !text-[1.05rem] !font-bold !text-[#E3C26B]">
+                    {title}
+                  </h3>
+                  <ul className="!mb-0 mt-[0.7rem] list-none space-y-[0.55rem] !pl-0">
+                    {links.map(({ href, label }) => (
+                      <li key={label}>
+                        <Link
+                          href={href}
+                          className="text-[0.98rem] font-medium !text-white/85 transition-colors duration-150 hover:!text-[#E3C26B]"
+                        >
+           kea                {label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+              {/* phones: the badges fill the empty cell beside Studies */}
+              <div className="flex flex-col gap-[0.6rem] sm:hidden">
+                {startBadges(true)}
+              </div>
+            </div>
+          </motion.nav>
+
+          <span
+            aria-hidden="true"
+            className="hidden w-[1px] self-stretch bg-[linear-gradient(180deg,transparent,#D4AF37_20%,#D4AF37_80%,transparent)] lg:block"
+          />
+
+          {/* two ways to get started, and the rating; on phones the
+                        badges sit in the links above and the rating is centred */}
+          <motion.div
+            {...fadeUp(0.2)}
+            className="flex flex-col items-center gap-[0.85rem] sm:items-start lg:items-center"
+          >
+            <div className="contents max-sm:hidden">{startBadges(false)}</div>
+            <div className="flex flex-col items-center sm:mt-[0.9rem] sm:items-start lg:items-center">
+              <span
+                className="flex gap-[0.3rem] text-[1.5rem] text-[#E3C26B]"
+                role="img"
+                aria-label="Rated 4.5 out of 5"
+              >
+                <FaStar />
+                <FaStar />
+                <FaStar />
+                <FaStar />
+                <FaStarHalfAlt />
+              </span>
+              <p className="!mb-0 mt-[0.5rem] max-w-[11.5rem] text-center [text-wrap:balance] !text-[0.98rem] font-medium !leading-[1.4] !text-white sm:text-left lg:text-center">
+                Trusted by thousands of students
+              </p>
+            </div>
+          </motion.div>
+        </div>
+
+        <div className="mt-[2.75rem] h-[1px] bg-[linear-gradient(90deg,transparent,#D4AF37_18%,#F1D67E_50%,#D4AF37_82%,transparent)]" />
+        {/* on phones, two short centred lines with room below, so the
+                    floating WhatsApp and back-to-top buttons (bottom right)
+                    don't sit on them */}
+        <p className="!mb-0 pb-[3.5rem] pt-[1.4rem] text-center max-sm:mx-auto max-sm:max-w-[12rem] sm:pb-[1.4rem] !text-[0.95rem] font-medium tracking-[0.01em] !text-[#E3C26B]">
+          © {new Date().getFullYear()} Quran West.{" "}
+          <span className="whitespace-nowrap">All rights reserved.</span>
+        </p>
+      </div>
+
+      <EnrollModal open={trialOpen} onClose={() => setTrialOpen(false)} />
+    </footer>
+  );
+};
+
+export default Footer;

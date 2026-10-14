@@ -5,6 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  Calendar,
+  Check,
+  Share2,
   StickyNote,
   FileText,
   Eye,
@@ -28,7 +31,13 @@ import { JitsiMeeting } from "./jitsi-meeting";
 import { useClassRecorder } from "./use-class-recorder";
 import { RecordingStatus, UploadProgressBar, percentOf } from "./recording-status";
 import { PdfViewer } from "@/components/pdf-viewer";
-import { NoteEditorForm, type NoteItem } from "@/app/app/teacher/notes/notes-manager";
+import {
+  NoteEditorForm,
+  formatNoteDate,
+  noteEditedLabel,
+  updateNoteShares,
+  type NoteItem,
+} from "@/app/app/teacher/notes/notes-manager";
 
 // Same shape as My Notes, so the in-class panel can reuse its note editor
 export type ClassRoomNote = NoteItem;
@@ -52,6 +61,7 @@ export function ClassRoom({
   isTeacher,
   isAdmin = false,
   notes,
+  shareStudent = null,
   backHref,
   startUTC,
 }: {
@@ -69,12 +79,19 @@ export function ClassRoom({
   // Admin looking in: joins straight away with camera/mic off, no student
   // "waiting for teacher" hold, no recording or notes
   isAdmin?: boolean;
+  // Teacher: their own notes for the course. Student: the notes shared with them.
   notes: ClassRoomNote[];
+  // Teacher only: the class's student, whom notes can be shared with from the
+  // panel (null for trials and course rooms, which have no student account)
+  shareStudent?: { id: string; name: string } | null;
   backHref: string;
   startUTC: number | null;
 }) {
   const router = useRouter();
-  const [panelOpen, setPanelOpen] = React.useState(isTeacher);
+  // Teacher and student both get the notes panel; the admin doesn't
+  const showNotes = !isAdmin;
+  // A student's panel starts closed until there's a shared note to read
+  const [panelOpen, setPanelOpen] = React.useState(isTeacher || (showNotes && notes.length > 0));
   const [fullscreen, setFullscreen] = React.useState(false);
   // Notes are added/edited from the panel without leaving the class
   const [noteList, setNoteList] = React.useState(notes);
@@ -84,12 +101,69 @@ export function ClassRoom({
   // Open note editor: `note` is null for a new note
   const [editor, setEditor] = React.useState<{ note: ClassRoomNote | null } | null>(null);
   const [pdf, setPdf] = React.useState<{ url: string; title: string } | null>(null);
+  const [shareBusy, setShareBusy] = React.useState(false);
 
   function noteSaved(saved: ClassRoomNote) {
     setNoteList((prev) => [saved, ...prev.filter((n) => n.id !== saved.id)]);
     setActiveNote(saved);
     setEditor(null);
   }
+
+  async function toggleShare(note: ClassRoomNote) {
+    if (!shareStudent || shareBusy) return;
+    const shared = note.sharedWith.includes(shareStudent.id);
+    setShareBusy(true);
+    try {
+      const sharedWith = await updateNoteShares(
+        note.id,
+        shared ? { remove: [shareStudent.id] } : { add: [shareStudent.id] }
+      );
+      const updated = { ...note, sharedWith };
+      setNoteList((prev) => prev.map((n) => (n.id === note.id ? updated : n)));
+      setActiveNote((cur) => (cur?.id === note.id ? updated : cur));
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Sharing failed");
+    } finally {
+      setShareBusy(false);
+    }
+  }
+
+  // Student: pick up notes the teacher shares (or unshares) during the class.
+  // A newly shared note opens the panel on it.
+  const seenNoteIds = React.useRef(new Set(notes.map((n) => n.id)));
+  React.useEffect(() => {
+    if (isTeacher || isAdmin) return;
+    let cancelled = false;
+    async function refresh() {
+      try {
+        const res = await fetch(`/api/student/notes?room=${encodeURIComponent(roomId)}`, {
+          cache: "no-store",
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as { notes: ClassRoomNote[] };
+        if (cancelled) return;
+        const fresh = data.notes.find((n) => !seenNoteIds.current.has(n.id));
+        data.notes.forEach((n) => seenNoteIds.current.add(n.id));
+        setNoteList(data.notes);
+        if (fresh) {
+          setActiveNote(fresh);
+          setPanelOpen(true);
+        } else {
+          setActiveNote((cur) => data.notes.find((n) => n.id === cur?.id) ?? data.notes[0] ?? null);
+        }
+      } catch {
+        // Offline for a moment: keep showing what we have
+      }
+    }
+    const id = setInterval(refresh, 15_000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [isTeacher, isAdmin, roomId]);
+
+  const activeShared =
+    !!shareStudent && !!activeNote && activeNote.sharedWith.includes(shareStudent.id);
 
   // Students join straight away; the teacher joins with Start Class
   const [joined, setJoined] = React.useState(!isTeacher);
@@ -202,7 +276,7 @@ export function ClassRoom({
             </button>
           </>
         )}
-        {isTeacher && (
+        {showNotes && (
           <button
             onClick={() => setPanelOpen((p) => !p)}
             className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold hover:bg-muted"
@@ -295,20 +369,22 @@ export function ClassRoom({
           )}
         </div>
 
-        {/* Side panel (teacher-only): notes + recorder */}
-        {isTeacher && panelOpen && (
+        {/* Side panel: the teacher's notes + recorder, or the notes shared with the student */}
+        {showNotes && panelOpen && (
           <aside className="hidden sm:flex w-72 xl:w-80 shrink-0 flex-col border-l border-border bg-card overflow-hidden">
-            <div className="p-2.5 border-b border-border">
-              <RecordingStatus recorder={recorder} variant="card" />
-            </div>
+            {isTeacher && (
+              <div className="p-2.5 border-b border-border">
+                <RecordingStatus recorder={recorder} variant="card" />
+              </div>
+            )}
 
             <div className="px-3 py-2 border-b border-border flex items-center gap-2">
               <StickyNote className="h-3.5 w-3.5 text-primary" />
-              <p className="text-xs font-bold">Notes</p>
+              <p className="text-xs font-bold">{isTeacher ? "Notes" : "Notes from your teacher"}</p>
               <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
                 {noteList.length}
               </span>
-              {!editor && (
+              {isTeacher && !editor && (
                 <button
                   onClick={() => setEditor({ note: null })}
                   className="ml-auto inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary hover:bg-primary/20"
@@ -319,7 +395,7 @@ export function ClassRoom({
               )}
             </div>
 
-            {editor ? (
+            {isTeacher && editor ? (
               // Written right here in the panel, so the meeting stays in view
               <div className="flex-1 overflow-y-auto">
                 <p className="px-3 pt-2.5 text-[11px] font-bold uppercase tracking-wide text-primary">
@@ -339,20 +415,25 @@ export function ClassRoom({
               <div className="p-4 text-center">
                 <StickyNote className="mx-auto h-8 w-8 text-muted-foreground/30" />
                 <p className="mt-2 text-[11px] text-muted-foreground">
-                  No notes for this course yet.
+                  {isTeacher
+                    ? "No notes for this course yet."
+                    : "Your teacher hasn't shared any notes for this class yet."}
                 </p>
-                <button
-                  onClick={() => setEditor({ note: null })}
-                  className="mt-2.5 inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1.5 text-[11px] font-bold text-primary hover:bg-primary/20"
-                >
-                  <Plus className="h-3 w-3" /> New note
-                </button>
+                {isTeacher && (
+                  <button
+                    onClick={() => setEditor({ note: null })}
+                    className="mt-2.5 inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1.5 text-[11px] font-bold text-primary hover:bg-primary/20"
+                  >
+                    <Plus className="h-3 w-3" /> New note
+                  </button>
+                )}
               </div>
             ) : (
               <div className="flex-1 flex flex-col min-h-0">
                 <ul className="max-h-40 shrink-0 overflow-y-auto border-b border-border">
                   {noteList.map((n) => {
                     const selected = activeNote?.id === n.id;
+                    const sharedHere = !!shareStudent && n.sharedWith.includes(shareStudent.id);
                     return (
                       <li key={n.id}>
                         <button
@@ -364,9 +445,17 @@ export function ClassRoom({
                           }`}
                         >
                           <span className="flex-1 min-w-0 truncate">{n.title}</span>
+                          {sharedHere && (
+                            <span title={`Shared with ${studentName}`} className="shrink-0">
+                              <Share2 className="h-3 w-3 text-primary" />
+                            </span>
+                          )}
                           {n.fileUrl && (
                             <FileText className="h-3 w-3 shrink-0 text-muted-foreground" />
                           )}
+                          <span className="shrink-0 text-[10px] font-normal text-muted-foreground">
+                            {formatNoteDate(n.createdAt)}
+                          </span>
                         </button>
                       </li>
                     );
@@ -376,17 +465,51 @@ export function ClassRoom({
                   {activeNote ? (
                     <>
                       <div className="flex items-start gap-2">
-                        <p className="flex-1 min-w-0 text-sm font-semibold leading-snug">
-                          {activeNote.title}
-                        </p>
-                        <button
-                          onClick={() => setEditor({ note: activeNote })}
-                          className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-primary/10 hover:text-primary"
-                          title="Edit note"
-                        >
-                          <Pencil className="h-3 w-3" />
-                        </button>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold leading-snug">{activeNote.title}</p>
+                          <p className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                            <Calendar className="h-3 w-3 shrink-0" />
+                            {formatNoteDate(activeNote.createdAt)}
+                            {noteEditedLabel(activeNote) && ` · ${noteEditedLabel(activeNote)}`}
+                          </p>
+                        </div>
+                        {isTeacher && (
+                          <button
+                            onClick={() => setEditor({ note: activeNote })}
+                            className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                            title="Edit note"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                        )}
                       </div>
+                      {isTeacher && shareStudent && (
+                        <button
+                          onClick={() => toggleShare(activeNote)}
+                          disabled={shareBusy}
+                          className={`mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold disabled:opacity-60 ${
+                            activeShared
+                              ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                              : "border border-border hover:bg-muted"
+                          }`}
+                          title={
+                            activeShared
+                              ? `${shareStudent.name} can see this note. Click to stop sharing.`
+                              : `Let ${shareStudent.name} see this note`
+                          }
+                        >
+                          {shareBusy ? (
+                            <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
+                          ) : activeShared ? (
+                            <Check className="h-3 w-3 shrink-0" />
+                          ) : (
+                            <Share2 className="h-3 w-3 shrink-0" />
+                          )}
+                          <span className="truncate">
+                            {activeShared ? "Shared with" : "Share with"} {shareStudent.name}
+                          </span>
+                        </button>
+                      )}
                       {activeNote.content ? (
                         // m-0: the website stylesheet adds a bottom margin to <pre>
                         <pre className="m-0 mt-1.5 whitespace-pre-wrap font-sans text-xs leading-relaxed text-foreground/90">
@@ -422,7 +545,13 @@ export function ClassRoom({
 
             <div className="px-3 py-2 border-t border-border flex items-center gap-1.5 text-[10px] text-muted-foreground">
               <Info className="h-3 w-3 shrink-0 text-primary" />
-              <span>Use screen-share to show a note to the student.</span>
+              <span>
+                {!isTeacher
+                  ? "Shared notes also stay on your Notes page after class."
+                  : shareStudent
+                    ? `Share a note to let ${shareStudent.name} see it, or use screen-share.`
+                    : "Use screen-share to show a note to the student."}
+              </span>
             </div>
           </aside>
         )}

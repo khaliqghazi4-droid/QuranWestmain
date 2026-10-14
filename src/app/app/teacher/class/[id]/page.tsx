@@ -36,7 +36,7 @@ export default async function TeacherClassRoom({
       teacherId: session.user.id,
       ...(room.courseId ? { OR: [{ courseId: room.courseId }, { courseId: null }] } : {}),
     },
-    include: { course: { select: { name: true } } },
+    include: { course: { select: { name: true } }, shares: { select: { studentId: true } } },
     orderBy: { updatedAt: "desc" },
     take: 50,
   });
@@ -48,7 +48,9 @@ export default async function TeacherClassRoom({
     fileName: n.fileName,
     courseId: n.courseId,
     courseName: n.course?.name ?? null,
+    createdAt: n.createdAt.toISOString(),
     updatedAt: n.updatedAt.toISOString(),
+    sharedWith: n.shares.map((s) => s.studentId),
   }));
 
   const displayName = `Ustaz ${session.user.name ?? "Teacher"}`;
@@ -91,6 +93,7 @@ export default async function TeacherClassRoom({
       displayName={displayName}
       isTeacher
       notes={notes}
+      shareStudent={room.studentId ? { id: room.studentId, name: room.studentName } : null}
       backHref="/app/teacher/classes"
       startUTC={room.startUTC}
     />

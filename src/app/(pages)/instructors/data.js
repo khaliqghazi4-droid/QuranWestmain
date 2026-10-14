@@ -190,6 +190,15 @@ export const instructors = [
     },
 ]
 
+// Placeholders that fill the ring on /instructors to ten cards until more
+// teachers join. Replace one with a real teacher by moving them into
+// `instructors` above. They have no profile page.
+export const upcomingInstructors = [
+    { id: "new-teacher-tafsir", name: "New Teacher", role: "Tafsir Instructor", upcoming: true },
+    { id: "new-teacher-qaida", name: "New Teacher", role: "Noorani Qaida Instructor", upcoming: true },
+    { id: "new-teacher-reading", name: "New Teacher", role: "Quran Reading Instructor", upcoming: true },
+]
+
 export function getInstructorById(id) {
     return instructors.find((i) => i.id === id) || null
 }

@@ -13,7 +13,7 @@ export default function sitemap() {
     { url: `${siteConfig.url}/contact`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${siteConfig.url}/instructors`, lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
     { url: `${siteConfig.url}/pricing`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
-    { url: `${siteConfig.url}/testimonials`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
+    { url: `${siteConfig.url}/reviews`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
   ]
 
   const blogRoutes = blogs.map((blog) => ({

@@ -16,6 +16,12 @@ const nextConfig = {
     contentDispositionType: "attachment",
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
+  async redirects() {
+    return [
+      // The Testimonials page moved to /reviews
+      { source: "/testimonials", destination: "/reviews", permanent: true },
+    ];
+  },
 };
 
 export default nextConfig;

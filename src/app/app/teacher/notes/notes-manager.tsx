@@ -17,6 +17,9 @@ import {
   Save,
   Calendar,
   BookOpen,
+  Share2,
+  Users,
+  Check,
 } from "lucide-react";
 import { PdfUploader } from "@/components/pdf-uploader";
 import { PdfViewer } from "@/components/pdf-viewer";
@@ -31,15 +34,54 @@ export type NoteItem = {
   fileName: string | null;
   courseId: string | null;
   courseName: string | null;
+  createdAt: string;
   updatedAt: string;
+  sharedWith: string[]; // ids of students who can see this note
 };
+
+// A student the teacher can share notes with
+export type NoteStudent = { id: string; name: string; courseIds: string[]; courseNames: string[] };
+
+// Day a note was written, in Pakistan time like the rest of the teacher pages
+// (fixed zone, so the server and browser render the same text)
+export function formatNoteDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-US", {
+    timeZone: "Asia/Karachi",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+// "edited Oct 7, 2026" when the note was changed on a later day than it was written
+export function noteEditedLabel(n: NoteItem) {
+  const edited = formatNoteDate(n.updatedAt);
+  return edited !== formatNoteDate(n.createdAt) ? `edited ${edited}` : null;
+}
+
+// Adds/removes students on a note's share list; resolves to the new list
+export async function updateNoteShares(
+  noteId: string,
+  change: { add?: string[]; remove?: string[] }
+): Promise<string[]> {
+  const res = await fetch(`/api/teacher/notes/${noteId}/shares`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(change),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error ?? `Sharing failed (${res.status})`);
+  return data.sharedWith as string[];
+}
 
 export function NotesManager({
   initialNotes,
   courses,
+  students,
 }: {
   initialNotes: NoteItem[];
   courses: CourseRef[];
+  students: NoteStudent[];
 }) {
   const router = useRouter();
   const [notes, setNotes] = React.useState(initialNotes);
@@ -48,6 +90,7 @@ export function NotesManager({
   const [modalOpen, setModalOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<NoteItem | null>(null);
   const [viewing, setViewing] = React.useState<NoteItem | null>(null);
+  const [sharing, setSharing] = React.useState<NoteItem | null>(null);
   const [pdfViewing, setPdfViewing] = React.useState<{
     url: string;
     title: string;
@@ -171,11 +214,22 @@ export function NotesManager({
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold truncate">{n.title}</p>
-                  {n.courseName && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary mt-0.5">
-                      <BookOpen className="h-2.5 w-2.5" /> {n.courseName}
-                    </span>
-                  )}
+                  <div className="mt-0.5 flex flex-wrap gap-1">
+                    {n.courseName && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                        <BookOpen className="h-2.5 w-2.5" /> {n.courseName}
+                      </span>
+                    )}
+                    {n.sharedWith.length > 0 && (
+                      <button
+                        onClick={() => setSharing(n)}
+                        className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-bold text-accent hover:bg-accent/25"
+                        title="Students who can see this note"
+                      >
+                        <Users className="h-2.5 w-2.5" /> Shared with {n.sharedWith.length}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -203,11 +257,7 @@ export function NotesManager({
               <div className="mt-auto pt-3 border-t border-border flex items-center justify-between">
                 <p className="text-[10px] text-muted-foreground inline-flex items-center gap-1">
                   <Calendar className="h-3 w-3" />
-                  {new Date(n.updatedAt).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
+                  {formatNoteDate(n.createdAt)}
                 </p>
                 <div className="flex items-center gap-1">
                   <button
@@ -216,6 +266,13 @@ export function NotesManager({
                     title="View"
                   >
                     <Eye className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setSharing(n)}
+                    className="grid h-7 w-7 place-items-center rounded-full hover:bg-primary/10 hover:text-primary"
+                    title="Share with students"
+                  >
+                    <Share2 className="h-3.5 w-3.5" />
                   </button>
                   <button
                     onClick={() => {
@@ -272,6 +329,20 @@ export function NotesManager({
         />
       )}
 
+      {sharing && (
+        <ShareNoteModal
+          note={sharing}
+          students={students}
+          onClose={() => setSharing(null)}
+          onSaved={(sharedWith) => {
+            setNotes((prev) =>
+              prev.map((n) => (n.id === sharing.id ? { ...n, sharedWith } : n))
+            );
+            setSharing(null);
+          }}
+        />
+      )}
+
       {pdfViewing && (
         <PdfViewer
           url={pdfViewing.url}
@@ -279,6 +350,177 @@ export function NotesManager({
           onClose={() => setPdfViewing(null)}
         />
       )}
+    </div>
+  );
+}
+
+function ShareNoteModal({
+  note,
+  students,
+  onClose,
+  onSaved,
+}: {
+  note: NoteItem;
+  students: NoteStudent[];
+  onClose: () => void;
+  onSaved: (sharedWith: string[]) => void;
+}) {
+  const [selected, setSelected] = React.useState(() => new Set(note.sharedWith));
+  const [query, setQuery] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  // Students in the note's course first
+  const ordered = React.useMemo(() => {
+    const inCourse = (s: NoteStudent) => (note.courseId && s.courseIds.includes(note.courseId) ? 0 : 1);
+    return [...students].sort((a, b) => inCourse(a) - inCourse(b) || a.name.localeCompare(b.name));
+  }, [students, note.courseId]);
+  const q = query.trim().toLowerCase();
+  const visible = q ? ordered.filter((s) => s.name.toLowerCase().includes(q)) : ordered;
+
+  function toggle(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function save() {
+    setError(null);
+    setSaving(true);
+    try {
+      const sharedWith = await updateNoteShares(note.id, {
+        add: Array.from(selected).filter((id) => !note.sharedWith.includes(id)),
+        remove: note.sharedWith.filter((id) => !selected.has(id)),
+      });
+      onSaved(sharedWith);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Sharing failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 overflow-y-auto bg-foreground/40 backdrop-blur-sm animate-fade-in"
+      onClick={onClose}
+    >
+      <div className="flex min-h-full items-start sm:items-center justify-center p-4">
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="w-full max-w-md rounded-3xl border border-border bg-card shadow-2xl my-auto"
+        >
+          <div className="flex items-start justify-between gap-3 p-5 border-b border-border">
+            <div className="min-w-0">
+              <h2 className="text-base font-bold">Share note</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground truncate">{note.title}</p>
+            </div>
+            <button
+              onClick={onClose}
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-full hover:bg-muted"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="p-5 space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Ticked students can see this note in their class and on their Notes page.
+            </p>
+
+            {error && (
+              <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" /> {error}
+              </div>
+            )}
+
+            {students.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+                You don&apos;t have any students yet.
+              </p>
+            ) : (
+              <>
+                {students.length > 6 && (
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <input
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Search students..."
+                      className="w-full rounded-xl border border-border bg-background pl-9 pr-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+                )}
+                <ul className="max-h-72 overflow-y-auto rounded-xl border border-border divide-y divide-border">
+                  {visible.map((s) => {
+                    const on = selected.has(s.id);
+                    return (
+                      <li key={s.id}>
+                        <button
+                          type="button"
+                          onClick={() => toggle(s.id)}
+                          aria-pressed={on}
+                          className={`flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors ${
+                            on ? "bg-primary/5" : "hover:bg-muted/50"
+                          }`}
+                        >
+                          <span
+                            className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border ${
+                              on
+                                ? "border-primary bg-primary text-primary-foreground"
+                                : "border-border bg-background"
+                            }`}
+                          >
+                            {on && <Check className="h-3.5 w-3.5" />}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-semibold">{s.name}</span>
+                            <span className="block truncate text-[11px] text-muted-foreground">
+                              {s.courseNames.join(", ")}
+                            </span>
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                  {visible.length === 0 && (
+                    <li className="p-4 text-center text-xs text-muted-foreground">
+                      No students match &quot;{query}&quot;
+                    </li>
+                  )}
+                </ul>
+              </>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between gap-2 p-5 pt-0">
+            <p className="text-xs text-muted-foreground">
+              {selected.size === 0 ? "Not shared" : `${selected.size} selected`}
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-full border border-border px-5 py-2 text-sm font-semibold hover:bg-muted"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={save}
+                disabled={saving || students.length === 0}
+                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-accent px-5 py-2 text-sm font-semibold text-primary-foreground shadow-md disabled:opacity-60"
+              >
+                {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -425,7 +667,9 @@ export function NoteEditorForm({
           (sentCourseId
             ? (courses.find((c) => c.id === sentCourseId)?.name ?? null)
             : null),
+        createdAt: n.createdAt ?? note?.createdAt ?? new Date().toISOString(),
         updatedAt: n.updatedAt ?? new Date().toISOString(),
+        sharedWith: note?.sharedWith ?? [],
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Network error");
@@ -555,11 +799,17 @@ function NoteViewerModal({
           <div className="sticky top-0 z-10 flex items-center justify-between p-5 border-b border-border bg-card">
             <div className="min-w-0">
               <h2 className="text-base font-bold truncate">{note.title}</h2>
-              {note.courseName && (
-                <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1 mt-0.5">
-                  <BookOpen className="h-3 w-3" /> {note.courseName}
-                </p>
-              )}
+              <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+                <span className="inline-flex items-center gap-1">
+                  <Calendar className="h-3 w-3" /> {formatNoteDate(note.createdAt)}
+                  {noteEditedLabel(note) && ` · ${noteEditedLabel(note)}`}
+                </span>
+                {note.courseName && (
+                  <span className="inline-flex items-center gap-1">
+                    <BookOpen className="h-3 w-3" /> {note.courseName}
+                  </span>
+                )}
+              </p>
             </div>
             <div className="flex items-center gap-1 shrink-0">
               <button

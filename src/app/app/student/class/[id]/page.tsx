@@ -6,12 +6,14 @@ import { resolveRoom } from "@/lib/class-room";
 import { ensureDailyRoom, isDailyConfigured } from "@/lib/daily";
 import { createJaasJwt, getJaasConfig } from "@/lib/jaas";
 import { ClassRoom } from "@/components/class-room/class-room";
+import { studentClassNotes } from "@/lib/note-shares";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 // In-app class room for the student. Same Jitsi room as the teacher (so
-// they meet), no recording controls, no side panel.
+// they meet), no recording controls; the side panel shows the notes the
+// teacher has shared with them.
 export default async function StudentClassRoom({
   params,
 }: {
@@ -35,6 +37,9 @@ export default async function StudentClassRoom({
   }
 
   const displayName = session.user.name ?? "Student";
+
+  // Notes this class's teacher has shared with the student
+  const notes = await studentClassNotes(session.user.id, room);
 
   // With JaaS keys configured the student joins the teacher's 8x8.vc room as a
   // regular participant. Trials stay on public meet.jit.si (see teacher page).
@@ -68,7 +73,7 @@ export default async function StudentClassRoom({
       studentName={room.studentName}
       displayName={displayName}
       isTeacher={false}
-      notes={[]}
+      notes={notes}
       backHref="/app/student/schedule"
       startUTC={room.startUTC}
     />

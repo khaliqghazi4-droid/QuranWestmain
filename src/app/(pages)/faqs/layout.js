@@ -1,13 +1,35 @@
+import { siteConfig } from '@/lib/siteConfig'
+
+const title = 'Online Quran Classes FAQ | Prices, Teachers & Free Trial | Quran West'
+const description =
+  "Answers to parents' top questions about online Quran classes: prices, ages, female teachers, safety and time zones. Book a free trial with Quran West."
+const image = {
+  url: '/hero.png',
+  width: 1057,
+  height: 795,
+  alt: 'Boy reading the Quran during a live online lesson with his teacher',
+}
+
 export const metadata = {
-  title: 'FAQs',
-  description:
-    'Answers to the most common questions about Quran West Academy — our courses, pricing, trial classes, teacher qualifications, and how online classes work.',
+  title: { absolute: title },
+  description,
   alternates: { canonical: '/faqs' },
+  // A page's openGraph replaces the root one rather than merging with it,
+  // so the shared fields are repeated here
   openGraph: {
-    title: 'FAQs | Quran West Academy',
-    description:
-      'Answers to the most common questions about Quran West Academy — our courses, pricing, trial classes, teacher qualifications, and how online classes work.',
-    url: 'https://quranwest.com/faqs',
+    type: 'website',
+    siteName: siteConfig.name,
+    locale: siteConfig.locale,
+    url: `${siteConfig.url}/faqs`,
+    title,
+    description,
+    images: [image],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title,
+    description,
+    images: [image.url],
   },
 }
 
