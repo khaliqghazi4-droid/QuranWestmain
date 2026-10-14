@@ -5,7 +5,9 @@ import { EnrollmentsList } from "./enrollments-list";
 import { AlertCircle } from "lucide-react";
 import { getCachedEnrollments } from "../_caches";
 
-export const revalidate = 600;
+// Rendered per request, not at build time (the build has no database);
+// the data itself stays cached for 10 minutes by its unstable_cache (../_caches).
+export const dynamic = "force-dynamic";
 
 export default function AdminEnrollmentsPage() {
   return (

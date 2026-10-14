@@ -33,7 +33,9 @@ const getCachedCoursesData = unstable_cache(
   { revalidate: 600 }
 );
 
-export const revalidate = 600;
+// Rendered per request, not at build time (the build has no database);
+// the data itself stays cached for 10 minutes by unstable_cache above.
+export const dynamic = "force-dynamic";
 
 export default function AdminCoursesPage() {
   return (

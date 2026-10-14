@@ -17,7 +17,9 @@ import {
 } from "lucide-react";
 import { SHIFT_RANGES, type Shift } from "@/lib/shifts";
 
-export const revalidate = 600;
+// Rendered per request, not at build time (the build has no database);
+// the data itself stays cached for 10 minutes by unstable_cache above.
+export const dynamic = "force-dynamic";
 
 const DAYS_TO_SHOW = 7;
 

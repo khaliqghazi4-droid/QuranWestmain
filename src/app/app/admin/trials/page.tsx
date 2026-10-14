@@ -6,7 +6,9 @@ import { TrialsList, type TrialSession, type TeacherChoice } from "./trials-list
 import { AlertCircle } from "lucide-react";
 import { getCachedTrialsRaw } from "../_caches";
 
-export const revalidate = 600;
+// Rendered per request, not at build time (the build has no database);
+// the data itself stays cached for 10 minutes by its unstable_cache (../_caches).
+export const dynamic = "force-dynamic";
 
 export default function AdminTrialsPage() {
   return (
