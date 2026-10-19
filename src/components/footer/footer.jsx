@@ -226,7 +226,7 @@ const Footer = () => {
                           href={href}
                           className="text-[0.98rem] font-medium !text-white/85 transition-colors duration-150 hover:!text-[#E3C26B]"
                         >
-           kea                {label}
+                          {label}
                         </Link>
                       </li>
                     ))}

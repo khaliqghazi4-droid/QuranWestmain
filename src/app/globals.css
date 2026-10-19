@@ -366,6 +366,301 @@ html.dark .admin-dashboard {
   background-color: hsl(var(--background));
 }
 
+/* Admin collapsed sidebar: page-name card beside the hovered icon (both
+   themes). The wrapper only centres it on the icon; the entry animation runs
+   on the parts, because a fading (opacity < 1) wrapper would switch off their
+   glass blur until it finished. */
+@keyframes adm-tip-in {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.adm-tip {
+  transform: translateY(-50%);
+}
+
+.adm-tip > * {
+  animation: adm-tip-in 0.15s ease-out;
+}
+
+/* ─── Admin dashboard: the website's navy, gold and cream, LIGHT MODE ONLY ───
+   Colours from the landing page: navy hero, footer and buttons, gold accents,
+   cream sections, white cards. The shell adds .admin-brand for the admin role
+   only. Every rule sits under html:not(.dark), so dark mode keeps the original
+   look exactly; the adm-* hook classes in the admin markup do nothing there. */
+html:not(.dark) .admin-brand {
+  --adm-navy: #0b1a37;
+  --adm-gold: #eecc65;
+  --adm-gold-deep: #c9a13b;
+  /* gold dark enough for small text on white (5:1) */
+  --adm-gold-ink: #8a6a25;
+  /* the website's card border */
+  --adm-line: #e3ded2;
+
+  --background: 42 62% 96%; /* cream #FBF7EE */
+  --foreground: 220 67% 13%; /* navy #0B1A37 */
+  --card: 0 0% 100%;
+  --card-foreground: 220 67% 13%;
+  --muted: 42 45% 92%;
+  --muted-foreground: 220 14% 40%;
+  --border: 42 23% 86%;
+  /* navy buttons, links and active states, as on the website */
+  --primary: 220 67% 13%;
+  --primary-foreground: 0 0% 100%;
+  /* #13305A: the lighter end of the navy gradients */
+  --accent: 215 65% 21%;
+  --accent-foreground: 0 0% 100%;
+  color: hsl(var(--foreground));
+  /* See-through, so the WaveMesh canvas (cream + blue lines) shows from behind */
+  background-color: transparent;
+}
+
+/* WaveMesh canvas: fixed behind the whole shell (z-index -10), light mode
+   only. It carries the cream gradient itself, so the page still looks right
+   before the first frame is drawn. */
+.adm-wave {
+  display: none;
+}
+html:not(.dark) .admin-brand .adm-wave {
+  display: block;
+  background: linear-gradient(160deg, #fdfbf6 0%, #fbf7ee 50%, #f4ecd9 100%);
+}
+
+/* Bootstrap's .text-primary is gold with !important; follow the theme instead */
+html:not(.dark) .admin-brand .text-primary {
+  color: hsl(var(--primary)) !important;
+}
+
+/* Sidebar: navy like the website's hero and footer, with the open page in
+   gold. The theme tokens are swapped inside it, so its own classes (bg-card,
+   text-muted-foreground, hover:bg-muted, the from-primary active link…)
+   follow without markup changes. */
+html:not(.dark) .admin-brand .adm-sidebar {
+  --card: 220 67% 13%;
+  --foreground: 0 0% 100%;
+  --muted: 220 45% 20%;
+  /* links in full white, as on hover (a softer grey looked dull on the navy) */
+  --muted-foreground: 0 0% 100%;
+  --border: 220 40% 22%;
+  --primary: 45 80% 66%; /* gold #EECC65 */
+  --accent: 46 65% 52%; /* #D4AF37 */
+  --primary-foreground: 220 67% 13%;
+  color: hsl(var(--foreground));
+  background-color: var(--adm-navy);
+  border-color: transparent;
+}
+/* Bootstrap's .border (!important) would draw its pale grey ring on navy */
+html:not(.dark) .admin-brand .adm-sidebar .border {
+  border-color: rgb(255 255 255 / 0.18) !important;
+}
+/* The footer's fine white rim, so the navy letters of the logo show on navy */
+html:not(.dark) .admin-brand .adm-sidebar img {
+  filter: drop-shadow(0 0 1px rgb(255 255 255 / 0.85)) drop-shadow(0 0 8px rgb(255 255 255 / 0.3));
+}
+
+/* White glass header and search, like the website's header. `!important` on border
+   colours only where Bootstrap's `.border` (also !important) would win otherwise. */
+html:not(.dark) .admin-brand .adm-header {
+  background-color: rgb(255 255 255 / 0.45);
+  border-color: var(--adm-line);
+  box-shadow: 0 8px 24px -20px rgb(11 26 55 / 0.45);
+}
+html:not(.dark) .admin-brand .adm-search {
+  background-color: hsl(var(--background));
+  border-color: var(--adm-line) !important;
+}
+html:not(.dark) .admin-brand .adm-search:focus {
+  background-color: #fff;
+  border-color: var(--adm-gold-deep) !important;
+  box-shadow: 0 0 0 3px rgb(238 204 101 / 0.3);
+}
+
+/* Cards: frosted white glass over the cream, the blue wave lines softly
+   showing through, with a soft navy shadow */
+html:not(.dark) .admin-brand .adm-glass {
+  background-color: rgb(255 255 255 / 0.3);
+  -webkit-backdrop-filter: blur(4px) saturate(140%);
+  backdrop-filter: blur(4px) saturate(140%);
+  border-color: rgb(255 255 255 / 0.85) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9), 0 12px 30px -20px rgb(11 26 55 / 0.35);
+}
+html:not(.dark) .admin-brand .adm-glass.group:hover {
+  border-color: rgb(212 175 55 / 0.55) !important;
+  box-shadow: 0 16px 34px -18px rgb(11 26 55 / 0.4);
+}
+/* Card titles: the short gold bar of the website's pricing headings */
+html:not(.dark) .admin-brand .adm-glass h2::before {
+  content: "";
+  display: inline-block;
+  width: 3px;
+  height: 0.95em;
+  margin-right: 0.45rem;
+  vertical-align: -0.12em;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, var(--adm-gold), var(--adm-gold-ink));
+}
+/* Small uppercase labels ("At a glance"): the website's gold eyebrow with its line */
+html:not(.dark) .admin-brand .adm-glass p.uppercase {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--adm-gold-ink);
+  letter-spacing: 0.14em;
+}
+html:not(.dark) .admin-brand .adm-glass p.uppercase::before {
+  content: "";
+  width: 1.1rem;
+  height: 1px;
+  background: currentColor;
+}
+/* Icon squares and role badges: navy on soft gold, like the website's gold checks */
+html:not(.dark) .admin-brand .adm-glass .bg-primary\/10,
+html:not(.dark) .admin-brand .adm-glass .adm-chip {
+  background-image: none;
+  background-color: rgb(238 204 101 / 0.28);
+}
+/* Tiles inside the glass: less see-through than the card around them (but
+   still glass), so they stand apart from it */
+html:not(.dark) .admin-brand .adm-tile {
+  background-color: rgb(255 255 255 / 0.55);
+  border-color: rgb(236 229 211 / 0.9) !important;
+  box-shadow: 0 6px 16px -12px rgb(11 26 55 / 0.2);
+}
+html:not(.dark) .admin-brand a.adm-tile:hover {
+  background-color: rgb(255 255 255 / 0.85);
+  border-color: rgb(212 175 55 / 0.6) !important;
+}
+/* Progress bar: gold on a warm track, like the website's slide progress */
+html:not(.dark) .admin-brand .adm-track {
+  background-color: #efe8d6;
+}
+html:not(.dark) .admin-brand .adm-track > div {
+  background-image: linear-gradient(90deg, var(--adm-gold-deep), var(--adm-gold));
+}
+html:not(.dark) .admin-brand .adm-accent-icon {
+  color: var(--adm-gold-deep);
+}
+html:not(.dark) .admin-brand .adm-pill {
+  color: var(--adm-gold-ink);
+  background-color: #fbf3df;
+  box-shadow: inset 0 0 0 1px rgb(212 175 55 / 0.35);
+}
+html:not(.dark) .admin-brand .adm-live {
+  padding: 0.125rem 0.375rem;
+  border-radius: 9999px;
+}
+
+/* Recent Signups: thin gold line under each row, fading out at both ends.
+   Hidden in dark mode, which keeps its original look. */
+.adm-divider {
+  display: none;
+}
+html:not(.dark) .admin-brand .adm-divider {
+  display: block;
+  background: linear-gradient(90deg, transparent, rgb(201 161 59 / 0.55), transparent);
+}
+
+/* First stat card: navy with a gold number, like the website's "1:1" badge */
+html:not(.dark) .admin-brand .adm-hero {
+  position: relative;
+  overflow: hidden;
+  color: #fff;
+  /* navy glass: slightly see-through, so the wave lines show faintly */
+  background-color: transparent;
+  background-image: linear-gradient(
+    135deg,
+    rgb(11 26 55 / 0.84) 0%,
+    rgb(16 36 73 / 0.82) 60%,
+    rgb(19 48 90 / 0.8) 100%
+  );
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+  border-color: rgb(238 204 101 / 0.25) !important;
+  box-shadow: 0 16px 32px -18px rgb(11 26 55 / 0.7);
+}
+html:not(.dark) .admin-brand .adm-hero::before,
+html:not(.dark) .admin-brand .adm-hero::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+html:not(.dark) .admin-brand .adm-hero::before {
+  inset: 0 0 50% 0;
+  background: linear-gradient(to bottom, rgb(255 255 255 / 0.06), transparent);
+}
+/* a soft glow in the top corner, in the lighter navy of the website's
+   pricing headers (gold here mixes with the navy into grey) */
+html:not(.dark) .admin-brand .adm-hero::after {
+  top: -2.5rem;
+  right: -2rem;
+  width: 7rem;
+  height: 7rem;
+  border-radius: 9999px;
+  background: rgb(43 74 140 / 0.55);
+  filter: blur(28px);
+}
+html:not(.dark) .admin-brand .adm-hero > * {
+  position: relative;
+  z-index: 1;
+}
+/* the number (not the loading shell's grey dash) */
+html:not(.dark) .admin-brand .adm-hero > p:first-of-type:not(.text-muted-foreground\/40) {
+  color: var(--adm-gold);
+}
+html:not(.dark) .admin-brand .adm-hero .text-muted-foreground {
+  color: rgb(255 255 255 / 0.72);
+}
+html:not(.dark) .admin-brand .adm-hero .text-muted-foreground\/40 {
+  color: rgb(255 255 255 / 0.4);
+}
+html:not(.dark) .admin-brand .adm-hero .adm-chip {
+  background-image: none;
+  background-color: rgb(255 255 255 / 0.07);
+  color: var(--adm-gold) !important;
+  box-shadow: inset 0 0 0 1px rgb(238 204 101 / 0.3);
+}
+html:not(.dark) .admin-brand .adm-hero .adm-pill {
+  color: var(--adm-gold);
+  background-color: rgb(255 255 255 / 0.08);
+  box-shadow: inset 0 0 0 1px rgb(238 204 101 / 0.3);
+}
+
+/* Collapsed-sidebar page-name card (card + arrow): navy, continuing the rail */
+html:not(.dark) .admin-brand .adm-tip-glass {
+  background-color: var(--adm-navy);
+}
+html:not(.dark) .admin-brand .adm-tip-glass.rounded-lg {
+  color: #fff;
+  border-color: var(--adm-navy);
+  box-shadow: 0 10px 28px -10px rgb(11 26 55 / 0.55);
+}
+
+/* Scrollbars inside the admin: blue like the wave lines; the site's thick
+   gold thumb stood out as a bar beside the cards */
+@media (hover: hover) and (pointer: fine) {
+  html:not(.dark) .admin-brand ::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #2f6fe0, #1746b0);
+    background-clip: padding-box;
+  }
+
+  html:not(.dark) .admin-brand ::-webkit-scrollbar-thumb:hover {
+    background: #12398f;
+    background-clip: padding-box;
+  }
+
+  @supports not selector(::-webkit-scrollbar) {
+    html:not(.dark) .admin-brand * {
+      scrollbar-color: #1f5ad0 transparent;
+    }
+  }
+}
+
 /* Tailwind preflight sets --tw-ring-offset-color: #fff globally.
    In dark mode match it to the background so ring offsets are invisible. */
 html.dark * {

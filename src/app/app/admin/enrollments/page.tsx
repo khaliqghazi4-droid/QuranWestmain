@@ -48,7 +48,7 @@ async function EnrollmentsData() {
 function EnrollmentsShell() {
   const cols = ["Status", "Name", "Email", "Course", "Date"];
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
+    <div className="adm-glass rounded-xl border border-border bg-card overflow-hidden">
       <div className="flex gap-3 px-4 py-3 border-b border-border bg-muted/20">
         {cols.map((h) => (
           <span key={h} className="text-xs font-medium text-muted-foreground flex-1">{h}</span>

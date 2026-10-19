@@ -32,7 +32,7 @@ type SearchResponse = {
 const GROUP_ORDER: Group[] = ["Pages", "Students", "Teachers", "Courses"];
 
 const PLACEHOLDER: Record<Role, string> = {
-  admin: "Search students, teachers, courses…",
+  admin: "Search students, teachers…",
   teacher: "Search pages…",
   student: "Search pages…",
 };
@@ -48,6 +48,7 @@ export function HeaderSearch({ role }: { role: Role }) {
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const term = query.trim();
+  const isAdmin = role === "admin";
 
   const pages = React.useMemo<Suggestion[]>(() => {
     if (!term) return [];
@@ -173,7 +174,8 @@ export function HeaderSearch({ role }: { role: Role }) {
       : `No results for “${term}”`;
 
   return (
-    <div ref={boxRef} className="relative max-w-md flex-1 hidden sm:block">
+    // Admin: a fixed-width field at the right of the header. Others: fills the left side.
+    <div ref={boxRef} className={cn("relative hidden sm:block", isAdmin ? "w-60 xl:w-80" : "max-w-md flex-1")}>
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
       <input
         ref={inputRef}
@@ -190,7 +192,10 @@ export function HeaderSearch({ role }: { role: Role }) {
         aria-expanded={showPanel}
         aria-controls="header-search-results"
         aria-activedescendant={showPanel && items[active] ? `hs-${items[active].key}` : undefined}
-        className="w-full rounded-full border border-border bg-muted/50 pl-10 pr-9 py-2 text-sm placeholder:text-muted-foreground/60 focus:border-primary focus:bg-card focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+        className={cn(
+          "w-full rounded-full border border-border bg-muted/50 placeholder:text-muted-foreground/60 focus:border-primary focus:bg-card focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all",
+          isAdmin ? "adm-search h-8 pl-9 pr-8 text-[13px]" : "pl-10 pr-9 py-2 text-sm"
+        )}
       />
       {loading && (
         <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
@@ -200,7 +205,11 @@ export function HeaderSearch({ role }: { role: Role }) {
         <div
           id="header-search-results"
           role="listbox"
-          className="absolute left-0 right-0 top-full mt-2 z-50 overflow-hidden rounded-xl border border-border bg-card shadow-xl"
+          // Admin: wider than the field and opening leftwards, since the field sits at the right edge
+          className={cn(
+            "absolute top-full mt-2 z-50 overflow-hidden rounded-xl border border-border bg-card shadow-xl",
+            isAdmin ? "right-0 w-[22rem] max-w-[calc(100vw-2rem)]" : "left-0 right-0"
+          )}
         >
           <div className="max-h-[70vh] overflow-y-auto py-1">
             {items.length === 0 ? (

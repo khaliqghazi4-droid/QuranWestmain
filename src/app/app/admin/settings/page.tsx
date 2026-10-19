@@ -27,6 +27,7 @@ export default async function AdminSettings() {
           country: true,
           timezone: true,
           bio: true,
+          image: true,
           role: true,
           createdAt: true,
         },
@@ -51,7 +52,7 @@ export default async function AdminSettings() {
         {sections.map((s) => (
           <button
             key={s.title}
-            className="group text-left rounded-2xl border border-border bg-card p-6 hover:border-primary/40 hover:shadow-lg hover:-translate-y-0.5 transition-all"
+            className="adm-glass group text-left rounded-2xl border border-border bg-card p-6 hover:border-primary/40 hover:shadow-lg hover:-translate-y-0.5 transition-all"
           >
             <div className="grid h-12 w-12 place-items-center rounded-xl bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-md mb-4 group-hover:scale-110 transition-transform">
               <s.icon className="h-5 w-5" />

@@ -85,10 +85,10 @@ export function EnrollmentsList({ enrollments }: { enrollments: WebsiteEnrollmen
 
   return (
     <div className="space-y-4">
-      {/* Toolbar */}
-      <div className="rounded-2xl border border-border bg-card p-4 flex flex-wrap items-center gap-3">
+      {/* Toolbar. `adm-*` classes: light-mode glass look, see globals.css */}
+      <div className="adm-glass rounded-2xl border border-border bg-card p-4 flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2 shrink-0">
-          <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-primary/15 to-accent/15 text-primary">
+          <div className="adm-chip grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-primary/15 to-accent/15 text-primary">
             <Filter className="h-4 w-4" />
           </div>
           <select
@@ -119,7 +119,7 @@ export function EnrollmentsList({ enrollments }: { enrollments: WebsiteEnrollmen
       </div>
 
       {/* Table — columns always visible */}
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      <div className="adm-glass rounded-2xl border border-border bg-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-muted/40">

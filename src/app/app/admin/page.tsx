@@ -4,6 +4,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { MOCK_RECENT_SIGNUPS } from "./_mock-data";
 import { ACTIVE_STUDENT } from "@/lib/auth";
+import { pktDayYmd } from "@/lib/pkt-day";
 import {
   Users,
   GraduationCap,
@@ -15,9 +16,18 @@ import {
   BookOpen,
   PlusCircle,
   UserCheck,
+  Inbox,
+  CalendarCheck,
+  Video,
+  CalendarClock,
+  type LucideIcon,
 } from "lucide-react";
 import { CountUp } from "@/components/count-up";
 import { Avatar } from "@/components/avatar";
+
+// Colours come from the theme tokens, which is the dark look. In light mode
+// the admin shell turns them the website's navy, gold and cream, and the `adm-*`
+// hook classes (globals.css) add the white cards and the navy first stat card.
 
 const getCachedDashboard = unstable_cache(
   async () => {
@@ -46,6 +56,25 @@ const getCachedDashboard = unstable_cache(
   { revalidate: 600 }
 );
 
+// "At a glance" counts for the activity card: work waiting for the admin and
+// how today is going. Keyed by the PKT day ("YYYY-MM-DD") so it rolls over at
+// midnight Pakistan time, and kept for a minute only.
+const getCachedToday = unstable_cache(
+  async (ymd: string) => {
+    const today = new Date(`${ymd}T00:00:00.000Z`); // PKT day, stored as midnight UTC
+    const [enrollRequests, trialRequests, classesToday, classesMarked, teachersSignedIn] = await Promise.all([
+      prisma.enrollmentRequest.count({ where: { inTrials: false, convertedAt: null } }),
+      prisma.enrollmentRequest.count({ where: { inTrials: true, convertedAt: null } }),
+      prisma.bookingSlot.count({ where: { dayOfWeek: today.getUTCDay() } }),
+      prisma.bookingAttendance.count({ where: { date: today } }),
+      prisma.teacherAttendance.count({ where: { date: today } }),
+    ]);
+    return { enrollRequests, trialRequests, classesToday, classesMarked, teachersSignedIn };
+  },
+  ["admin-dashboard-today"],
+  { revalidate: 60 }
+);
+
 // Rendered per request, not at build time (the build has no database);
 // the data itself stays cached for 10 minutes by unstable_cache above.
 export const dynamic = "force-dynamic";
@@ -53,40 +82,33 @@ export const dynamic = "force-dynamic";
 // â”€â”€â”€ Static sections (render with no DB wait) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function QuickActionsCard() {
+  const actions = [
+    { href: "/app/admin/courses", icon: PlusCircle, title: "Add a new course", cta: "Manage courses" },
+    { href: "/app/admin/teachers", icon: UserPlus, title: "Invite a teacher", cta: "Teachers panel" },
+    { href: "/app/admin/students", icon: UserCheck, title: "View all students", cta: "Students panel" },
+  ];
   return (
-    <div className="rounded-xl border border-border bg-card p-3">
+    <div className="adm-glass rounded-xl border border-border bg-card p-3">
       <div className="flex items-center justify-between mb-2">
         <h2 className="text-sm font-bold">Quick Actions</h2>
-        <AlertCircle className="h-3.5 w-3.5 text-[hsl(var(--gold))]" />
+        <AlertCircle className="adm-accent-icon h-3.5 w-3.5 text-[hsl(var(--gold))]" />
       </div>
       <div className="space-y-2">
-        <Link href="/app/admin/courses" className="flex items-center gap-2.5 rounded-xl border border-border bg-background p-2 hover:border-primary/40 transition-colors">
-          <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-            <PlusCircle className="h-3.5 w-3.5" />
-          </div>
-          <div>
-            <p className="text-xs font-semibold">Add a new course</p>
-            <p className="text-[11px] text-primary font-bold">Manage courses →</p>
-          </div>
-        </Link>
-        <Link href="/app/admin/teachers" className="flex items-center gap-2.5 rounded-xl border border-border bg-background p-2 hover:border-primary/40 transition-colors">
-          <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-            <UserPlus className="h-3.5 w-3.5" />
-          </div>
-          <div>
-            <p className="text-xs font-semibold">Invite a teacher</p>
-            <p className="text-[11px] text-primary font-bold">Teachers panel →</p>
-          </div>
-        </Link>
-        <Link href="/app/admin/students" className="flex items-center gap-2.5 rounded-xl border border-border bg-background p-2 hover:border-primary/40 transition-colors">
-          <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-            <UserCheck className="h-3.5 w-3.5" />
-          </div>
-          <div>
-            <p className="text-xs font-semibold">View all students</p>
-            <p className="text-[11px] text-primary font-bold">Students panel →</p>
-          </div>
-        </Link>
+        {actions.map((a) => (
+          <Link
+            key={a.href}
+            href={a.href}
+            className="adm-tile flex items-center gap-2.5 rounded-xl border border-border bg-background p-2 hover:border-primary/40 transition-colors"
+          >
+            <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+              <a.icon className="h-3.5 w-3.5" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold">{a.title}</p>
+              <p className="text-[11px] text-primary font-bold">{a.cta} →</p>
+            </div>
+          </Link>
+        ))}
       </div>
     </div>
   );
@@ -94,7 +116,7 @@ function QuickActionsCard() {
 
 // â”€â”€â”€ Shell fallbacks (structural, no pulsing) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-function WelcomeShell() {
+function StatsShell() {
   const statLabels = [
     { icon: GraduationCap, label: "Total Students" },
     { icon: Users, label: "Active Teachers" },
@@ -102,64 +124,51 @@ function WelcomeShell() {
     { icon: DollarSign, label: "Monthly Revenue" },
   ];
   return (
-    <>
-      <div className="rounded-xl border border-border bg-card p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-[11px] text-muted-foreground">Welcome back,</p>
-          <h1 className="mt-0.5 text-base sm:text-lg font-bold text-foreground">Admin Dashboard</h1>
-          <p className="mt-0.5 text-[11px] text-muted-foreground max-w-xl">Loading stats...</p>
-        </div>
-        <div className="flex gap-2">
-          <Link href="/app/admin/courses" className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-            Manage Courses
-          </Link>
-          <Link href="/app/admin/students" className="rounded-lg bg-[hsl(var(--gold))] px-3 py-1.5 text-xs font-bold text-[hsl(220_32%_10%)] hover:opacity-90 transition-opacity">
-            View Students
-          </Link>
-        </div>
-      </div>
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {statLabels.map(({ icon: Icon, label }) => (
-          <div key={label} className="rounded-xl border border-border bg-card p-2.5">
-            <div className="flex items-start justify-between">
-              <div className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-primary/15 to-accent/15 text-primary">
-                <Icon className="h-3.5 w-3.5" />
-              </div>
+    <div className="grid grid-cols-2 gap-3 h-full">
+      {statLabels.map(({ icon: Icon, label }, i) => (
+        <div
+          key={label}
+          className={`${i === 0 ? "adm-hero" : "adm-glass"} flex flex-col rounded-xl border border-border bg-card p-2.5`}
+        >
+          <div className="flex items-start justify-between">
+            <div className="adm-chip grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-primary/15 to-accent/15 text-primary">
+              <Icon className="h-3.5 w-3.5" />
             </div>
-            <p className="mt-2 text-base font-bold text-muted-foreground/40">—</p>
-            <p className="text-[11px] text-muted-foreground">{label}</p>
           </div>
-        ))}
-      </div>
-    </>
+          <p className="mt-auto pt-2 text-base font-bold text-muted-foreground/40">—</p>
+          <p className="text-[11px] text-muted-foreground">{label}</p>
+        </div>
+      ))}
+    </div>
   );
 }
 
 function ActivityShell() {
   return (
-    <div className="rounded-xl border border-border bg-card p-3">
+    <div className="adm-glass rounded-xl border border-border bg-card p-3">
       <div className="flex items-center justify-between mb-3">
         <div>
           <h2 className="text-sm font-bold">Platform Activity</h2>
           <p className="text-[11px] text-muted-foreground mt-0.5">Recent enrollments overview</p>
         </div>
       </div>
-      <div className="rounded-lg border border-border bg-background p-3">
+      <div className="adm-tile rounded-lg border border-border bg-background p-3">
         <div className="flex items-center justify-between mb-2">
           <span className="text-[11px] text-muted-foreground">Enrollment Capacity</span>
           <span className="text-xs font-bold text-muted-foreground/40">— / —</span>
         </div>
-        <div className="h-2 rounded-full bg-muted overflow-hidden">
+        <div className="adm-track h-2 rounded-full bg-muted overflow-hidden">
           <div className="h-full w-0 rounded-full bg-gradient-to-r from-primary to-accent" />
         </div>
       </div>
+      <GlanceGrid />
     </div>
   );
 }
 
 function SignupsShell() {
   return (
-    <div className="rounded-xl border border-border bg-card p-3">
+    <div className="adm-glass rounded-xl border border-border bg-card p-3">
       <div className="flex items-center justify-between mb-2">
         <div>
           <h2 className="text-sm font-bold">Recent Signups</h2>
@@ -183,9 +192,8 @@ function SignupsShell() {
 
 // â”€â”€â”€ Async data loaders â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-async function DashboardWelcomeAndStats() {
-  const { totalStudents, totalTeachers, totalCourses, totalEnrollments, monthlyRevenue } =
-    await getCachedDashboard();
+async function DashboardStats() {
+  const { totalStudents, totalTeachers, totalCourses, monthlyRevenue } = await getCachedDashboard();
 
   const stats = [
     { icon: GraduationCap, label: "Total Students", value: totalStudents, prefix: "", suffix: "" },
@@ -195,78 +203,141 @@ async function DashboardWelcomeAndStats() {
   ];
 
   return (
-    <>
-      <div className="rounded-xl border border-border bg-card p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-[11px] text-muted-foreground">Welcome back,</p>
-          <h1 className="mt-0.5 text-base sm:text-lg font-bold text-foreground">Admin Dashboard</h1>
-          <p className="mt-0.5 text-[11px] text-muted-foreground max-w-xl">
-            You have <span className="font-semibold text-foreground">{totalStudents}</span> students,{" "}
-            <span className="font-semibold text-foreground">{totalTeachers}</span> teachers, and{" "}
-            <span className="font-semibold text-foreground">{totalEnrollments}</span> total enrollments.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Link href="/app/admin/courses" className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-            Manage Courses
-          </Link>
-          <Link href="/app/admin/students" className="rounded-lg bg-[hsl(var(--gold))] px-3 py-1.5 text-xs font-bold text-[hsl(220_32%_10%)] hover:opacity-90 transition-opacity">
-            View Students
-          </Link>
-        </div>
-      </div>
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {stats.map((s, i) => (
-          <div
-            key={s.label}
-            className="group rounded-xl border border-border bg-card p-2.5 hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5 transition-all stagger-item"
-            style={{ animationDelay: `${i * 80}ms` }}
-          >
-            <div className="flex items-start justify-between">
-              <div className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-primary/15 to-accent/15 text-primary group-hover:scale-110 group-hover:rotate-3 transition-transform">
-                <s.icon className="h-3.5 w-3.5" />
-              </div>
-              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-600">
-                <ArrowUpRight className="h-2.5 w-2.5" />
-                Live
-              </span>
+    <div className="grid grid-cols-2 gap-3 h-full">
+      {stats.map((s, i) => (
+        <div
+          key={s.label}
+          // Light mode: the first card is navy with a gold number (adm-hero), the rest white
+          className={`${i === 0 ? "adm-hero" : "adm-glass"} group flex flex-col rounded-xl border border-border bg-card p-2.5 hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5 transition-all stagger-item`}
+          style={{ animationDelay: `${i * 80}ms` }}
+        >
+          <div className="flex items-start justify-between">
+            <div className="adm-chip grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-primary/15 to-accent/15 text-primary group-hover:scale-110 group-hover:rotate-3 transition-transform">
+              <s.icon className="h-3.5 w-3.5" />
             </div>
-            <p className="mt-2 text-base font-bold">
-              <CountUp end={s.value} prefix={s.prefix} suffix={s.suffix} />
-            </p>
-            <p className="text-[11px] text-muted-foreground">{s.label}</p>
+            <span className="adm-pill adm-live inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-600">
+              <ArrowUpRight className="h-2.5 w-2.5" />
+              Live
+            </span>
           </div>
-        ))}
-      </div>
-    </>
+          <p className="mt-auto pt-2 text-base font-bold">
+            <CountUp end={s.value} prefix={s.prefix} suffix={s.suffix} />
+          </p>
+          <p className="text-[11px] text-muted-foreground">{s.label}</p>
+        </div>
+      ))}
+    </div>
   );
 }
 
 async function DashboardActivity() {
-  const { totalEnrollments, totalCourses } = await getCachedDashboard();
+  const [{ totalEnrollments, totalCourses, totalTeachers }, today] = await Promise.all([
+    getCachedDashboard(),
+    getCachedToday(pktDayYmd()),
+  ]);
+  const glance: GlanceItem[] = [
+    {
+      href: "/app/admin/enrollments",
+      icon: Inbox,
+      value: today.enrollRequests,
+      label: "Enroll requests",
+      sub: "Waiting for review",
+      attention: today.enrollRequests > 0,
+    },
+    {
+      href: "/app/admin/trials",
+      icon: CalendarCheck,
+      value: today.trialRequests,
+      label: "Free trials",
+      sub: "Requests in progress",
+      attention: today.trialRequests > 0,
+    },
+    {
+      href: "/app/admin/classes",
+      icon: Video,
+      value: today.classesToday,
+      label: "Classes today",
+      sub: `${today.classesMarked} marked so far`,
+    },
+    {
+      href: "/app/admin/teacher-attendance",
+      icon: CalendarClock,
+      value: `${today.teachersSignedIn}/${totalTeachers}`,
+      label: "Teachers signed in",
+      sub: "Today's attendance",
+    },
+  ];
   return (
-    <div className="rounded-xl border border-border bg-card p-3">
+    <div className="adm-glass rounded-xl border border-border bg-card p-3">
       <div className="flex items-center justify-between mb-3">
         <div>
           <h2 className="text-sm font-bold">Platform Activity</h2>
           <p className="text-[11px] text-muted-foreground mt-0.5">Recent enrollments overview</p>
         </div>
-        <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-600">
+        <div className="adm-pill inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-600">
           <TrendingUp className="h-3 w-3" /> {totalEnrollments} total
         </div>
       </div>
-      <div className="rounded-lg border border-border bg-background p-3">
+      <div className="adm-tile rounded-lg border border-border bg-background p-3">
         <div className="flex items-center justify-between mb-2">
           <span className="text-[11px] text-muted-foreground">Enrollment Capacity</span>
           <span className="text-xs font-bold">{totalEnrollments} / {totalCourses * 50}</span>
         </div>
-        <div className="h-2 rounded-full bg-muted overflow-hidden">
+        <div className="adm-track h-2 rounded-full bg-muted overflow-hidden">
           <div
             className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-all duration-1000"
             style={{ width: `${Math.min(100, (totalEnrollments / Math.max(totalCourses * 50, 1)) * 100)}%` }}
           />
         </div>
         <p className="mt-2 text-[10px] text-muted-foreground">Based on max 50 students per course</p>
+      </div>
+      <GlanceGrid items={glance} />
+    </div>
+  );
+}
+
+type GlanceItem = {
+  href: string;
+  icon: LucideIcon;
+  value: number | string;
+  label: string;
+  sub: string;
+  // Something is waiting for the admin: shows a small amber dot
+  attention?: boolean;
+};
+
+// 2×2 tiles under Enrollment Capacity; each opens the page that handles it.
+// Without items it renders the same tiles empty, for the loading shell.
+function GlanceGrid({ items }: { items?: GlanceItem[] }) {
+  const placeholders: GlanceItem[] = [
+    { href: "/app/admin/enrollments", icon: Inbox, value: "—", label: "Enroll requests", sub: "Waiting for review" },
+    { href: "/app/admin/trials", icon: CalendarCheck, value: "—", label: "Free trials", sub: "Requests in progress" },
+    { href: "/app/admin/classes", icon: Video, value: "—", label: "Classes today", sub: "—" },
+    { href: "/app/admin/teacher-attendance", icon: CalendarClock, value: "—", label: "Teachers signed in", sub: "Today's attendance" },
+  ];
+  return (
+    <div className="mt-3">
+      <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">At a glance</p>
+      <div className="grid grid-cols-2 gap-2">
+        {(items ?? placeholders).map((g) => (
+          <Link
+            key={g.href}
+            href={g.href}
+            className="adm-tile group flex items-center gap-2.5 rounded-lg border border-border bg-background p-2.5 hover:border-primary/40 transition-colors"
+          >
+            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary group-hover:scale-105 transition-transform">
+              <g.icon className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className={`text-base font-bold leading-tight ${items ? "" : "text-muted-foreground/40"}`}>{g.value}</p>
+              <p className="truncate text-[11px] font-semibold">{g.label}</p>
+              <p className="truncate text-[10px] text-muted-foreground">{g.sub}</p>
+            </div>
+            {g.attention && (
+              <span className="h-2 w-2 shrink-0 self-start rounded-full bg-amber-500" title="Needs attention" />
+            )}
+          </Link>
+        ))}
       </div>
     </div>
   );
@@ -276,7 +347,7 @@ async function DashboardRecentSignups() {
   const { recentSignups } = await getCachedDashboard();
   const signups = recentSignups.length > 0 ? recentSignups : MOCK_RECENT_SIGNUPS;
   return (
-    <div className="rounded-xl border border-border bg-card p-3">
+    <div className="adm-glass rounded-xl border border-border bg-card p-3">
       <div className="flex items-center justify-between mb-2">
         <div>
           <h2 className="text-sm font-bold">Recent Signups</h2>
@@ -290,13 +361,16 @@ async function DashboardRecentSignups() {
         {signups.map((s, i) => (
           <div
             key={s.id}
-            className="flex items-center gap-2 rounded-lg hover:bg-muted/30 p-1.5 transition-colors stagger-item"
+            className="relative flex items-center gap-2 rounded-lg hover:bg-muted/30 p-1.5 transition-colors stagger-item"
             style={{ animationDelay: `${i * 60 + 200}ms` }}
           >
+            {/* Light mode: a thin gold line under the row, fading at both ends (globals.css) */}
+            <span aria-hidden="true" className="adm-divider pointer-events-none absolute -bottom-[2px] left-[10%] right-[25%] h-px" />
             <Avatar name={s.name} size={28} style="micah" />
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold">{s.name}</p>
-              <p className="text-[10px] text-muted-foreground">{s.email} · {s.country ?? s.role}</p>
+              {/* truncate: the column is half width now, long emails get "…" */}
+              <p className="truncate text-xs font-semibold">{s.name}</p>
+              <p className="truncate text-[10px] text-muted-foreground">{s.email} · {s.country ?? s.role}</p>
             </div>
             <span className="text-[10px] text-muted-foreground">{timeAgo(s.createdAt)}</span>
             <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary inline-flex items-center gap-0.5">
@@ -314,22 +388,26 @@ async function DashboardRecentSignups() {
 export default function AdminDashboard() {
   return (
     <div className="space-y-3">
-      <Suspense fallback={<WelcomeShell />}>
-        <DashboardWelcomeAndStats />
-      </Suspense>
-
+      {/* Stats as a 2×2 grid on the left, Quick Actions beside it */}
       <div className="grid lg:grid-cols-3 gap-3">
         <div className="lg:col-span-2">
-          <Suspense fallback={<ActivityShell />}>
-            <DashboardActivity />
+          <Suspense fallback={<StatsShell />}>
+            <DashboardStats />
           </Suspense>
         </div>
         <QuickActionsCard />
       </div>
 
-      <Suspense fallback={<SignupsShell />}>
-        <DashboardRecentSignups />
-      </Suspense>
+      {/* Platform Activity on the left, Recent Signups on the right */}
+      <div className="grid lg:grid-cols-2 gap-3">
+        <Suspense fallback={<ActivityShell />}>
+          <DashboardActivity />
+        </Suspense>
+
+        <Suspense fallback={<SignupsShell />}>
+          <DashboardRecentSignups />
+        </Suspense>
+      </div>
     </div>
   );
 }

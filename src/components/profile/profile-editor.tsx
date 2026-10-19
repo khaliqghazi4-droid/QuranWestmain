@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import {
   Mail,
   Phone,
@@ -18,8 +19,18 @@ import {
   CheckCircle2,
   AlertCircle,
   User as UserIcon,
+  Camera,
 } from "lucide-react";
-import { Avatar } from "@/components/avatar";
+import { Avatar, AvatarInitial } from "@/components/avatar";
+import { PhotoCropper } from "./photo-cropper";
+
+// Shown under the name and in "Account Type"
+function roleLabel(role: string) {
+  if (role === "ADMIN") return "Admin";
+  if (role === "TEACHER") return "Teacher";
+  if (role === "PARENT") return "Parent";
+  return "Student";
+}
 
 type User = {
   id: string;
@@ -31,11 +42,33 @@ type User = {
   bio: string | null;
   role: string;
   createdAt: string;
+  image?: string | null;
 };
 
 export function ProfileEditor({ user: initialUser }: { user: User }) {
   const router = useRouter();
+  const { update: updateSession } = useSession();
   const [user, setUser] = React.useState(initialUser);
+  // Profile photo: admin only for now (teacher/student profiles come later)
+  const canChangePhoto = user.role === "ADMIN";
+  const fileRef = React.useRef<HTMLInputElement>(null);
+  const [photoBusy, setPhotoBusy] = React.useState(false);
+  const [photoError, setPhotoError] = React.useState<string | null>(null);
+  // The chosen file, open in the preview/adjust step before it's uploaded
+  const [cropFile, setCropFile] = React.useState<File | null>(null);
+
+  function pickPhoto(file: File | undefined) {
+    if (fileRef.current) fileRef.current.value = ""; // so the same file can be picked again
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setPhotoError("Choose an image file (JPG, PNG, WebP or GIF)");
+      return;
+    }
+    setPhotoError(null);
+    setCropFile(file);
+  }
+
+  const closeCropper = React.useCallback(() => setCropFile(null), []);
   const [editing, setEditing] = React.useState(false);
   const [name, setName] = React.useState(user.name);
   const [phone, setPhone] = React.useState(user.phone ?? "");
@@ -68,6 +101,37 @@ export function ProfileEditor({ user: initialUser }: { user: User }) {
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
     router.refresh();
+    // Refresh the signed-in session too, so the header's name and initials
+    // change right away (the server re-reads the name from the database)
+    await updateSession({ name: data.user?.name ?? name });
+  }
+
+  // Upload (file) or remove (null) the photo, then refresh the session so the
+  // header's avatar changes too
+  async function changePhoto(file: File | null) {
+    setPhotoError(null);
+    setPhotoBusy(true);
+    try {
+      let res: Response;
+      if (file) {
+        // Already cut to a 512×512 square by the cropper
+        const body = new FormData();
+        body.append("file", file);
+        res = await fetch("/api/users/me/avatar", { method: "POST", body });
+      } else {
+        res = await fetch("/api/users/me/avatar", { method: "DELETE" });
+      }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Couldn't update the photo");
+      setUser((u) => ({ ...u, image: data.image }));
+      await updateSession({ image: data.image });
+      router.refresh();
+    } catch (e) {
+      setPhotoError(e instanceof Error ? e.message : "Couldn't update the photo");
+    } finally {
+      setPhotoBusy(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
   }
 
   function cancel() {
@@ -88,15 +152,65 @@ export function ProfileEditor({ user: initialUser }: { user: User }) {
         </div>
       )}
 
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      {/* adm-glass: the admin's light-mode glass cards (globals.css); does nothing
+          on the teacher and student profile pages or in dark mode */}
+      <div className="adm-glass rounded-2xl border border-border bg-card overflow-hidden">
         <div className="h-32 bg-gradient-to-br from-primary via-accent to-primary relative">
           <div className="absolute -bottom-12 left-6 sm:left-8">
-            <Avatar
-              name={user.name}
-              size={96}
-              style={user.role === "TEACHER" ? "micah" : "avataaars"}
-              className="rounded-2xl border-4 border-card shadow-xl"
-            />
+            <div className="relative">
+              {user.image ? (
+                // eslint-disable-next-line @next/next/no-img-element -- Blob URL, any size
+                <img
+                  src={user.image}
+                  alt={user.name}
+                  width={96}
+                  height={96}
+                  className="h-24 w-24 rounded-2xl border-4 border-card object-cover shadow-xl"
+                />
+              ) : user.role === "ADMIN" ? (
+                // Same initials badge as the header's account menu
+                <AvatarInitial name={user.name} size={96} className="rounded-2xl border-4 border-card shadow-xl" />
+              ) : (
+                <Avatar
+                  name={user.name}
+                  size={96}
+                  style={user.role === "TEACHER" ? "micah" : "avataaars"}
+                  className="rounded-2xl border-4 border-card shadow-xl"
+                />
+              )}
+
+              {canChangePhoto && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    disabled={photoBusy}
+                    aria-label={user.image ? "Change photo" : "Add a photo"}
+                    title={user.image ? "Change photo" : "Add a photo"}
+                    className="absolute -bottom-1 -right-1 grid h-8 w-8 place-items-center rounded-full border-2 border-card bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-md hover:scale-105 transition-transform disabled:opacity-60"
+                  >
+                    {photoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                  </button>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="hidden"
+                    onChange={(e) => pickPhoto(e.target.files?.[0])}
+                  />
+                  {cropFile && (
+                    <PhotoCropper
+                      file={cropFile}
+                      onCancel={closeCropper}
+                      onSave={(photo) => {
+                        setCropFile(null);
+                        changePhoto(photo);
+                      }}
+                    />
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
 
@@ -107,12 +221,27 @@ export function ProfileEditor({ user: initialUser }: { user: User }) {
                 {user.name}
               </h2>
               <p className="text-sm text-muted-foreground mt-1">
-                {user.role === "TEACHER" ? "Teacher" : "Student"} · Member since{" "}
+                {roleLabel(user.role)} · Member since{" "}
                 {new Date(user.createdAt).toLocaleDateString("en-US", {
                   month: "long",
                   year: "numeric",
                 })}
               </p>
+              {canChangePhoto && user.image && (
+                <button
+                  type="button"
+                  onClick={() => changePhoto(null)}
+                  disabled={photoBusy}
+                  className="mt-1 text-xs font-semibold text-destructive hover:underline disabled:opacity-60"
+                >
+                  Remove photo
+                </button>
+              )}
+              {photoError && (
+                <p className="mt-1 inline-flex items-center gap-1 text-xs text-destructive">
+                  <AlertCircle className="h-3.5 w-3.5" /> {photoError}
+                </p>
+              )}
             </div>
             {!editing && (
               <button
@@ -127,7 +256,7 @@ export function ProfileEditor({ user: initialUser }: { user: User }) {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-6">
+        <div className="adm-glass lg:col-span-2 rounded-2xl border border-border bg-card p-6">
           <h3 className="text-base font-bold mb-5 inline-flex items-center gap-2">
             <UserIcon className="h-4 w-4" /> Personal Information
           </h3>
@@ -240,7 +369,7 @@ export function ProfileEditor({ user: initialUser }: { user: User }) {
         </div>
 
         <div className="space-y-6">
-          <div className="rounded-2xl border border-border bg-card p-6">
+          <div className="adm-glass rounded-2xl border border-border bg-card p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary">
                 <Shield className="h-5 w-5" />
@@ -260,11 +389,9 @@ export function ProfileEditor({ user: initialUser }: { user: User }) {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-border bg-gradient-to-br from-primary/5 to-accent/5 p-6">
+          <div className="adm-glass rounded-2xl border border-border bg-gradient-to-br from-primary/5 to-accent/5 p-6">
             <p className="text-[10px] uppercase font-semibold text-muted-foreground">Account Type</p>
-            <p className="mt-1 text-base font-bold">
-              {user.role === "TEACHER" ? "Teacher" : "Student"}
-            </p>
+            <p className="mt-1 text-base font-bold">{roleLabel(user.role)}</p>
             <p className="text-[11px] text-muted-foreground mt-2">
               Account created on{" "}
               {new Date(user.createdAt).toLocaleDateString("en-US", {

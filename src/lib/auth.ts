@@ -54,11 +54,22 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id;
         token.role = (user as { role: Role }).role;
         token.accessExpiresAt = user.accessExpiresAt ? user.accessExpiresAt.getTime() : null;
+      }
+      // The name and photo can change after sign-in (Settings, or the admin
+      // editing a teacher), so keep the token's copy in step with the database:
+      // right away when the profile editor calls useSession().update() after a
+      // save, otherwise at most once a minute. Never trusted from the client.
+      if (token.id) {
+        const profile = await currentProfile(token.id as string, trigger === "update");
+        if (profile) {
+          token.name = profile.name;
+          token.picture = profile.image;
+        }
       }
       return token;
     },
@@ -79,6 +90,21 @@ export const authOptions: NextAuthOptions = {
     },
   },
 };
+
+// The user's current name and photo for the session token, looked up at most
+// once a minute per user per server instance (`fresh` skips the wait).
+const PROFILE_CHECK_MS = 60_000;
+type TokenProfile = { name: string; image: string | null };
+const profileCache = new Map<string, TokenProfile & { at: number }>();
+
+async function currentProfile(userId: string, fresh: boolean): Promise<TokenProfile | null> {
+  const hit = profileCache.get(userId);
+  if (!fresh && hit && Date.now() - hit.at < PROFILE_CHECK_MS) return hit;
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true, image: true } });
+  if (!user) return null;
+  profileCache.set(userId, { ...user, at: Date.now() });
+  return user;
+}
 
 // Suspension happens after sign-in, so the JWT can't carry it. Look it up per user, at most
 // once every 30 s per server instance; suspend/reactivate clear the entry right away.
