@@ -2,11 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* One typeface across the whole site, the home page's: Manrope for headings
-   and text (loaded by next/font in layout.tsx as --font-lux) and Instrument
-   Serif for the gold accent words (.font-accent, which outranks `*`).
-   !important because the theme's styles.css sets its own fonts on headings,
-   buttons and so on. */
 * {
   font-family: var(--font-lux), system-ui, sans-serif !important;
 }
@@ -16,10 +11,15 @@
   font-family: var(--font-accent), Georgia, serif !important;
 }
 
-/* Gold text with a slow sheen running through it (used on each word, since
-   background-clip:text breaks on a parent of moving spans) */
 .lux-gold-text {
-  background: linear-gradient(100deg, #C59E5B 0%, #EECC65 30%, #FFF3C4 45%, #EECC65 60%, #C59E5B 100%);
+  background: linear-gradient(
+    100deg,
+    #c59e5b 0%,
+    #eecc65 30%,
+    #fff3c4 45%,
+    #eecc65 60%,
+    #c59e5b 100%
+  );
   background-size: 220% 100%;
   -webkit-background-clip: text;
   background-clip: text;
@@ -28,55 +28,70 @@
 }
 
 @keyframes lux-sheen {
-  from { background-position: 100% 0; }
-  to { background-position: -120% 0; }
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -120% 0;
+  }
 }
 
-/* The hero's background lines, swaying slowly */
 @keyframes lux-lines {
-  from { transform: translate3d(0, 0, 0); }
-  to { transform: translate3d(-2%, 3%, 0); }
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-2%, 3%, 0);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .lux-gold-text { animation: none; }
+  .lux-gold-text {
+    animation: none;
+  }
 }
 
-/* A light running round a rim (a conic gradient spun behind a 1px gap) */
 @keyframes noor-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-/* A hanging lantern swinging gently on its chain (run alternate) */
 @keyframes noor-sway {
-  from { transform: rotate(-2.5deg); }
-  to { transform: rotate(2.5deg); }
+  from {
+    transform: rotate(-2.5deg);
+  }
+  to {
+    transform: rotate(2.5deg);
+  }
 }
 
-/* The footer logo's white glow. drop-shadow follows the logo's own outline
-   (the PNG is transparent): a fine rim that stays, so the logo always reads,
-   and a soft glow beyond it swelling and fading like a slow pulse. */
 @keyframes footer-logo-glow {
-  0%, 100% { filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.85)) drop-shadow(0 0 4px rgba(255, 255, 255, 0.12)); }
-  50% { filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.85)) drop-shadow(0 0 10px rgba(255, 255, 255, 0.32)); }
+  0%,
+  100% {
+    filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.85))
+      drop-shadow(0 0 4px rgba(255, 255, 255, 0.12));
+  }
+  50% {
+    filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.85))
+      drop-shadow(0 0 10px rgba(255, 255, 255, 0.32));
+  }
 }
 
-/* The pricing table's "Swipe" hint: its arrows keep nudging to the right */
 @keyframes swipe-nudge {
-  0%, 100% { transform: translateX(0); }
-  50% { transform: translateX(6px); }
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(6px);
+  }
 }
 
-/* Amiri for the Arabic letters drawn in the courses' icons (Manrope has no
-   Arabic). It has to outrank `*` like .font-accent does. */
 .font-arabic-glyph {
-  font-family: var(--font-amiri, "Amiri"), "Noto Naskh Arabic", "Traditional Arabic", serif !important;
+  font-family:
+    var(--font-amiri, "Amiri"), "Noto Naskh Arabic", "Traditional Arabic", serif !important;
 }
-
-/* Home page on laptops and up: each section fills one screen, and the page
-   always settles on one, just under the slim (68px) header. Every snap point
-   is a stop the scroll can't fly past, so even a quick swipe on a touchpad
-   only goes on to the next section (or the next step of a pinned one). */
 @media (min-width: 1024px) and (min-height: 600px) {
   html:has(.noor-snap) {
     scroll-snap-type: y mandatory;
@@ -87,7 +102,6 @@
     scroll-snap-stop: always;
   }
 }
-
 
 :root {
   /* Base */
@@ -129,21 +143,14 @@
   --destructive: 0 70% 60%;
 }
 
-html, body {
+html,
+body {
   overflow-x: clip;
 }
 
-/* The theme's styles.css sets body { overflow-x: hidden }, which (with html
-   not `visible`) makes body a scroll box of its own that never scrolls, so
-   nothing inside can be position: sticky. `html body` outranks that rule;
-   clip hides sideways overflow the same way without making a scroll box. */
 html body {
   overflow-x: clip;
 }
-
-/* No bounce or pull-to-refresh at the top and bottom of the page. Only the
-   vertical axis: `none` on the horizontal one also switches off the browser's
-   two-finger swipe back/forward on touchpads. */
 html {
   overscroll-behavior-y: none;
 }
@@ -161,10 +168,6 @@ video {
   display: block;
 }
 
-/* Site-wide scrollbar: a gold thumb on a see-through track, for the page and
-   every scrollable box. Only with a mouse or trackpad: on phones and tablets
-   any styled scrollbar replaces the thin one that shows only while scrolling
-   with a bar that is always there. */
 @media (hover: hover) and (pointer: fine) {
   ::-webkit-scrollbar {
     width: 10px;
@@ -176,28 +179,24 @@ video {
   }
 
   ::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, #EECC65, #C9A13B);
-    /* the transparent border makes the thumb slimmer than the bar */
+    background: linear-gradient(180deg, #eecc65, #c9a13b);
     border: 2px solid transparent;
     background-clip: padding-box;
     border-radius: 9999px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #C9A13B;
+    background: #c9a13b;
     background-clip: padding-box;
   }
 
-  /* Firefox has no ::-webkit-scrollbar, so it gets the standard properties.
-     Only there: in Chrome they would switch off the rounded gold thumb above. */
   @supports not selector(::-webkit-scrollbar) {
     * {
-      scrollbar-color: #D9B54F transparent;
+      scrollbar-color: #d9b54f transparent;
       scrollbar-width: thin;
     }
   }
 
-  /* Narrower scrollbar inside the free-trial pop-up */
   .scroller::-webkit-scrollbar {
     width: 6px;
   }
@@ -207,8 +206,6 @@ video {
   }
 }
 
-/* Phones and tablets (everything the query above leaves out): no scrollbar at
-   all, not even the thin one that shows while scrolling. Swiping still scrolls. */
 @media not all and (hover: hover) and (pointer: fine) {
   * {
     scrollbar-width: none;
@@ -219,27 +216,16 @@ video {
   }
 }
 
-
-/* Hide broken flaticon squares in navbar */
-.nav .dropdown-nav>a::after,
-.nav .dropdown-nav>a .fi,
+.nav .dropdown-nav > a::after,
+.nav .dropdown-nav > a .fi,
 .navbar-nav .fi {
   display: none;
 }
 
-.dropdown-nav>a::after {
+.dropdown-nav > a::after {
   display: none !important;
 }
 
-
-
-/* Website typography — `:not(.admin-dashboard *)` keeps it out of the dashboards
-   (admin, teacher and student; DashboardShell sets the class).
-   The !important values sit inside :where() so they only carry element
-   specificity: an important Tailwind utility on the element (`!text-xs`,
-   `!font-light`) still wins, as it did on the Tailwind v4 site these pages
-   came from. The plain values keep the higher specificity and beat plain
-   utilities, also as on that site. */
 h1:not(.admin-dashboard *) {
   font-weight: 700;
 }
@@ -298,9 +284,6 @@ p:where(:not(.admin-dashboard *)) {
   font-size: 1.2rem !important;
 }
 
-/* Dashboards: undo the website template's (Bootstrap) element styles so
-   the dashboard's own Tailwind classes decide sizes again. Lives in the base
-   layer, so any Tailwind utility on the element still wins. */
 @layer base {
   .admin-dashboard :where(h1, h2, h3, h4, h5, h6) {
     font-size: inherit;
@@ -326,21 +309,17 @@ p:where(:not(.admin-dashboard *)) {
   }
 }
 
-/* Light mode: all admin borders use the theme border token */
 .admin-dashboard *,
 .admin-dashboard *::before,
 .admin-dashboard *::after {
   border-color: hsl(var(--border));
 }
 
-/* Dark mode: force dark borders with !important so Bootstrap & Tailwind currentColor cannot override */
 html.dark .admin-dashboard *,
 html.dark .admin-dashboard *::before,
 html.dark .admin-dashboard *::after {
   border-color: hsl(220 14% 15%) !important;
 }
-
-/* Restore intentional colored borders that need to stay visible in dark mode */
 html.dark .admin-dashboard [class~="border-destructive"],
 html.dark .admin-dashboard [class*="border-red"] {
   border-color: hsl(var(--destructive)) !important;
@@ -348,7 +327,9 @@ html.dark .admin-dashboard [class*="border-red"] {
 html.dark .admin-dashboard [class~="border-transparent"] {
   border-color: transparent !important;
 }
-html.dark .admin-dashboard [class*="border-primary"]:not([class*="border-primary/"]) {
+html.dark
+  .admin-dashboard
+  [class*="border-primary"]:not([class*="border-primary/"]) {
   border-color: hsl(var(--primary)) !important;
 }
 html.dark .admin-dashboard [class*="border-amber"],
@@ -356,20 +337,13 @@ html.dark .admin-dashboard [class*="border-emerald"] {
   border-color: revert !important;
 }
 
-/* Bootstrap loads after our CSS and overrides body { background } — force dark bg */
 html.dark body {
   background-color: hsl(var(--background)) !important;
 }
-
-/* Admin-dashboard wrapper: ensure dark bg even on transparent wrapper */
 html.dark .admin-dashboard {
   background-color: hsl(var(--background));
 }
 
-/* Admin collapsed sidebar: page-name card beside the hovered icon (both
-   themes). The wrapper only centres it on the icon; the entry animation runs
-   on the parts, because a fading (opacity < 1) wrapper would switch off their
-   glass blur until it finished. */
 @keyframes adm-tip-in {
   from {
     opacity: 0;
@@ -388,22 +362,12 @@ html.dark .admin-dashboard {
 .adm-tip > * {
   animation: adm-tip-in 0.15s ease-out;
 }
-
-/* ─── Admin dashboard: the website's navy, gold and cream, LIGHT MODE ONLY ───
-   Colours from the landing page: navy hero, footer and buttons, gold accents,
-   cream sections, white cards. The shell adds .admin-brand for the admin role
-   only. Every rule sits under html:not(.dark), so dark mode keeps the original
-   look exactly; the adm-* hook classes in the admin markup do nothing there. */
 html:not(.dark) .admin-brand {
   --adm-navy: #0b1a37;
   --adm-gold: #eecc65;
   --adm-gold-deep: #c9a13b;
-  /* gold dark enough for small text on white (5:1) */
   --adm-gold-ink: #8a6a25;
-  /* the website's card border */
   --adm-line: #e3ded2;
-  /* Accents on the light surfaces are the sidebar's navy (the user asked for
-     the gold ones to match it): solid for marks and text, tinted for fills */
   --adm-navy-tint: rgb(11 26 55 / 0.08);
   --adm-navy-line: rgb(11 26 55 / 0.3);
 
@@ -414,20 +378,14 @@ html:not(.dark) .admin-brand {
   --muted: 42 45% 92%;
   --muted-foreground: 220 14% 40%;
   --border: 42 23% 86%;
-  /* navy buttons, links and active states, as on the website */
   --primary: 220 67% 13%;
   --primary-foreground: 0 0% 100%;
-  /* #13305A: the lighter end of the navy gradients */
   --accent: 215 65% 21%;
   --accent-foreground: 0 0% 100%;
   color: hsl(var(--foreground));
-  /* See-through, so the backdrop canvas (cream + blue lines) shows from behind */
   background-color: transparent;
 }
 
-/* Backdrop canvas (BrandPattern, or the older StarLattice / WaveMesh): fixed behind the
-   whole shell (z-index -10), light mode only. It carries the cream gradient
-   itself, so the page still looks right before the first frame is drawn. */
 .adm-wave {
   display: none;
 }
@@ -435,10 +393,6 @@ html:not(.dark) .admin-brand .adm-wave {
   display: block;
   background: linear-gradient(160deg, #fdfbf6 0%, #fbf7ee 50%, #f4ecd9 100%);
 }
-/* Background video (VideoBackdrop), fixed behind the whole shell in both
-   themes. Light mode: over the cream, at 45% so it reads through the glass
-   cards; dark mode: over the dark background, fainter. In dark mode the
-   shell is made see-through for it too (light mode's already is). */
 .adm-video {
   background-color: hsl(var(--background));
 }
@@ -455,43 +409,32 @@ html.dark .admin-brand {
   background-color: transparent;
 }
 
-/* Bootstrap's .text-primary is gold with !important; follow the theme instead */
 html:not(.dark) .admin-brand .text-primary {
   color: hsl(var(--primary)) !important;
 }
+html:not(.dark) .admin-brand .border-primary {
+  border-color: hsl(var(--primary)) !important;
+}
 
-/* Sidebar: navy like the website's hero and footer, with the open page in
-   gold. The theme tokens are swapped inside it, so its own classes (bg-card,
-   text-muted-foreground, hover:bg-muted, the from-primary active link…)
-   follow without markup changes. */
 html:not(.dark) .admin-brand .adm-sidebar {
   --card: 220 67% 13%;
   --foreground: 0 0% 100%;
   --muted: 220 45% 20%;
-  /* links in full white, as on hover (a softer grey looked dull on the navy) */
   --muted-foreground: 0 0% 100%;
   --border: 220 40% 22%;
   --primary: 45 80% 66%; /* gold #EECC65 */
   --accent: 46 65% 52%; /* #D4AF37 */
   --primary-foreground: 220 67% 13%;
   color: hsl(var(--foreground));
-  /* Navy on the nav below the top strip only, so the strip can be glass
-     like the header */
   background-color: transparent;
   border-color: transparent;
 }
 html:not(.dark) .admin-brand .adm-sidebar > nav {
   background-color: var(--adm-navy);
 }
-/* Bootstrap's .border (!important) would draw its pale grey ring on navy */
 html:not(.dark) .admin-brand .adm-sidebar .border {
   border-color: rgb(255 255 255 / 0.18) !important;
 }
-/* The top of the sidebar (logo and collapse button) is the header's own glass
-   (45% white, blurred, same bottom line), so the two read as one bar
-   whatever is behind them, and the logo shows in its own navy and gold as on
-   the website (on navy its navy letters disappear). The tokens go back to the
-   light ones inside it, so the buttons turn navy. */
 html:not(.dark) .admin-brand .adm-sidebar .adm-sidebar-top {
   --foreground: 220 67% 13%;
   --muted: 42 45% 92%;
@@ -507,8 +450,6 @@ html:not(.dark) .admin-brand .adm-sidebar .adm-sidebar-top .border {
   border-color: var(--adm-line) !important;
 }
 
-/* White glass header and search, like the website's header. `!important` on border
-   colours only where Bootstrap's `.border` (also !important) would win otherwise. */
 html:not(.dark) .admin-brand .adm-header {
   background-color: rgb(255 255 255 / 0.45);
   border-color: var(--adm-line);
@@ -523,32 +464,37 @@ html:not(.dark) .admin-brand .adm-search:focus {
   border-color: var(--adm-navy) !important;
   box-shadow: 0 0 0 3px rgb(11 26 55 / 0.12);
 }
+html:not(.dark):has(.admin-brand) #nprogress .bar {
+  background: #0b1a37;
+}
+html:not(.dark):has(.admin-brand) #nprogress .peg {
+  box-shadow: 0 0 10px #0b1a37, 0 0 5px #0b1a37;
+}
 
-/* Page titles sit straight on the background video: navy, with a soft cream
-   glow behind the letters so they stay readable over it */
 html:not(.dark) .admin-brand .adm-page-header h1,
 html:not(.dark) .admin-brand .adm-page-header p {
   color: var(--adm-navy);
-  text-shadow: 0 0 2px rgb(251 247 238 / 0.9), 0 0 12px rgb(251 247 238 / 0.9);
+  text-shadow:
+    0 0 2px rgb(251 247 238 / 0.9),
+    0 0 12px rgb(251 247 238 / 0.9);
 }
 html:not(.dark) .admin-brand .adm-page-header p {
   color: rgb(11 26 55 / 0.8);
 }
 
-/* Cards: frosted white glass over the cream, the backdrop pattern softly
-   showing through, with a soft navy shadow */
 html:not(.dark) .admin-brand .adm-glass {
   background-color: rgb(255 255 255 / 0.65);
   -webkit-backdrop-filter: blur(4px) saturate(140%);
   backdrop-filter: blur(4px) saturate(140%);
   border-color: rgb(255 255 255 / 0.85) !important;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9), 0 12px 30px -20px rgb(11 26 55 / 0.35);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    0 12px 30px -20px rgb(11 26 55 / 0.35);
 }
 html:not(.dark) .admin-brand .adm-glass.group:hover {
   border-color: var(--adm-navy-line) !important;
   box-shadow: 0 16px 34px -18px rgb(11 26 55 / 0.4);
 }
-/* Card titles: the short bar of the website's pricing headings, in navy */
 html:not(.dark) .admin-brand .adm-glass h2::before {
   content: "";
   display: inline-block;
@@ -559,7 +505,6 @@ html:not(.dark) .admin-brand .adm-glass h2::before {
   border-radius: 9999px;
   background: var(--adm-navy);
 }
-/* Small uppercase labels ("At a glance"): the website's eyebrow with its line, in navy */
 html:not(.dark) .admin-brand .adm-glass p.uppercase {
   display: flex;
   align-items: center;
@@ -573,21 +518,16 @@ html:not(.dark) .admin-brand .adm-glass p.uppercase::before {
   height: 1px;
   background: currentColor;
 }
-/* Icon squares and role badges: navy on a soft navy tint */
 html:not(.dark) .admin-brand .adm-glass .bg-primary\/10,
 html:not(.dark) .admin-brand .adm-glass .adm-chip {
   background-image: none;
   background-color: var(--adm-navy-tint);
 }
-/* Tiles inside the glass: less see-through than the card around them (but
-   still glass), so they stand apart from it */
 html:not(.dark) .admin-brand .adm-tile {
   background-color: rgb(255 255 255 / 0.9);
   border-color: rgb(236 229 211 / 0.9) !important;
   box-shadow: 0 6px 16px -12px rgb(11 26 55 / 0.2);
 }
-/* Data rows (the students table and its phone list): a little more white
-   than the glass card around them, so the data reads clearly over the video */
 html:not(.dark) .admin-brand .adm-rows {
   background-color: rgb(255 255 255 / 0.5);
 }
@@ -596,9 +536,6 @@ html:not(.dark) .admin-brand button.adm-tile:hover {
   background-color: rgb(255 255 255 / 0.85);
   border-color: var(--adm-navy-line) !important;
 }
-/* Courses page: the dashed "Add a new course" card at the end of the grid
-   (lighter glass than the cards, a navy dashed edge), and a course card's
-   dashed "No teacher assigned" row. The cream border vanished over the video. */
 html:not(.dark) .admin-brand .adm-add {
   background-color: rgb(255 255 255 / 0.4);
   -webkit-backdrop-filter: blur(4px);
@@ -614,11 +551,6 @@ html:not(.dark) .admin-brand .adm-dashed {
   border-color: var(--adm-navy-line) !important;
 }
 
-/* Messages: a calm, solid chat (the user didn't want glass on it). White
-   card with a soft shadow, a quiet cream-to-blue wash behind the bubbles,
-   the admin's own bubbles a soft navy tint, the other side's white. The
-   bubble and composer hooks sit in the shared chat components, so the
-   student and teacher chats (no .admin-brand) keep their WhatsApp look. */
 html:not(.dark) .admin-brand .adm-chat {
   border-color: rgb(255 255 255 / 0.9) !important;
   box-shadow: 0 18px 40px -24px rgb(11 26 55 / 0.45);
@@ -644,13 +576,14 @@ html:not(.dark) .admin-brand .adm-bubble {
 }
 html:not(.dark) .admin-brand .adm-bubble-them {
   background-color: #fff;
-  box-shadow: 0 1px 2px rgb(11 26 55 / 0.06), 0 6px 14px -8px rgb(11 26 55 / 0.14);
+  box-shadow:
+    0 1px 2px rgb(11 26 55 / 0.06),
+    0 6px 14px -8px rgb(11 26 55 / 0.14);
 }
 html:not(.dark) .admin-brand .adm-bubble-me {
   background-color: #e3eaf6;
   box-shadow: 0 1px 2px rgb(11 26 55 / 0.07);
 }
-/* the first bubble of a run keeps a softened corner toward its sender */
 html:not(.dark) .admin-brand .adm-bubble-them.rounded-tl-none {
   border-top-left-radius: 4px;
 }
@@ -664,8 +597,6 @@ html:not(.dark) .admin-brand .adm-bubble .adm-stamp.absolute {
   right: 10px;
   bottom: 6px;
 }
-/* A quoted message inside a bubble: navy when it quotes the admin, the
-   gold ink when it quotes the other side (WhatsApp's green and blue clashed) */
 html:not(.dark) .admin-brand .adm-quote {
   background-color: rgb(11 26 55 / 0.05);
   border-left-color: var(--adm-gold-deep) !important;
@@ -687,8 +618,6 @@ html:not(.dark) .admin-brand .adm-day {
   font-weight: 600;
   box-shadow: 0 1px 2px rgb(11 26 55 / 0.08);
 }
-/* The ⋮ beside each bubble shows when the message is hovered (it crowded
-   every line); touch screens keep it, and long-press opens the menu too */
 @media (hover: hover) {
   html:not(.dark) .admin-brand .adm-msg-menu {
     opacity: 0;
@@ -700,7 +629,6 @@ html:not(.dark) .admin-brand .adm-day {
     opacity: 1;
   }
 }
-/* Composer: light icon buttons, a soft grey-blue field turning white on focus */
 html:not(.dark) .admin-brand .adm-composer {
   background-color: #fff;
 }
@@ -726,25 +654,33 @@ html:not(.dark) .admin-brand .adm-composer-reply {
   border-left-color: var(--adm-navy) !important;
   background-color: #f2f4f8;
 }
-/* Progress bar: navy on a navy-tinted track, like the website's slide progress */
 html:not(.dark) .admin-brand .adm-track {
   background-color: var(--adm-navy-tint);
 }
 html:not(.dark) .admin-brand .adm-track > div {
   background-image: linear-gradient(90deg, var(--adm-navy), #13305a);
 }
-/* "N total" pill: the navy gradient of the icon squares and badges */
 html:not(.dark) .admin-brand .adm-pill {
   color: #fff;
   background-color: var(--adm-navy);
-  background-image: linear-gradient(135deg, #0b1a37 0%, #1d3a6e 55%, #2b4a8c 100%);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18), 0 6px 14px -8px rgb(11 26 55 / 0.55);
+  background-image: linear-gradient(
+    135deg,
+    #0b1a37 0%,
+    #1d3a6e 55%,
+    #2b4a8c 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.18),
+    0 6px 14px -8px rgb(11 26 55 / 0.55);
 }
 
-/* Teacher cards: the icon squares' navy gradient on the banner, with the
-   hero card's soft blue glow in its corner */
 html:not(.dark) .admin-brand .adm-cover {
-  background-image: linear-gradient(135deg, #0b1a37 0%, #1d3a6e 55%, #2b4a8c 100%);
+  background-image: linear-gradient(
+    135deg,
+    #0b1a37 0%,
+    #1d3a6e 55%,
+    #2b4a8c 100%
+  );
 }
 html:not(.dark) .admin-brand .adm-cover::after {
   content: "";
@@ -758,15 +694,11 @@ html:not(.dark) .admin-brand .adm-cover::after {
   filter: blur(28px);
   pointer-events: none;
 }
-/* Their shift / category switches: a navy-tinted track */
 html:not(.dark) .admin-brand .adm-seg {
   background-color: var(--adm-navy-tint);
   border-color: transparent !important;
 }
-/* Pop-up forms (.adm-modal): white and navy instead of the cream. The tokens
-   are swapped inside it, so the fields (bg-background), Cancel, hover fills
-   (bg-muted) and dividers (border-border) all follow: white fields with a
-   soft navy edge, a navy focus ring (already focus:border-primary). */
+
 html:not(.dark) .admin-brand .adm-modal {
   --background: 0 0% 100%;
   --muted: 220 33% 95%;
@@ -780,30 +712,36 @@ html:not(.dark) .admin-brand .adm-modal input:hover:not(:focus),
 html:not(.dark) .admin-brand .adm-modal textarea:hover:not(:focus) {
   border-color: rgb(11 26 55 / 0.28);
 }
-/* The line beside each shift heading: navy fading out (the cream border
-   vanished over the video) */
+
 html:not(.dark) .admin-brand .adm-fade-line {
   background-image: linear-gradient(90deg, var(--adm-navy-line), transparent);
 }
 
-/* Recent Signups: thin navy line under each row, fading out at both ends.
-   Hidden in dark mode, which keeps its original look. */
 .adm-divider {
   display: none;
 }
 html:not(.dark) .admin-brand .adm-divider {
   display: block;
-  background: linear-gradient(90deg, transparent, var(--adm-navy-line), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--adm-navy-line),
+    transparent
+  );
 }
 
-/* First stat card: navy with a gold number, like the website's "1:1" badge */
 html:not(.dark) .admin-brand .adm-hero {
   position: relative;
   overflow: hidden;
   color: #fff;
-  /* solid navy now (the cards were made less see-through twice) */
+
   background-color: transparent;
-  background-image: linear-gradient(135deg, rgb(11 26 55) 0%, rgb(16 36 73) 60%, rgb(19 48 90) 100%);
+  background-image: linear-gradient(
+    135deg,
+    rgb(11 26 55) 0%,
+    rgb(16 36 73) 60%,
+    rgb(19 48 90) 100%
+  );
   -webkit-backdrop-filter: blur(5px);
   backdrop-filter: blur(5px);
   border-color: rgb(238 204 101 / 0.25) !important;
@@ -819,8 +757,7 @@ html:not(.dark) .admin-brand .adm-hero::before {
   inset: 0 0 50% 0;
   background: linear-gradient(to bottom, rgb(255 255 255 / 0.06), transparent);
 }
-/* a soft glow in the top corner, in the lighter navy of the website's
-   pricing headers (gold here mixes with the navy into grey) */
+
 html:not(.dark) .admin-brand .adm-hero::after {
   top: -2.5rem;
   right: -2rem;
@@ -834,12 +771,14 @@ html:not(.dark) .admin-brand .adm-hero > * {
   position: relative;
   z-index: 1;
 }
-/* the number (not the loading shell's grey dash) */
-html:not(.dark) .admin-brand .adm-hero > p:first-of-type:not(.text-muted-foreground\/40) {
+
+html:not(.dark)
+  .admin-brand
+  .adm-hero
+  > p:first-of-type:not(.text-muted-foreground\/40) {
   color: var(--adm-gold);
 }
-/* White writing is full white: dimmed whites (the card's label at 72%, the
-   modal headers' 80%) read as dull grey */
+
 html:not(.dark) .admin-brand .adm-hero .text-muted-foreground,
 html:not(.dark) .admin-brand .text-white\/80 {
   color: #fff;
@@ -857,35 +796,41 @@ html:not(.dark) .admin-brand .adm-hero .adm-chip {
   box-shadow: inset 0 0 0 1px rgb(238 204 101 / 0.3);
 }
 
-/* Icon squares (adm-icon) on every admin page, and the Recent Signups role
-   tags (adm-badge): a navy gradient, the sidebar's navy lightening to the
-   blue of the hero card's glow, in white. The .adm-glass lines outrank the
-   flat navy tint above. */
 html:not(.dark) .admin-brand .adm-icon,
 html:not(.dark) .admin-brand .adm-glass .adm-icon,
 html:not(.dark) .admin-brand .adm-badge,
 html:not(.dark) .admin-brand .adm-glass .adm-badge {
   background-color: var(--adm-navy);
-  background-image: linear-gradient(135deg, #0b1a37 0%, #1d3a6e 55%, #2b4a8c 100%);
+  background-image: linear-gradient(
+    135deg,
+    #0b1a37 0%,
+    #1d3a6e 55%,
+    #2b4a8c 100%
+  );
   color: #fff !important;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18), 0 6px 14px -8px rgb(11 26 55 / 0.55);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.18),
+    0 6px 14px -8px rgb(11 26 55 / 0.55);
 }
-/* "View all" and the filters are controls: a touch brighter on hover */
+
 html:not(.dark) .admin-brand a.adm-badge:hover,
 html:not(.dark) .admin-brand select.adm-badge:hover,
 html:not(.dark) .admin-brand button.adm-badge:hover {
   filter: brightness(1.2);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18), 0 8px 16px -8px rgb(11 26 55 / 0.7);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.18),
+    0 8px 16px -8px rgb(11 26 55 / 0.7);
 }
-/* The filter dropdown: no pale Bootstrap ring on the navy, and its open list
-   stays white with navy text (it would inherit the white text) */
+
 html:not(.dark) .admin-brand select.adm-badge,
 html:not(.dark) .admin-brand button.adm-badge {
   cursor: pointer;
   border-color: transparent !important;
-  transition: filter 0.2s, box-shadow 0.2s;
+  transition:
+    filter 0.2s,
+    box-shadow 0.2s;
 }
-/* Students filter's active-filter count: gold, as a navy bubble would vanish */
+
 html:not(.dark) .admin-brand .adm-badge .adm-count {
   background-color: var(--adm-gold) !important;
   color: var(--adm-navy);
@@ -897,16 +842,21 @@ html:not(.dark) .admin-brand select.adm-badge option {
 html:not(.dark) .admin-brand .adm-select-chevron {
   color: #fff;
 }
-/* On the navy hero card a navy square would vanish: gold, with a navy icon */
+
 html:not(.dark) .admin-brand .adm-hero .adm-icon {
   background-color: var(--adm-gold);
-  background-image: linear-gradient(135deg, #f6e19a 0%, #eecc65 45%, #c9a13b 100%);
+  background-image: linear-gradient(
+    135deg,
+    #f6e19a 0%,
+    #eecc65 45%,
+    #c9a13b 100%
+  );
   color: var(--adm-navy) !important;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.4), 0 6px 14px -8px rgb(0 0 0 / 0.5);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.4),
+    0 6px 14px -8px rgb(0 0 0 / 0.5);
 }
-/* "At a glance" corner arrows: navy on a soft tint, filling with the icon
-   squares' gradient when the tile is hovered. The gradient sits on ::before
-   so it can fade in (a background-image can't transition). */
+
 html:not(.dark) .admin-brand .adm-arrow {
   isolation: isolate;
   overflow: hidden;
@@ -914,7 +864,9 @@ html:not(.dark) .admin-brand .adm-arrow {
   background-color: var(--adm-navy-tint);
   background-image: none;
   box-shadow: inset 0 0 0 1px rgb(11 26 55 / 0.12);
-  transition: color 0.3s, box-shadow 0.3s;
+  transition:
+    color 0.3s,
+    box-shadow 0.3s;
 }
 html:not(.dark) .admin-brand .adm-arrow::before {
   content: "";
@@ -922,7 +874,12 @@ html:not(.dark) .admin-brand .adm-arrow::before {
   inset: 0;
   z-index: -1;
   border-radius: inherit;
-  background-image: linear-gradient(135deg, #0b1a37 0%, #1d3a6e 55%, #2b4a8c 100%);
+  background-image: linear-gradient(
+    135deg,
+    #0b1a37 0%,
+    #1d3a6e 55%,
+    #2b4a8c 100%
+  );
   opacity: 0;
   transition: opacity 0.3s;
 }
@@ -936,22 +893,25 @@ html:not(.dark) .admin-brand .group:hover .adm-arrow::before,
 html:not(.dark) .admin-brand .group:focus-visible .adm-arrow::before {
   opacity: 1;
 }
-/* On the navy hero card: gold arrow on a faint ring, filling with the gold
-   gradient (a navy one would vanish into the card) */
+
 html:not(.dark) .admin-brand .adm-hero .adm-arrow {
   color: var(--adm-gold);
   background-color: rgb(255 255 255 / 0.07);
   box-shadow: inset 0 0 0 1px rgb(238 204 101 / 0.3);
 }
 html:not(.dark) .admin-brand .adm-hero .adm-arrow::before {
-  background-image: linear-gradient(135deg, #f6e19a 0%, #eecc65 45%, #c9a13b 100%);
+  background-image: linear-gradient(
+    135deg,
+    #f6e19a 0%,
+    #eecc65 45%,
+    #c9a13b 100%
+  );
 }
 html:not(.dark) .admin-brand .adm-hero.group:hover .adm-arrow {
   color: var(--adm-navy);
   box-shadow: 0 6px 14px -8px rgb(0 0 0 / 0.5);
 }
 
-/* Collapsed-sidebar page-name card (card + arrow): navy, continuing the rail */
 html:not(.dark) .admin-brand .adm-tip-glass {
   background-color: var(--adm-navy);
 }
@@ -961,9 +921,6 @@ html:not(.dark) .admin-brand .adm-tip-glass.rounded-lg {
   box-shadow: 0 10px 28px -10px rgb(11 26 55 / 0.55);
 }
 
-/* Scrollbars inside the admin: see-through navy, so the background shows
-   through; the site's gold thumb, and later a solid blue one, stood out as a
-   bar beside the cards. Stronger on hover, while it is being grabbed. */
 @media (hover: hover) and (pointer: fine) {
   html:not(.dark) .admin-brand ::-webkit-scrollbar-thumb {
     background: rgb(11 26 55 / 0.5);
@@ -982,107 +939,258 @@ html:not(.dark) .admin-brand .adm-tip-glass.rounded-lg {
   }
 }
 
-/* ─── Admin dark mode: black with metallic gold (2026-10-21) ───────────────
-   Rolled out page by page: a page opts in with .adm-night on its root (the
-   dashboard first), and while such a page shows, the whole shell (sidebar,
-   header, background) follows. Other pages keep the original dark look until
-   they get the class. The user found the old dark gold a flat yellow, so the
-   gold here is a gradient, champagne to bronze, with a warm solid gold for
-   text. The tokens are swapped on the shell, so the markup's own classes
-   (bg-card, text-muted-foreground, from-primary…) follow. */
-html.dark .admin-brand:has(.adm-night) {
+html.dark .admin-brand:has(.adm-night),
+html.dark .admin-brand .adm-sidebar,
+html.dark .admin-brand .adm-header,
+html.dark .admin-brand .adm-tip {
   --night-gold: linear-gradient(135deg, #f4dc98 0%, #d9ad55 45%, #a87a2e 100%);
-  --night-gold-ink: #e0bb68; /* gold for text and marks on black */
-  --night-ink: #19140b; /* near-black brown for text on the gold */
+  --night-gold-ink: #e0bb68;
+  --night-ink: #19140b;
   --night-line: rgb(255 255 255 / 0.07);
 
   --background: 240 6% 4%;
-  --foreground: 40 30% 94%;
+  --foreground: 0 0% 100%;
   --card: 240 5% 9%;
-  --card-foreground: 40 30% 94%;
+  --card-foreground: 0 0% 100%;
   --muted: 240 4% 14%;
-  --muted-foreground: 40 7% 66%;
+  --muted-foreground: 0 0% 100%;
   --border: 240 4% 17%;
-  --primary: 40 62% 61%; /* #D9AE5B */
+  --primary: 40 62% 61%;
   --primary-foreground: 39 39% 7%;
-  --accent: 35 56% 40%; /* #9F722D, the bronze end of the gradients */
+  --accent: 35 56% 40%;
   --accent-foreground: 39 39% 7%;
   --gold: 40 62% 61%;
   color: hsl(var(--foreground));
 }
-/* Black, with the Quran video faint behind it */
+
 html.dark .admin-brand:has(.adm-night) .adm-video {
-  background: radial-gradient(120% 80% at 50% 0%, #17171a 0%, #0a0a0b 55%, #050506 100%);
+  background: radial-gradient(
+    120% 80% at 50% 0%,
+    #17171a 0%,
+    #0a0a0b 55%,
+    #050506 100%
+  );
 }
 html.dark .admin-brand:has(.adm-night) .adm-video video {
   opacity: 0.28;
 }
-/* Edges follow the token. :where() keeps this below the coloured-border
-   restores near the top of the file (destructive, amber, emerald…). */
+
 html.dark .admin-brand:where(:has(.adm-night)) *,
 html.dark .admin-brand:where(:has(.adm-night)) *::before,
-html.dark .admin-brand:where(:has(.adm-night)) *::after {
+html.dark .admin-brand:where(:has(.adm-night)) *::after,
+html.dark
+  .admin-brand
+  :where(.adm-sidebar, .adm-sidebar *, .adm-header, .adm-header *, .adm-tip *),
+html.dark
+  .admin-brand
+  :where(.adm-sidebar *, .adm-header *, .adm-tip *)::before,
+html.dark
+  .admin-brand
+  :where(.adm-sidebar *, .adm-header *, .adm-tip *)::after {
   border-color: hsl(var(--border)) !important;
 }
-/* Bootstrap's .text-primary is a pale yellow and its .bg-primary navy, both !important */
-html.dark .admin-brand:has(.adm-night) .text-primary {
+html.dark .admin-brand:has(.adm-night) .text-primary,
+html.dark .admin-brand :is(.adm-sidebar, .adm-header) .text-primary {
   color: var(--night-gold-ink) !important;
 }
-html.dark .admin-brand:has(.adm-night) .bg-primary {
+html.dark .admin-brand:has(.adm-night) .bg-primary,
+html.dark .admin-brand :is(.adm-sidebar, .adm-header) .bg-primary {
   background-color: hsl(var(--primary)) !important;
 }
-/* Every gold fill (the open sidebar link, buttons, the theme switch) gets
-   the metallic gradient instead of the two-stop token one */
-html.dark .admin-brand:has(.adm-night) .from-primary.to-accent {
+html.dark .admin-brand:has(.adm-night) .from-primary.to-accent,
+html.dark .admin-brand :is(.adm-sidebar, .adm-header) .from-primary.to-accent {
   background-image: var(--night-gold);
 }
 
-/* Sidebar: a shade above the black, the open page in gold */
-html.dark .admin-brand:has(.adm-night) .adm-sidebar {
+html.dark .admin-brand .adm-sidebar {
   --card: 240 6% 6%;
   --muted: 240 4% 13%;
-  --muted-foreground: 40 10% 76%;
   --border: 240 4% 13%;
 }
-/* The logo strip and the header: one dark glass bar */
-html.dark .admin-brand:has(.adm-night) .adm-sidebar-top,
-html.dark .admin-brand:has(.adm-night) .adm-header {
+html.dark .admin-brand .adm-sidebar-top,
+html.dark .admin-brand .adm-header {
   background-color: rgb(14 14 16 / 0.72);
   -webkit-backdrop-filter: blur(24px);
   backdrop-filter: blur(24px);
 }
-html.dark .admin-brand:has(.adm-night) .adm-header {
+html.dark .admin-brand .adm-header {
   box-shadow: 0 10px 26px -22px rgb(0 0 0 / 0.9);
 }
-/* The website's fine white rim round the logo (its navy footer and sign-in
-   page), so the logo's navy letters show on black; the logo isn't recoloured */
-html.dark .admin-brand:has(.adm-night) .adm-sidebar-top img {
-  filter: drop-shadow(0 0 1px rgb(255 255 255 / 0.85)) drop-shadow(0 0 8px rgb(255 255 255 / 0.3));
+html.dark .admin-brand .adm-sidebar-top img {
+  filter: drop-shadow(0 0 1px rgb(255 255 255 / 0.85))
+    drop-shadow(0 0 8px rgb(255 255 255 / 0.3));
 }
-/* !important edge: the dark "border-primary" restore near the top of the file
-   matches the field's focus:border-primary class and kept it gold at rest */
-html.dark .admin-brand:has(.adm-night) .adm-search {
+html.dark .admin-brand .adm-header input.adm-search {
   background-color: rgb(255 255 255 / 0.05);
   border-color: rgb(255 255 255 / 0.1) !important;
 }
-html.dark .admin-brand:has(.adm-night) .adm-search:focus {
+html.dark .admin-brand .adm-header input.adm-search:focus {
   background-color: rgb(255 255 255 / 0.08);
   border-color: var(--night-gold-ink) !important;
   box-shadow: 0 0 0 3px rgb(217 173 85 / 0.18);
 }
+html.dark
+  .admin-brand:has(.adm-night)
+  :is(
+    input:not([type="checkbox"], [type="radio"], .adm-search),
+    select,
+    textarea
+  ) {
+  background-color: rgb(255 255 255 / 0.05);
+  border-color: rgb(255 255 255 / 0.1) !important;
+  color-scheme: dark;
+}
+html.dark
+  .admin-brand:has(.adm-night)
+  :is(
+    input:not([type="checkbox"], [type="radio"], .adm-search),
+    select,
+    textarea
+  ):focus {
+  background-color: rgb(255 255 255 / 0.08);
+  border-color: var(--night-gold-ink) !important;
+  box-shadow: 0 0 0 3px rgb(217 173 85 / 0.18);
+}
+html.dark .admin-brand:has(.adm-night) select option {
+  background-color: hsl(var(--card));
+  color: hsl(var(--foreground));
+}
+html.dark
+  .admin-brand:has(.adm-night)
+  :is(.bg-foreground\/30, .bg-foreground\/40) {
+  background-color: rgb(0 0 0 / 0.6);
+}
+html.dark
+  .admin-brand:has(.adm-night)
+  :is(.bg-foreground\/60, .bg-foreground\/70) {
+  background-color: rgb(0 0 0 / 0.78);
+}
+html.dark
+  .admin-brand:has(.adm-night)
+  :is(.border-primary\/30, .border-primary\/40) {
+  border-color: rgb(224 187 104 / 0.5) !important;
+}
+html.dark .admin-brand:has(.adm-night) .border-primary\/20 {
+  border-color: rgb(224 187 104 / 0.28) !important;
+}
+html.dark
+  .admin-brand:has(.adm-night)
+  :is(.border-destructive\/30, .border-destructive\/40) {
+  border-color: hsl(var(--destructive) / 0.45) !important;
+}
+html.dark
+  .admin-brand:has(.adm-night)
+  :is(.border-emerald-500\/30, .border-emerald-500\/40) {
+  border-color: rgb(52 211 153 / 0.4) !important;
+}
+html.dark .admin-brand:has(.adm-night) [class*="hover:border-primary/"]:hover {
+  border-color: rgb(217 173 85 / 0.4) !important;
+}
+html.dark
+  .admin-brand:has(.adm-night)
+  [class*="hover:border-destructive/"]:hover {
+  border-color: hsl(var(--destructive) / 0.5) !important;
+}
+html.dark .admin-brand:has(.adm-night) .text-emerald-600 {
+  color: #34d399;
+}
+html.dark .admin-brand:has(.adm-night) .text-sky-600 {
+  color: #38bdf8;
+}
+html.dark .admin-brand:has(.adm-night) .text-pink-600 {
+  color: #f472b6;
+}
+html.dark .admin-brand:has(.adm-night) .text-emerald-700 {
+  color: #34d399;
+}
+html.dark .admin-brand:has(.adm-night) .text-rose-600 {
+  color: #fb7185;
+}
+html.dark .admin-brand:has(.adm-night) :is(.text-amber-600, .text-amber-700) {
+  color: #fbbf24;
+}
+html.dark .admin-brand:has(.adm-night) [class~="border-[hsl(var(--gold))]/40"] {
+  border-color: rgb(224 187 104 / 0.4) !important;
+}
+html.dark .admin-brand:has(.adm-night) :is(.border-card, [class~="!border-card"]) {
+  border-color: hsl(var(--card)) !important;
+}
+html.dark
+  .admin-brand:has(.adm-night)
+  :is([class~="border-[hsl(var(--primary))]"], [class~="!border-[hsl(var(--primary))]"]) {
+  border-color: var(--night-gold-ink) !important;
+}
+html.dark .admin-brand:has(.adm-night) [class~="!border-primary/30"] {
+  border-color: rgb(224 187 104 / 0.45) !important;
+}
+html.dark .admin-brand:has(.adm-night) [class~="!border-emerald-500/30"] {
+  border-color: rgb(52 211 153 / 0.4) !important;
+}
+html.dark .admin-brand:has(.adm-night) .border-sky-500 {
+  border-color: #38bdf8 !important;
+}
+html.dark .admin-brand:has(.adm-night) .border-pink-500 {
+  border-color: #f472b6 !important;
+}
+html.dark .admin-brand:has(.adm-night) [class*="hover:border-sky-500/"]:hover {
+  border-color: rgb(56 189 248 / 0.45) !important;
+}
+html.dark .admin-brand:has(.adm-night) [class*="hover:border-pink-500/"]:hover {
+  border-color: rgb(244 114 182 / 0.45) !important;
+}
+html.dark .admin-brand:has(.adm-night) .adm-cover {
+  background-image: var(--night-gold);
+}
+html.dark .admin-brand:has(.adm-night) .adm-cover::after {
+  content: "";
+  position: absolute;
+  top: -2.5rem;
+  right: -1.5rem;
+  width: 9rem;
+  height: 6rem;
+  border-radius: 9999px;
+  background: rgb(255 244 214 / 0.45);
+  filter: blur(28px);
+  pointer-events: none;
+}
+html.dark .admin-brand:has(.adm-night) .adm-cover > span {
+  background-color: rgb(25 20 11 / 0.14);
+  color: var(--night-ink) !important;
+  --tw-ring-color: rgb(25 20 11 / 0.18);
+}
+html.dark .admin-brand:has(.adm-night) .adm-cover:not(:has(img)) .text-white {
+  color: var(--night-ink) !important;
+}
+html.dark .admin-brand:has(.adm-night) .adm-cover:not(:has(img)) .bg-white\/15 {
+  background-color: rgb(25 20 11 / 0.12);
+  --tw-ring-color: rgb(25 20 11 / 0.18);
+}
+html.dark .admin-brand:has(.adm-night) .adm-cover:not(:has(img)) .bg-white\/25 {
+  background-color: rgb(25 20 11 / 0.22);
+}
+html.dark .admin-brand:has(.adm-night) .adm-cover [class~="!border-white/30"] {
+  border-color: rgb(25 20 11 / 0.2) !important;
+}
+html.dark .admin-brand:has(.adm-night) .adm-seg {
+  background-color: rgb(255 255 255 / 0.05);
+  border-color: var(--night-line) !important;
+}
+html.dark .admin-brand:has(.adm-night) .adm-fade-line {
+  background-image: linear-gradient(90deg, rgb(217 173 85 / 0.4), transparent);
+}
 
-/* Cards: dark smoked glass over the video, a faint light edge */
 html.dark .admin-brand:has(.adm-night) .adm-glass {
   background-color: rgb(19 19 21 / 0.74);
   -webkit-backdrop-filter: blur(10px) saturate(120%);
   backdrop-filter: blur(10px) saturate(120%);
   border-color: var(--night-line) !important;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 18px 40px -24px rgb(0 0 0 / 0.95);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.05),
+    0 18px 40px -24px rgb(0 0 0 / 0.95);
 }
 html.dark .admin-brand:has(.adm-night) .adm-glass.group:hover {
   border-color: rgb(217 173 85 / 0.35) !important;
 }
-/* Card titles: the short bar of the light mode's titles, in gold */
 html.dark .admin-brand:has(.adm-night) .adm-glass h2::before {
   content: "";
   display: inline-block;
@@ -1093,7 +1201,6 @@ html.dark .admin-brand:has(.adm-night) .adm-glass h2::before {
   border-radius: 9999px;
   background: linear-gradient(180deg, #f4dc98, #a87a2e);
 }
-/* Small uppercase labels ("At a glance"): the eyebrow with its line, in gold */
 html.dark .admin-brand:has(.adm-night) .adm-glass p.uppercase {
   display: flex;
   align-items: center;
@@ -1107,7 +1214,6 @@ html.dark .admin-brand:has(.adm-night) .adm-glass p.uppercase::before {
   height: 1px;
   background: currentColor;
 }
-/* Tiles inside the cards, a touch lighter; gold edge on hover */
 html.dark .admin-brand:has(.adm-night) .adm-tile {
   background-color: rgb(255 255 255 / 0.035);
   border-color: var(--night-line) !important;
@@ -1120,33 +1226,141 @@ html.dark .admin-brand:has(.adm-night) button.adm-tile:hover {
 html.dark .admin-brand:has(.adm-night) .adm-rows {
   background-color: rgb(255 255 255 / 0.02);
 }
-/* Recent Signups: a thin gold line under each row, fading at both ends */
 html.dark .admin-brand:has(.adm-night) .adm-divider {
   display: block;
-  background: linear-gradient(90deg, transparent, rgb(217 173 85 / 0.28), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(217 173 85 / 0.28),
+    transparent
+  );
 }
 
-/* Icon squares, initials and tags: the gold gradient with a dark icon (the
-   light mode's are navy with white) */
 html.dark .admin-brand:has(.adm-night) .adm-icon,
-html.dark .admin-brand:has(.adm-night) .adm-badge {
+html.dark .admin-brand:has(.adm-night) .adm-badge,
+html.dark .admin-brand .adm-header :is(.adm-icon, .adm-badge) {
   background-color: #d9ad55;
   background-image: var(--night-gold);
   color: var(--night-ink) !important;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), 0 6px 14px -8px rgb(217 173 85 / 0.45);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.35),
+    0 6px 14px -8px rgb(217 173 85 / 0.45);
 }
 html.dark .admin-brand:has(.adm-night) a.adm-badge:hover,
-html.dark .admin-brand:has(.adm-night) button.adm-badge:hover {
+html.dark .admin-brand:has(.adm-night) button.adm-badge:hover,
+html.dark .admin-brand .adm-header :is(a, button).adm-badge:hover {
   filter: brightness(1.08);
 }
-/* "N total": a gold pill */
+html.dark .admin-brand:has(.adm-night) .adm-select-chevron {
+  color: var(--night-ink);
+}
+html.dark .admin-brand:has(.adm-night) .adm-badge .adm-count {
+  background-color: var(--night-ink) !important;
+  color: var(--night-gold-ink);
+}
+html.dark .admin-brand:has(.adm-night) .adm-badge > .bg-white\/15 {
+  background-color: #17130b;
+  color: var(--night-gold-ink);
+  --tw-ring-color: rgb(25 20 11 / 0.3);
+}
+html.dark .admin-brand:has(.adm-night) .adm-chat {
+  border-color: var(--night-line) !important;
+  box-shadow: 0 18px 40px -24px rgb(0 0 0 / 0.95);
+}
+html.dark .admin-brand:has(.adm-night) .adm-chat-active {
+  background-color: rgb(217 173 85 / 0.08);
+  border-left-color: transparent !important;
+  box-shadow: inset 3px 0 0 #d9ad55;
+}
+html.dark .admin-brand:has(.adm-night) .adm-chat-head {
+  background-color: rgb(255 255 255 / 0.025);
+}
+html.dark .admin-brand:has(.adm-night) .adm-chat-bg {
+  background-color: #0a0a0b;
+  background-image: linear-gradient(180deg, #0e0e10 0%, #080809 100%);
+}
+html.dark .admin-brand:has(.adm-night) .adm-bubble {
+  padding: 7px 12px 6px;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #fff;
+}
+html.dark .admin-brand:has(.adm-night) .adm-bubble-them {
+  background-color: #1c1c20;
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.05),
+    0 6px 14px -8px rgb(0 0 0 / 0.8);
+}
+html.dark .admin-brand:has(.adm-night) .adm-bubble-me {
+  background-color: #2b2416;
+  background-image: linear-gradient(135deg, rgb(217 173 85 / 0.26), rgb(168 122 46 / 0.2));
+  box-shadow: inset 0 0 0 1px rgb(217 173 85 / 0.22);
+}
+html.dark .admin-brand:has(.adm-night) .adm-bubble-them.rounded-tl-none {
+  border-top-left-radius: 4px;
+}
+html.dark .admin-brand:has(.adm-night) .adm-bubble-me.rounded-tr-none {
+  border-top-right-radius: 4px;
+}
+html.dark .admin-brand:has(.adm-night) .adm-bubble .adm-stamp {
+  color: rgb(255 255 255 / 0.6);
+}
+html.dark .admin-brand:has(.adm-night) .adm-bubble .adm-stamp.absolute {
+  right: 10px;
+  bottom: 6px;
+}
+html.dark .admin-brand:has(.adm-night) .adm-quote {
+  background-color: rgb(255 255 255 / 0.06);
+  border-left-color: rgb(217 173 85 / 0.6) !important;
+}
+html.dark .admin-brand:has(.adm-night) .adm-quote .adm-quote-name {
+  color: var(--night-gold-ink);
+}
+html.dark .admin-brand:has(.adm-night) .adm-quote-me {
+  border-left-color: var(--night-gold-ink) !important;
+}
+html.dark .admin-brand:has(.adm-night) .adm-day {
+  padding: 3px 12px;
+  border-radius: 9999px;
+  background-color: rgb(255 255 255 / 0.07);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: none;
+}
+@media (hover: hover) {
+  html.dark .admin-brand:has(.adm-night) .adm-msg-menu {
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  html.dark .admin-brand:has(.adm-night) .adm-msg-row:hover .adm-msg-menu,
+  html.dark .admin-brand:has(.adm-night) .adm-msg-menu:focus-within,
+  html.dark .admin-brand:has(.adm-night) .adm-msg-menu[data-open] {
+    opacity: 1;
+  }
+}
+html.dark .admin-brand:has(.adm-night) .adm-composer {
+  background-color: rgb(255 255 255 / 0.02);
+}
+html.dark .admin-brand:has(.adm-night) .adm-composer-btn {
+  border-color: transparent !important;
+  background-color: transparent;
+  color: #fff;
+}
+html.dark .admin-brand:has(.adm-night) .adm-composer-btn:hover:not(:disabled) {
+  background-color: rgb(217 173 85 / 0.12);
+  color: var(--night-gold-ink);
+}
+html.dark .admin-brand:has(.adm-night) .adm-composer-reply {
+  border-left-color: var(--night-gold-ink) !important;
+  background-color: rgb(255 255 255 / 0.05);
+}
 html.dark .admin-brand:has(.adm-night) .adm-pill {
   color: var(--night-ink);
   background-color: #d9ad55;
   background-image: var(--night-gold);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35);
 }
-/* Progress bar: gold, brightening toward its end, on a faint track */
 html.dark .admin-brand:has(.adm-night) .adm-track {
   background-color: rgb(255 255 255 / 0.08);
 }
@@ -1154,16 +1368,22 @@ html.dark .admin-brand:has(.adm-night) .adm-track > div {
   background-image: linear-gradient(90deg, #a87a2e, #d9ad55 60%, #f4dc98);
 }
 
-/* First stat card: the one gold card, as the light mode's is the one navy
-   card; a sheen across its top and a soft light in its corner */
 html.dark .admin-brand:has(.adm-night) .adm-hero {
   position: relative;
   overflow: hidden;
   color: var(--night-ink);
   background-color: #c99a45;
-  background-image: linear-gradient(135deg, #f2d690 0%, #d6a64e 42%, #b2843a 70%, #8e6423 100%);
+  background-image: linear-gradient(
+    135deg,
+    #f2d690 0%,
+    #d6a64e 42%,
+    #b2843a 70%,
+    #8e6423 100%
+  );
   border-color: rgb(244 220 152 / 0.55) !important;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.4), 0 18px 40px -20px rgb(217 173 85 / 0.5);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.4),
+    0 18px 40px -20px rgb(217 173 85 / 0.5);
 }
 html.dark .admin-brand:has(.adm-night) .adm-hero::before,
 html.dark .admin-brand:has(.adm-night) .adm-hero::after {
@@ -1194,16 +1414,15 @@ html.dark .admin-brand:has(.adm-night) .adm-hero .text-muted-foreground {
 html.dark .admin-brand:has(.adm-night) .adm-hero .text-muted-foreground\/40 {
   color: rgb(25 20 11 / 0.4);
 }
-/* On the gold card a gold square would vanish: black, with a gold icon */
 html.dark .admin-brand:has(.adm-night) .adm-hero .adm-icon {
   background-color: #17130b;
   background-image: none;
   color: var(--night-gold-ink) !important;
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08), 0 6px 14px -8px rgb(0 0 0 / 0.6);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.08),
+    0 6px 14px -8px rgb(0 0 0 / 0.6);
 }
 
-/* Corner arrows: gold on a faint gold ring, filling with the gold gradient
-   when the card or tile is hovered (on ::before, so it can fade in) */
 html.dark .admin-brand:has(.adm-night) .adm-arrow {
   isolation: isolate;
   overflow: hidden;
@@ -1211,7 +1430,9 @@ html.dark .admin-brand:has(.adm-night) .adm-arrow {
   background-color: rgb(217 173 85 / 0.1);
   background-image: none;
   box-shadow: inset 0 0 0 1px rgb(217 173 85 / 0.22);
-  transition: color 0.3s, box-shadow 0.3s;
+  transition:
+    color 0.3s,
+    box-shadow 0.3s;
 }
 html.dark .admin-brand:has(.adm-night) .adm-arrow::before {
   content: "";
@@ -1233,7 +1454,6 @@ html.dark .admin-brand:has(.adm-night) .group:hover .adm-arrow::before,
 html.dark .admin-brand:has(.adm-night) .group:focus-visible .adm-arrow::before {
   opacity: 1;
 }
-/* On the gold card: dark arrow, filling black */
 html.dark .admin-brand:has(.adm-night) .adm-hero .adm-arrow {
   color: var(--night-ink);
   background-color: rgb(25 20 11 / 0.1);
@@ -1247,25 +1467,25 @@ html.dark .admin-brand:has(.adm-night) .adm-hero.group:hover .adm-arrow {
   color: var(--night-gold-ink);
 }
 
-/* Scrollbars: see-through gold */
 @media (hover: hover) and (pointer: fine) {
-  html.dark .admin-brand:has(.adm-night) ::-webkit-scrollbar-thumb {
+  html.dark .admin-brand:has(.adm-night) ::-webkit-scrollbar-thumb,
+  html.dark
+    .admin-brand
+    :is(.adm-sidebar, .adm-header)
+    ::-webkit-scrollbar-thumb {
     background: rgb(217 173 85 / 0.35);
     background-clip: padding-box;
   }
-  html.dark .admin-brand:has(.adm-night) ::-webkit-scrollbar-thumb:hover {
+  html.dark .admin-brand:has(.adm-night) ::-webkit-scrollbar-thumb:hover,
+  html.dark
+    .admin-brand
+    :is(.adm-sidebar, .adm-header)
+    ::-webkit-scrollbar-thumb:hover {
     background: rgb(217 173 85 / 0.55);
     background-clip: padding-box;
   }
 }
 
-/* Printing a student's report ("Print / Save as PDF", .adm-report), on the
-   student's page or in the Reports page's pop-up: the report alone, at its
-   full length, on white. The dashboard frame is one screen tall with its own
-   scrolling main, which cut the printout off after one page, and the sidebar,
-   header and video printed with it. Of the shell's children only the one
-   holding the report prints: the page column, or the pop-up portalled into
-   the shell (then the Reports page behind it is left out). */
 @media print {
   .admin-dashboard:has(.adm-report) {
     display: block;
@@ -1284,8 +1504,6 @@ html.dark .admin-brand:has(.adm-night) .adm-hero.group:hover .adm-arrow {
     padding: 0 !important;
     animation: none;
   }
-  /* The light admin's navy on white paper in either theme, with the badges,
-     bars and tags printed in colour */
   .adm-report {
     --background: 0 0% 100%;
     --foreground: 220 67% 13%;
@@ -1302,7 +1520,6 @@ html.dark .admin-brand:has(.adm-night) .adm-hero.group:hover .adm-arrow {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  /* `html .admin-dashboard`: outranks the light glass's white edge (also !important) */
   html .admin-dashboard .adm-report .adm-glass,
   html .admin-dashboard .adm-report .adm-tile {
     background-color: #fff !important;
@@ -1311,23 +1528,36 @@ html.dark .admin-brand:has(.adm-night) .adm-hero.group:hover .adm-arrow {
     box-shadow: none !important;
     border-color: hsl(var(--border)) !important;
   }
-  /* Dark mode's forced dark edges, and Bootstrap's gold .text-primary (both
-     !important), would print black lines and gold icons */
   html.dark .admin-dashboard .adm-report * {
     border-color: hsl(var(--border)) !important;
   }
   html .admin-dashboard .adm-report .text-primary {
     color: hsl(var(--primary)) !important;
   }
+  html.dark .admin-brand:has(.adm-night) .adm-report {
+    --night-gold: linear-gradient(135deg, #0b1a37 0%, #1d3a6e 55%, #2b4a8c 100%);
+    --night-gold-ink: #0b1a37;
+    --night-ink: #fff;
+    --night-line: hsl(var(--border));
+  }
+  html.dark .admin-brand:has(.adm-night) .adm-report .adm-glass h2::before {
+    background: #0b1a37;
+  }
+  html.dark .admin-brand:has(.adm-night) .adm-report .adm-track > div {
+    background-image: linear-gradient(90deg, #0b1a37, #13305a);
+  }
+  html.dark .admin-brand:has(.adm-night) .adm-report .text-emerald-600 {
+    color: #059669;
+  }
+  html.dark .admin-brand:has(.adm-night) .adm-report .text-amber-600 {
+    color: #d97706;
+  }
 }
 
-/* Tailwind preflight sets --tw-ring-offset-color: #fff globally.
-   In dark mode match it to the background so ring offsets are invisible. */
 html.dark * {
   --tw-ring-offset-color: hsl(var(--background));
 }
 
-/* Pure-CSS marquee — immune to tab-switch pauses and duplicate Swiper init */
 .marquee-track {
   display: flex;
   overflow: hidden;

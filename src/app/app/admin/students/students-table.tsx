@@ -592,7 +592,8 @@ function AddStudentModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/40 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl border border-border bg-card shadow-2xl">
+      {/* adm-modal: white fields in the light admin (globals.css) */}
+      <div className="adm-modal w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl border border-border bg-card shadow-2xl">
         <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-card z-10">
           <div>
             <h2 className="text-lg font-bold">Add Student</h2>
@@ -846,7 +847,7 @@ function EditStudentModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/40 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl border border-border bg-card shadow-2xl">
+      <div className="adm-modal w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl border border-border bg-card shadow-2xl">
         <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-card z-10">
           <div>
             <h2 className="text-lg font-bold">Edit Student</h2>

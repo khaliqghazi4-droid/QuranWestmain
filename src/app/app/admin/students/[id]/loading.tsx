@@ -7,7 +7,8 @@ import { Bone, SkeletonCard } from "@/components/dashboard/skeleton";
 // beside About; Course progress beside Weekly classes; then Attendance
 export default function StudentLoading() {
   return (
-    <div className="space-y-[20px]">
+    // adm-night: the page's black-and-gold dark mode, also while it loads
+    <div className="adm-night space-y-[20px]">
       <div className="flex items-center justify-between gap-[12px]">
         <span className="adm-glass inline-flex items-center gap-[8px] rounded-full border-[1px] border-border bg-card px-[14px] py-[7px] text-[13px] font-semibold leading-[18px]">
           <ArrowLeft className="h-4 w-4" /> Back to Students

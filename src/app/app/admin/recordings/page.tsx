@@ -81,7 +81,8 @@ export const revalidate = 600;
 
 export default function AdminRecordingsPage() {
   return (
-    <div className="space-y-6">
+    // adm-night: the black-and-gold dark mode (globals.css), page by page
+    <div className="adm-night space-y-6">
       <RecordingsHeader />
       <Suspense fallback={<RecordingsShell />}>
         <RecordingsData />

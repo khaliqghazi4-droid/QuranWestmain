@@ -20,8 +20,9 @@ export default function AdminMessages({
   searchParams: { with?: string };
 }) {
   return (
-    // Fill <main>'s content box exactly so only the lists scroll, not the page
-    <div className="h-full min-h-[420px]">
+    // Fill <main>'s content box exactly so only the lists scroll, not the page.
+    // adm-night: the black-and-gold dark mode (globals.css), page by page
+    <div className="adm-night h-full min-h-[420px]">
       <Suspense fallback={<MessagesShell />}>
         <MessagesData searchParams={searchParams} />
       </Suspense>

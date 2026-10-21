@@ -40,9 +40,12 @@ export const dynamic = "force-dynamic";
 
 export default function AdminCoursesPage() {
   return (
-    <Suspense fallback={<CoursesShell />}>
-      <CoursesData />
-    </Suspense>
+    // adm-night: the black-and-gold dark mode (globals.css), page by page
+    <div className="adm-night">
+      <Suspense fallback={<CoursesShell />}>
+        <CoursesData />
+      </Suspense>
+    </div>
   );
 }
 

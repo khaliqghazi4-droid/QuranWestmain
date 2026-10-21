@@ -195,7 +195,7 @@ function EnrollmentRow({ e }: { e: WebsiteEnrollment }) {
       {/* For */}
       <td className="px-4 py-3">
         <span
-          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+          className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold ${
             isKid
               ? "bg-[hsl(var(--gold)/0.15)] text-[hsl(var(--gold))]"
               : "bg-primary/10 text-primary"

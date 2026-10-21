@@ -14,7 +14,8 @@ export const dynamic = "force-dynamic";
 // ClassesBoard in classes-board.tsx.
 export default function AdminClassesPage() {
   return (
-    <div className="space-y-6">
+    // adm-night: the black-and-gold dark mode (globals.css), page by page
+    <div className="adm-night space-y-6">
       <ClassesHeader />
       <Suspense fallback={<ClassesShell />}>
         <ClassesData />

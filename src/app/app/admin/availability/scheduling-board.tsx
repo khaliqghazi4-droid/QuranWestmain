@@ -455,7 +455,7 @@ function BookingModal({
       <div className="flex min-h-full items-start justify-center p-4">
         <div
           onClick={(ev) => ev.stopPropagation()}
-          className="w-full max-w-4xl rounded-3xl border border-border bg-card shadow-2xl my-4"
+          className="adm-modal w-full max-w-4xl rounded-3xl border border-border bg-card shadow-2xl my-4"
         >
           {/* Header */}
           {/* Same header as the Student's available times pop-up: navy icon
@@ -641,6 +641,7 @@ function BookingModal({
                         teacher={teacher}
                         studentName={enrollment.student.name}
                         matchingOnly={matchingOnly}
+                        onShowAll={() => setShowAllTeacherSlots(true)}
                         onPick={(dayOfWeek, startTime) =>
                           setPending({
                             teacherId: teacher.id,
@@ -685,12 +686,15 @@ function TeacherSlotGrid({
   studentName,
   matchingOnly,
   onPick,
+  onShowAll,
 }: {
   teacher: TeacherOption;
   studentName: string;
   // Only times that suit both the student and the teacher are bookable
   matchingOnly: boolean;
   onPick: (dayOfWeek: number, startTime: string) => void;
+  // Turns off matchingOnly, from the note under the grid
+  onShowAll: () => void;
 }) {
   // Every day carries the same row times
   const times = teacher.days[0]?.slots.map((s) => s.time) ?? [];
@@ -811,6 +815,18 @@ function TeacherSlotGrid({
           )}
         </tbody>
       </table>
+      {/* Says what the filter hides: without it the short grid looked cut off */}
+      {matchingOnly && visibleTimes.length > 0 && visibleTimes.length < times.length && (
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
+          <span>
+            Only the times {studentName} and {teacher.name} are both free.{" "}
+            {times.length - visibleTimes.length} more of {teacher.name}&apos;s times are hidden.
+          </span>
+          <button type="button" onClick={onShowAll} className="font-semibold text-primary hover:underline">
+            Show all {times.length} times
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -852,9 +868,10 @@ function ConfirmBookingDialog({
     },
   ];
 
-  // Portal to <body>: the booking modal's backdrop-blur would otherwise become the
-  // containing block for this fixed overlay and scroll it out of view. React events
-  // still bubble to the booking modal card, which stops them there.
+  // Portal out of the booking modal: its backdrop-blur would otherwise become the
+  // containing block for this fixed overlay and scroll it out of view. Into the
+  // dashboard shell, not <body>, so the admin colours (.admin-brand) still apply.
+  // React events still bubble to the booking modal card, which stops them there.
   return createPortal(
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-foreground/40 backdrop-blur-sm"
@@ -864,7 +881,7 @@ function ConfirmBookingDialog({
     >
       <div
         onClick={(ev) => ev.stopPropagation()}
-        className="w-full max-w-md rounded-3xl border border-border bg-card shadow-2xl"
+        className="adm-modal w-full max-w-md rounded-3xl border border-border bg-card shadow-2xl"
       >
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h2 className="text-base font-bold inline-flex items-center gap-2">
@@ -926,6 +943,6 @@ function ConfirmBookingDialog({
         </div>
       </div>
     </div>,
-    document.body
+    document.querySelector(".admin-dashboard") ?? document.body
   );
 }

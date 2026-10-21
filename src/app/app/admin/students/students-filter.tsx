@@ -129,7 +129,8 @@ export function StudentsFilterMenu({
         <div
           role="dialog"
           aria-label="Filter students"
-          className="absolute left-0 top-full z-40 mt-2 w-[min(22rem,calc(100vw-4rem))] rounded-2xl border border-border bg-card shadow-xl"
+          // adm-modal: white fields in the light admin (globals.css)
+          className="adm-modal absolute left-0 top-full z-40 mt-2 w-[min(22rem,calc(100vw-4rem))] rounded-2xl border border-border bg-card shadow-xl"
         >
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <span className="text-sm font-bold">Filter students</span>

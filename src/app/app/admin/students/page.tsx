@@ -11,7 +11,8 @@ export default function AdminStudentsPage({
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
   return (
-    <div className="space-y-6">
+    // adm-night: the black-and-gold dark mode (globals.css), page by page
+    <div className="adm-night space-y-6">
       <StudentsHeader />
       <Suspense fallback={<StudentsShell />}>
         <StudentsData searchParams={searchParams} />

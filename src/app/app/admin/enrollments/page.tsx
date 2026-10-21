@@ -11,7 +11,8 @@ export const dynamic = "force-dynamic";
 
 export default function AdminEnrollmentsPage() {
   return (
-    <div className="space-y-6">
+    // adm-night: the black-and-gold dark mode (globals.css), page by page
+    <div className="adm-night space-y-6">
       <EnrollmentsHeader />
       <Suspense fallback={<EnrollmentsShell />}>
         <EnrollmentsData />

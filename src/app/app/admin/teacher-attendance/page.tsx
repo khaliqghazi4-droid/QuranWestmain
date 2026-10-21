@@ -76,7 +76,8 @@ export default function AdminTeacherAttendancePage({
 }) {
   const period = parsePeriod(searchParams, pktDayMidnightUTC());
   return (
-    <div className="space-y-6">
+    // adm-night: the black-and-gold dark mode (globals.css), page by page
+    <div className="adm-night space-y-6">
       <AttendanceHeader />
       <PeriodPicker
         view={period.view}

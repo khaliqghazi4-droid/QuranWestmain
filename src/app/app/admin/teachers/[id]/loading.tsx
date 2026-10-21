@@ -7,7 +7,8 @@ import { Bone, SkeletonCard, SkeletonLabel } from "@/components/dashboard/skelet
 // Courses, Weekly classes and Documents in one row
 export default function TeacherLoading() {
   return (
-    <div className="space-y-[20px]">
+    // adm-night: the page's black-and-gold dark mode, also while it loads
+    <div className="adm-night space-y-[20px]">
       <span className="adm-glass inline-flex items-center gap-[8px] rounded-full border-[1px] border-border bg-card px-[14px] py-[7px] text-[13px] font-semibold leading-[18px]">
         <ArrowLeft className="h-4 w-4" /> Back to Teachers
       </span>

@@ -131,7 +131,8 @@ export default async function AdminTeacherDetailPage({
   };
 
   return (
-    <div className="space-y-[20px]">
+    // adm-night: the black-and-gold dark mode (globals.css), page by page
+    <div className="adm-night space-y-[20px]">
       <Link
         href="/app/admin/teachers"
         // a glass pill: it sits straight on the background video

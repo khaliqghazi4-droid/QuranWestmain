@@ -57,7 +57,7 @@ function statusOf(s: Student): Exclude<Status, "all"> | null {
   return s.avgProgress === 0 ? "not-started" : "active";
 }
 
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+const plural = (n: number, word: string, words = `${word}s`) => `${n} ${n === 1 ? word : words}`;
 
 export function ProgressReports({ students, stats }: { students: Student[]; stats: Stats }) {
   const [query, setQuery] = React.useState("");
@@ -195,7 +195,7 @@ export function ProgressReports({ students, stats }: { students: Student[]; stat
       <div>
         <p className="text-[14px] font-bold leading-[20px] tabular-nums">{s.attendancePct}%</p>
         <p className="whitespace-nowrap text-[11.5px] leading-[16px] text-muted-foreground">
-          of {plural(s.classesMarked, "class")}
+          of {plural(s.classesMarked, "class", "classes")}
         </p>
       </div>
     );

@@ -96,21 +96,23 @@ export function LoginCredentialsModal({
   return (
     // !m-0: callers render this inside space-y-* containers, whose child margin would offset the overlay
     <div className="fixed inset-0 z-50 !m-0 flex items-center justify-center p-4 bg-foreground/40 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-sm rounded-2xl border border-border bg-card shadow-2xl">
-        <div className="bg-gradient-to-br from-emerald-500 to-teal-500 px-5 py-4 text-white rounded-t-2xl relative">
+      {/* adm-modal / adm-cover: the admin's pop-up look, navy in light mode and
+          gold in the dark one (globals.css), as on the Courses pop-ups */}
+      <div className="adm-modal w-full max-w-sm rounded-2xl border border-border bg-card shadow-2xl">
+        <div className="adm-cover relative overflow-hidden rounded-t-2xl bg-gradient-to-br from-primary to-accent px-5 py-4 text-primary-foreground">
           <button
             onClick={onClose}
-            className="absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-full bg-white/15 backdrop-blur-md hover:bg-white/25"
+            className="absolute right-3 top-3 z-[1] grid h-7 w-7 place-items-center rounded-full bg-primary-foreground/10 backdrop-blur-md hover:bg-primary-foreground/20"
           >
             <X className="h-3.5 w-3.5" />
           </button>
-          <div className="flex items-center gap-2.5 mb-1">
-            <div className="grid h-8 w-8 place-items-center rounded-full bg-white/20 backdrop-blur-md">
+          <div className="relative z-[1] mb-1 flex items-center gap-2.5">
+            <div className="grid h-8 w-8 place-items-center rounded-full bg-primary-foreground/15 backdrop-blur-md">
               <KeyRound className="h-4 w-4" />
             </div>
             <h2 className="text-base font-bold">Login Credentials</h2>
           </div>
-          <p className="text-xs text-white/80">
+          <p className="relative z-[1] text-xs text-primary-foreground/80">
             Share with <span className="font-semibold">{target.name}</span>
           </p>
         </div>

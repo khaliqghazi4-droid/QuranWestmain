@@ -40,7 +40,8 @@ export default async function StudentReportPage({
   }));
 
   return (
-    <div className="space-y-[20px]">
+    // adm-night: the black-and-gold dark mode (globals.css), page by page
+    <div className="adm-night space-y-[20px]">
       <div className="flex items-center justify-between gap-[12px] print:hidden">
         <Link
           href="/app/admin/students"

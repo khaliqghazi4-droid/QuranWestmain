@@ -607,7 +607,8 @@ function AssignCoursesModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/40 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-border bg-card shadow-2xl">
+      {/* adm-modal: white rows in the light admin (globals.css) */}
+      <div className="adm-modal w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-border bg-card shadow-2xl">
         <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-card z-10">
           <div className="flex items-center gap-3">
             <Avatar name={teacher.name} src={teacher.image} size={40} />
@@ -799,7 +800,8 @@ function InviteTeacherModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/40 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl border border-border bg-card shadow-2xl">
+      {/* adm-modal: white fields in the light admin (globals.css) */}
+      <div className="adm-modal w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl border border-border bg-card shadow-2xl">
         <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-card">
           <h2 className="text-lg font-bold">Invite a Teacher</h2>
           <button onClick={onClose} className="grid h-9 w-9 place-items-center rounded-full hover:bg-muted">

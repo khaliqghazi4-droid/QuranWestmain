@@ -15,6 +15,12 @@ const DAY_SLOTS = Array.from({ length: 48 }, (_, i) =>
   `${String(Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`
 );
 
+// Minutes since 4 AM, the end of the night shift: "04:00" → 0, "03:30" → 1410
+function academyMinute(hhmm: string) {
+  const [h, m] = hhmm.split(":").map(Number);
+  return (h * 60 + m - 4 * 60 + 24 * 60) % (24 * 60);
+}
+
 // GET /api/enrollments/[id]/booking-options
 // Returns the course's teachers, each teacher's 30-min slots (from their own
 // available hours, else their shift) with status: available / booked /
@@ -115,8 +121,12 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
         ? DAY_SLOTS.filter((time) => [0, 1, 2, 3, 4, 5, 6].some((d) => isAvailable(d, time)))
         : shiftSlots;
     const extraTimes = bookedTimes.filter((time) => !baseTimes.includes(time));
-    const slotTimes = [...baseTimes, ...Array.from(new Set(extraTimes)).sort()];
+    const slotTimes = [...baseTimes, ...Array.from(new Set(extraTimes))];
+    // Own hours: by the clock. A shift: through the academy's day, which ends
+    // with the night shift at 4 AM, so a 5 PM class sits above the 9 PM–4 AM
+    // night rows instead of after them
     if (source === "availability") slotTimes.sort();
+    else slotTimes.sort((a, b) => academyMinute(a) - academyMinute(b));
 
     // For each weekday (0-6) x slot time, build slot status
     const days = [0, 1, 2, 3, 4, 5, 6].map((day) => {
