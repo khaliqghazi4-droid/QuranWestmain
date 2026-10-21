@@ -1,8 +1,8 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { PageHeader } from "@/components/dashboard/page-header";
 import { ProfileEditor } from "@/components/profile/profile-editor";
+import { SettingsHeader } from "./shell";
 import { Settings, Mail, Bell, CreditCard, Shield, Globe } from "lucide-react";
 
 const sections = [
@@ -36,10 +36,7 @@ export default async function AdminSettings() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Settings"
-        description="Configure your academy preferences and integrations"
-      />
+      <SettingsHeader />
 
       {me && (
         <section className="space-y-3">
@@ -54,7 +51,7 @@ export default async function AdminSettings() {
             key={s.title}
             className="adm-glass group text-left rounded-2xl border border-border bg-card p-6 hover:border-primary/40 hover:shadow-lg hover:-translate-y-0.5 transition-all"
           >
-            <div className="grid h-12 w-12 place-items-center rounded-xl bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-md mb-4 group-hover:scale-110 transition-transform">
+            <div className="adm-icon grid h-12 w-12 place-items-center rounded-xl bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-md mb-4 group-hover:scale-110 transition-transform">
               <s.icon className="h-5 w-5" />
             </div>
             <h3 className="text-sm font-bold group-hover:text-primary transition-colors">

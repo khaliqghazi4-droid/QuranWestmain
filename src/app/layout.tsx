@@ -5,6 +5,7 @@ import Script from "next/script";
 import { siteConfig } from "@/lib/siteConfig";
 import DeferredCSS from "@/components/DeferredCSS";
 import WhatsappButton from "@/components/WhatsappButton";
+import HideOnAdmin from "@/components/HideOnAdmin";
 import ScrollToTopButton from "@/components/ScrollToTopButton";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AuthSessionProvider } from "@/components/providers/session-provider";
@@ -163,7 +164,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             disableTransitionOnChange={false}
           >
             {children}
-            <WhatsappButton />
+            <HideOnAdmin>
+              <WhatsappButton />
+            </HideOnAdmin>
             <ScrollToTopButton />
             <DeferredCSS />
           </ThemeProvider>

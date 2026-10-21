@@ -243,7 +243,7 @@ export function HeaderSearch({ role }: { role: Role }) {
                           {s.avatarName ? (
                             <Avatar name={s.avatarName} size={28} className="border" />
                           ) : (
-                            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                            <span className="adm-icon grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
                               <Icon className="h-3.5 w-3.5" />
                             </span>
                           )}

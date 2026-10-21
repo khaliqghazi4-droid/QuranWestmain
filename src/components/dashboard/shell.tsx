@@ -4,7 +4,9 @@ import * as React from "react";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { DashboardHeader } from "@/components/dashboard/header";
-import { WaveMesh } from "@/components/dashboard/wave-mesh";
+// Earlier light-mode backdrops, kept to swap back: BrandPattern
+// (brand-pattern.tsx), StarLattice (star-lattice.tsx) and WaveMesh (wave-mesh.tsx)
+import { VideoBackdrop } from "@/components/dashboard/video-backdrop";
 import type { Role } from "@/lib/nav-config";
 import { cn } from "@/lib/utils";
 
@@ -46,8 +48,8 @@ export function DashboardShell({
   return (
     // admin-brand: the website's navy, gold and cream for the admin, light mode only (globals.css)
     <div className={cn("admin-dashboard h-screen overflow-hidden flex bg-background", role === "admin" && "admin-brand")}>
-      {/* Admin, light mode: moving wave lines behind everything */}
-      {role === "admin" && <WaveMesh />}
+      {/* Admin, both themes: a faint, slowed-down video of the Quran on its rehal behind everything */}
+      {role === "admin" && <VideoBackdrop />}
       <Sidebar
         role={role}
         open={sidebarOpen}

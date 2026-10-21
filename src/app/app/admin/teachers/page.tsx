@@ -1,9 +1,9 @@
 ﻿﻿import { Suspense } from "react";
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { PageHeader } from "@/components/dashboard/page-header";
 import { TeachersGrid } from "./teachers-grid";
 import { MOCK_TEACHERS_GRID, MOCK_TEACHERS_ALL_COURSES } from "../_mock-data";
+import { TeachersHeader, TeachersShell } from "./shell";
 
 const getCachedTeachersData = unstable_cache(
   async () => {
@@ -63,7 +63,7 @@ export const dynamic = "force-dynamic";
 export default function AdminTeachersPage() {
   return (
     <div className="space-y-6">
-      <PageHeader title="Teachers Management" description="Manage all teacher accounts" />
+      <TeachersHeader />
       <Suspense fallback={<TeachersShell />}>
         <TeachersData />
       </Suspense>
@@ -90,6 +90,7 @@ async function TeachersData() {
       id: t.id,
       name: t.name,
       email: t.email,
+      image: t.image ?? null,
       phone: t.phone ?? null,
       loginPassword: t.loginPassword ?? null,
       country: t.country,
@@ -105,7 +106,7 @@ async function TeachersData() {
   });
 
   const displayTeachers = isMock
-    ? MOCK_TEACHERS_GRID.map((t) => ({ ...t, phone: null, loginPassword: null }))
+    ? MOCK_TEACHERS_GRID.map((t) => ({ ...t, image: null, phone: null, loginPassword: null }))
     : mappedTeachers;
   const displayCourses = isMock
     ? MOCK_TEACHERS_ALL_COURSES
@@ -120,27 +121,5 @@ async function TeachersData() {
       )}
       <TeachersGrid initialTeachers={displayTeachers} allCourses={displayCourses} />
     </>
-  );
-}
-
-function TeachersShell() {
-  return (
-    <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="rounded-xl border border-border bg-card p-4 space-y-3">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-muted/30 border border-border" />
-            <div className="flex-1 space-y-1">
-              <div className="text-sm font-medium text-muted-foreground/40">—</div>
-              <div className="text-xs text-muted-foreground/30">—</div>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <span className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground/40">— courses</span>
-            <span className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground/40">— students</span>
-          </div>
-        </div>
-      ))}
-    </div>
   );
 }

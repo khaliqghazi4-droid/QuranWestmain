@@ -10,6 +10,7 @@ import {
   type ChatMessage,
 } from "@/lib/chat-message";
 import { AlertCircle } from "lucide-react";
+import { MessagesShell } from "./shell";
 
 export const dynamic = "force-dynamic";
 
@@ -37,13 +38,17 @@ async function MessagesData({ searchParams }: { searchParams: { with?: string } 
     partnerId: string;
     partnerName: string;
     partnerRole: string;
+    partnerImage: string | null;
     lastMessage: string;
     lastAt: string;
     unreadCount: number;
+    // the last message was the admin's, and whether the other side has read it
+    lastFromMe: boolean;
+    lastRead: boolean;
   };
   let conversations: ConversationEntry[] = [];
   let activeThread: {
-    partner: { id: string; name: string; role: string };
+    partner: { id: string; name: string; role: string; image: string | null };
     messages: ChatMessage[];
   } | null = null;
   let fetchError: string | null = null;
@@ -64,14 +69,14 @@ async function MessagesData({ searchParams }: { searchParams: { with?: string } 
           read: true,
           deletedAt: true,
           createdAt: true,
-          sender: { select: { id: true, name: true, role: true } },
-          receiver: { select: { id: true, name: true, role: true } },
+          sender: { select: { id: true, name: true, role: true, image: true } },
+          receiver: { select: { id: true, name: true, role: true, image: true } },
         },
       }),
       activeId
         ? prisma.user.findUnique({
             where: { id: activeId },
-            select: { id: true, name: true, role: true },
+            select: { id: true, name: true, role: true, image: true },
           })
         : null,
       activeId
@@ -109,9 +114,12 @@ async function MessagesData({ searchParams }: { searchParams: { with?: string } 
           partnerId: partner.id,
           partnerName: partner.name,
           partnerRole: partner.role,
+          partnerImage: partner.image,
           lastMessage: messagePreview(m),
           lastAt: m.createdAt.toISOString(),
           unreadCount: unread,
+          lastFromMe: m.senderId === me,
+          lastRead: m.read,
         });
       }
     }
@@ -148,36 +156,5 @@ async function MessagesData({ searchParams }: { searchParams: { with?: string } 
       conversations={conversations}
       activeThread={activeThread}
     />
-  );
-}
-
-function MessagesShell() {
-  return (
-    <div className="h-full rounded-2xl border border-border bg-card overflow-hidden">
-      <div className="grid h-full md:grid-cols-[320px_1fr]">
-        {/* Thread list */}
-        <div className="border-r border-border p-3 space-y-2">
-          <div className="h-8 rounded-lg bg-muted/20 border border-border mb-3" />
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-3 p-2 rounded-lg">
-              <div className="h-9 w-9 rounded-full bg-muted/30 border border-border shrink-0" />
-              <div className="flex-1 space-y-1">
-                <div className="text-xs font-medium text-muted-foreground/40">—</div>
-                <div className="text-[10px] text-muted-foreground/30">—</div>
-              </div>
-            </div>
-          ))}
-        </div>
-        {/* Chat area */}
-        <div className="flex flex-col">
-          <div className="h-12 border-b border-border bg-muted/10 flex items-center px-4">
-            <span className="text-xs text-muted-foreground/40">Select a conversation</span>
-          </div>
-          <div className="flex-1 flex items-center justify-center">
-            <span className="text-xs text-muted-foreground/30">—</span>
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }

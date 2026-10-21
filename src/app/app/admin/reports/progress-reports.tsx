@@ -1,444 +1,358 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import {
   Search,
-  Filter,
+  Download,
+  FileText,
   Users,
   TrendingUp,
-  Trophy,
   ClipboardCheck,
-  BookOpen,
-  Clock,
-  Download,
-  ChevronDown,
-  ChevronUp,
-  GraduationCap,
-  CheckCircle2,
-  XCircle,
-  Calendar,
-  ArrowUpDown,
-  FileText,
+  Trophy,
+  ArrowUp,
+  ArrowDown,
+  ChevronsUpDown,
 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
+import { FilterSelect } from "@/components/admin/filter-select";
+import { StatTiles } from "@/components/admin/stat-tiles";
 import { StudentReportModal } from "@/components/admin/student-report-modal";
+import { downloadCsv } from "@/lib/csv";
 
 type Enrollment = {
   id: string;
   courseId: string;
   courseName: string;
-  duration: string | null;
   teacherName: string | null;
   progress: number;
-  status: string;
-  startedAt: string;
 };
 
 type Student = {
   id: string;
   name: string;
   email: string;
-  country: string | null;
-  createdAt: string;
+  image: string | null;
   avgProgress: number;
+  // share of marked classes attended; null until a teacher marks one
   attendancePct: number | null;
-  classesAttended: number;
+  classesMarked: number;
   lessonsCompleted: number;
   enrollments: Enrollment[];
 };
 
-type Course = { id: string; name: string };
-
 type Stats = {
-  totalStudents: number;
-  totalEnrollments: number;
+  students: number;
   avgProgress: number;
-  completedCount: number;
-  avgAttendance: number;
+  attendancePct: number | null;
+  completed: number;
 };
 
-type SortBy = "name" | "progress" | "joined" | "courses";
+type Status = "all" | "active" | "not-started" | "completed";
+type SortKey = "name" | "attendance" | "progress";
 
-export function ProgressReports({
-  students,
-  courses,
-  stats,
-}: {
-  students: Student[];
-  courses: Course[];
-  stats: Stats;
-}) {
+// Where a student stands across their courses (null: not enrolled)
+function statusOf(s: Student): Exclude<Status, "all"> | null {
+  if (s.enrollments.length === 0) return null;
+  if (s.enrollments.every((e) => e.progress >= 100)) return "completed";
+  return s.avgProgress === 0 ? "not-started" : "active";
+}
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+export function ProgressReports({ students, stats }: { students: Student[]; stats: Stats }) {
   const [query, setQuery] = React.useState("");
-  const [courseFilter, setCourseFilter] = React.useState("all");
-  const [statusFilter, setStatusFilter] = React.useState<"all" | "completed" | "active" | "no-progress">("all");
-  const [sortBy, setSortBy] = React.useState<SortBy>("joined");
-  const [sortDesc, setSortDesc] = React.useState(true);
-  const [expandedId, setExpandedId] = React.useState<string | null>(null);
-  const [reportModalId, setReportModalId] = React.useState<string | null>(null);
+  const [course, setCourse] = React.useState("all");
+  const [status, setStatus] = React.useState<Status>("all");
+  const [sort, setSort] = React.useState<{ key: SortKey; desc: boolean }>({ key: "progress", desc: true });
+  const [reportFor, setReportFor] = React.useState<string | null>(null);
 
-  const filtered = React.useMemo(() => {
-    let list = students.filter((s) => {
-      const q = query.toLowerCase();
-      const matchesQuery =
-        s.name.toLowerCase().includes(q) ||
-        s.email.toLowerCase().includes(q) ||
-        (s.country?.toLowerCase().includes(q) ?? false);
-
-      const matchesCourse =
-        courseFilter === "all" ||
-        s.enrollments.some((e) => e.courseId === courseFilter);
-
-      const hasAny = s.enrollments.length > 0;
-      const allCompleted = hasAny && s.enrollments.every((e) => e.progress >= 100);
-      const someActive = hasAny && s.enrollments.some((e) => e.progress > 0 && e.progress < 100);
-
-      const matchesStatus =
-        statusFilter === "all" ||
-        (statusFilter === "completed" && allCompleted) ||
-        (statusFilter === "active" && someActive) ||
-        (statusFilter === "no-progress" && hasAny && s.avgProgress === 0);
-
-      return matchesQuery && matchesCourse && matchesStatus;
-    });
-
-    // Sort
-    list = [...list].sort((a, b) => {
-      let cmp = 0;
-      switch (sortBy) {
-        case "name":
-          cmp = a.name.localeCompare(b.name);
-          break;
-        case "progress":
-          cmp = a.avgProgress - b.avgProgress;
-          break;
-        case "joined":
-          cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-          break;
-        case "courses":
-          cmp = a.enrollments.length - b.enrollments.length;
-          break;
+  // The courses students are actually in, with how many of them
+  const courseOptions = React.useMemo(() => {
+    const map = new Map<string, { value: string; label: string; count: number }>();
+    for (const s of students)
+      for (const e of s.enrollments) {
+        const o = map.get(e.courseId) ?? { value: e.courseId, label: e.courseName.trim(), count: 0 };
+        o.count++;
+        map.set(e.courseId, o);
       }
-      return sortDesc ? -cmp : cmp;
-    });
+    // no count on "All…": the footer has it, and both pills fit side by side on a phone
+    return [
+      { value: "all", label: "All courses" },
+      ...Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label)),
+    ];
+  }, [students]);
 
-    return list;
-  }, [students, query, courseFilter, statusFilter, sortBy, sortDesc]);
+  const statusOptions = React.useMemo(() => {
+    const count = (st: Status) => students.filter((s) => statusOf(s) === st).length;
+    return [
+      { value: "all" as Status, label: "Any status" },
+      { value: "active" as Status, label: "In progress", count: count("active") },
+      { value: "not-started" as Status, label: "Not started", count: count("not-started") },
+      { value: "completed" as Status, label: "Completed", count: count("completed") },
+    ];
+  }, [students]);
+
+  const q = query.trim().toLowerCase();
+  const filtered = students
+    .filter(
+      (s) =>
+        (course === "all" || s.enrollments.some((e) => e.courseId === course)) &&
+        (status === "all" || statusOf(s) === status) &&
+        (!q || s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q))
+    )
+    .sort((a, b) => {
+      const cmp =
+        sort.key === "name"
+          ? a.name.localeCompare(b.name)
+          : sort.key === "progress"
+            ? a.avgProgress - b.avgProgress
+            : (a.attendancePct ?? -1) - (b.attendancePct ?? -1);
+      return (sort.desc ? -cmp : cmp) || a.name.localeCompare(b.name);
+    });
 
   function exportCsv() {
-    const rows = [
-      ["Name", "Email", "Country", "Joined", "Courses", "Avg Progress %", "Attendance %", "Lessons Completed", "Classes Attended"],
-      ...filtered.map((s) => [
+    downloadCsv(
+      `student-progress-${new Date().toISOString().slice(0, 10)}.csv`,
+      ["Student", "Email", "Courses", "Progress %", "Lessons completed", "Attendance %", "Classes marked"],
+      filtered.map((s) => [
         s.name,
         s.email,
-        s.country ?? "",
-        new Date(s.createdAt).toLocaleDateString(),
-        s.enrollments.map((e) => `${e.courseName} (${e.progress}%)`).join("; "),
+        s.enrollments.map((e) => `${e.courseName.trim()} (${e.progress}%)`).join("; "),
         s.avgProgress,
-        s.attendancePct ?? "",
         s.lessonsCompleted,
-        s.classesAttended,
-      ]),
-    ];
-    const csv = rows
-      .map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
-      .join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `student-progress-${new Date().toISOString().split("T")[0]}.csv`;
-    link.click();
+        s.attendancePct ?? "",
+        s.classesMarked,
+      ])
+    );
   }
+
+  // A column heading that sorts by it; a second click flips the order
+  const sortHeader = (key: SortKey, label: string, className = "") => {
+    const active = sort.key === key;
+    const Icon = !active ? ChevronsUpDown : sort.desc ? ArrowDown : ArrowUp;
+    return (
+      <th
+        aria-sort={active ? (sort.desc ? "descending" : "ascending") : "none"}
+        className={`px-[12px] py-[12px] font-semibold ${className}`}
+      >
+        <button
+          onClick={() => setSort(active ? { key, desc: !sort.desc } : { key, desc: key !== "name" })}
+          className={`inline-flex items-center gap-[4px] uppercase tracking-[0.06em] transition-colors hover:text-foreground ${active ? "text-foreground" : ""}`}
+        >
+          {label}
+          <Icon className={`h-3 w-3 ${active ? "" : "opacity-[0.5]"}`} />
+        </button>
+      </th>
+    );
+  };
+
+  // Name and email, linking to the student's page
+  const identity = (s: Student) => (
+    <Link href={`/app/admin/students/${s.id}`} className="group flex min-w-0 items-center gap-[12px]">
+      <Avatar name={s.name} src={s.image} size={36} />
+      <div className="min-w-0">
+        {/* Sizes written out: Bootstrap's .text-sm/.text-xs have no line height */}
+        <p className="truncate text-[14.5px] font-semibold leading-[21px] transition-colors group-hover:text-primary">
+          {s.name}
+        </p>
+        <p className="truncate text-[12.5px] leading-[18px] text-muted-foreground">{s.email}</p>
+      </div>
+    </Link>
+  );
+
+  // Each course as a chip with its teacher beside it
+  const courseList = (s: Student) =>
+    s.enrollments.length === 0 ? (
+      <span className="text-[12.5px] italic leading-[18px] text-muted-foreground">Not enrolled</span>
+    ) : (
+      <div className="flex flex-col items-start gap-[6px]">
+        {s.enrollments.map((e) => (
+          <div key={e.id} className="flex min-w-0 max-w-full items-center gap-[8px]">
+            <span className="shrink-0 whitespace-nowrap rounded-full bg-primary/10 px-[10px] py-[2px] text-[11.5px] font-semibold leading-[18px] text-primary">
+              {e.courseName.trim()}
+            </span>
+            <span className="truncate text-[12px] leading-[18px] text-muted-foreground">
+              {e.teacherName ?? <span className="italic">No teacher</span>}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+
+  const attendance = (s: Student) =>
+    s.attendancePct === null ? (
+      <div>
+        <p className="text-[14px] font-semibold leading-[20px] text-muted-foreground">—</p>
+        <p className="whitespace-nowrap text-[11.5px] leading-[16px] text-muted-foreground">No classes marked</p>
+      </div>
+    ) : (
+      <div>
+        <p className="text-[14px] font-bold leading-[20px] tabular-nums">{s.attendancePct}%</p>
+        <p className="whitespace-nowrap text-[11.5px] leading-[16px] text-muted-foreground">
+          of {plural(s.classesMarked, "class")}
+        </p>
+      </div>
+    );
+
+  const progress = (s: Student) =>
+    s.enrollments.length === 0 ? (
+      <p className="text-[14px] font-semibold leading-[20px] text-muted-foreground">—</p>
+    ) : (
+      <div className="w-full min-w-[120px] max-w-[180px]">
+        <div className="flex items-baseline justify-between gap-[8px]">
+          <span className="text-[14px] font-bold leading-[20px] tabular-nums">{s.avgProgress}%</span>
+          <span className="whitespace-nowrap text-[11.5px] leading-[16px] text-muted-foreground">
+            {plural(s.lessonsCompleted, "lesson")}
+          </span>
+        </div>
+        <div className="adm-track mt-[6px] h-1.5 overflow-hidden rounded-full bg-muted">
+          <div className="h-full rounded-full bg-gradient-to-r from-primary to-accent" style={{ width: `${s.avgProgress}%` }} />
+        </div>
+      </div>
+    );
+
+  const reportButton = (s: Student, compact = false) => (
+    <button
+      onClick={() => setReportFor(s.id)}
+      title="Open the full, printable report"
+      aria-label={`Open ${s.name}'s full report`}
+      className="inline-flex shrink-0 items-center gap-[6px] rounded-full border-[1px] border-border bg-background/70 px-[12px] py-[6px] text-[12.5px] font-semibold leading-[17px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+    >
+      <FileText className="h-3.5 w-3.5" />
+      {!compact && "Report"}
+    </button>
+  );
 
   return (
     <div className="space-y-6">
-      {/* Top stat cards */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatCard icon={Users} label="Students" value={stats.totalStudents} color="from-primary to-accent" />
-        <StatCard icon={BookOpen} label="Total Enrollments" value={stats.totalEnrollments} color="from-emerald-500 to-teal-500" />
-        <StatCard icon={TrendingUp} label="Avg Progress" value={`${stats.avgProgress}%`} color="from-[hsl(var(--gold))] to-amber-500" />
-        <StatCard icon={Trophy} label="Completed" value={stats.completedCount} color="from-fuchsia-500 to-purple-500" />
-        <StatCard icon={ClipboardCheck} label="Avg Attendance" value={`${stats.avgAttendance}%`} color="from-blue-500 to-cyan-500" />
-      </div>
+      <StatTiles
+        stats={[
+          { icon: Users, label: "Students", value: String(stats.students) },
+          { icon: TrendingUp, label: "Average progress", value: `${stats.avgProgress}%` },
+          {
+            icon: ClipboardCheck,
+            label: "Attendance rate",
+            value: stats.attendancePct === null ? "—" : `${stats.attendancePct}%`,
+          },
+          { icon: Trophy, label: "Courses completed", value: String(stats.completed) },
+        ]}
+      />
 
-      {/* Filters */}
-      <div className="rounded-2xl border border-border bg-card p-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-primary/15 to-accent/15 text-primary shrink-0">
-            <Filter className="h-4 w-4" />
+      {/* One card: the toolbar, the table, a footer with the count. No
+          overflow-hidden: the filter menus open below the toolbar and can
+          run past the card's bottom when there are few rows. */}
+      <div className="adm-glass rounded-2xl border-[1px] border-border bg-card">
+        <div className="relative z-[5] flex flex-wrap items-center gap-[12px] border-b border-border px-[16px] py-[14px] sm:px-[20px]">
+          <div className="mr-auto min-w-0">
+            <h2 className="text-[15px] font-bold leading-[20px]">Student progress</h2>
+            <p className="text-[11.5px] leading-[16px] text-muted-foreground">
+              Lessons completed and classes attended
+            </p>
           </div>
-
-          <select
-            value={courseFilter}
-            onChange={(e) => setCourseFilter(e.target.value)}
-            className="rounded-full border border-border bg-background px-4 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          >
-            <option value="all">All Courses</option>
-            {courses.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-            className="rounded-full border border-border bg-background px-4 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          >
-            <option value="all">All Status</option>
-            <option value="completed">Completed All</option>
-            <option value="active">In Progress</option>
-            <option value="no-progress">Not Started</option>
-          </select>
-
-          <div className="flex items-center gap-1 rounded-full border border-border bg-background px-1">
-            <span className="px-3 text-xs text-muted-foreground">Sort:</span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortBy)}
-              className="bg-transparent text-sm focus:outline-none px-2 py-2"
-            >
-              <option value="joined">Joined Date</option>
-              <option value="name">Name</option>
-              <option value="progress">Progress</option>
-              <option value="courses">Courses Count</option>
-            </select>
-            <button
-              onClick={() => setSortDesc(!sortDesc)}
-              className="grid h-7 w-7 place-items-center rounded-full hover:bg-muted"
-              title={sortDesc ? "Descending" : "Ascending"}
-            >
-              <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
-            </button>
-          </div>
-
-          <div className="flex-1" />
-
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search student..."
-              className="w-full sm:w-56 rounded-full border border-border bg-background pl-10 pr-4 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
-
+          {/* Below lg: Export (an icon on phones) beside the title, the two
+              filters side by side, the search full width under them. lg:
+              everything on one row, Export last. */}
           <button
             onClick={exportCsv}
-            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-accent px-4 py-2 text-xs font-bold text-primary-foreground shadow-md hover:shadow-lg"
-            title="Export as CSV"
+            disabled={filtered.length === 0}
+            aria-label="Export CSV"
+            title="Download this list as a spreadsheet (CSV)"
+            className="inline-flex shrink-0 items-center gap-[6px] rounded-full border-[1px] border-border bg-background/70 px-[11px] py-[9px] text-[13px] font-semibold leading-[18px] transition-colors hover:border-primary/40 hover:text-primary disabled:opacity-50 sm:px-[14px] lg:order-last"
           >
-            <Download className="h-3.5 w-3.5" /> Export CSV
+            <Download className="h-4 w-4" />
+            <span className="hidden sm:inline">Export CSV</span>
           </button>
+          <div className="flex w-full flex-wrap items-center gap-[8px] lg:w-auto lg:flex-nowrap">
+            <FilterSelect label="Course" value={course} onChange={setCourse} options={courseOptions} />
+            <FilterSelect label="Status" value={status} onChange={setStatus} options={statusOptions} />
+            <div className="relative order-last w-full lg:order-none lg:w-56">
+              <Search className="pointer-events-none absolute left-[12px] top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search name or email"
+                className="w-full rounded-full border-[1px] border-border bg-background py-[8px] pl-[36px] pr-[16px] text-[13.5px] leading-[20px] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+          </div>
         </div>
 
-        <p className="mt-3 text-xs text-muted-foreground">
-          Showing {filtered.length} of {students.length} students
-        </p>
+        {filtered.length === 0 ? (
+          <div className="px-[24px] py-[52px] text-center">
+            <span className="adm-icon mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-primary/15 to-accent/15 text-primary">
+              <Users className="h-5 w-5" />
+            </span>
+            <p className="mt-[12px] text-[14px] font-semibold leading-[20px]">
+              {students.length === 0 ? "No students yet" : "No students match your filters"}
+            </p>
+            <p className="mt-[2px] text-[12.5px] leading-[18px] text-muted-foreground">
+              {students.length === 0
+                ? "Reports show here once students are added."
+                : "Try another course, status or name."}
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Tablets and up: a table. `adm-rows` gives the rows a little more
+                white than the glass card in light mode. */}
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full min-w-[700px]">
+                <thead>
+                  <tr className="whitespace-nowrap border-b border-border text-left text-[11px] text-muted-foreground">
+                    {sortHeader("name", "Student", "pl-[20px]")}
+                    <th className="px-[12px] py-[12px] font-semibold uppercase tracking-[0.06em]">Courses</th>
+                    {sortHeader("attendance", "Attendance")}
+                    {sortHeader("progress", "Progress")}
+                    <th className="py-[12px] pl-[12px] pr-[20px]">
+                      <span className="sr-only">Report</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="adm-rows divide-y divide-border">
+                  {filtered.map((s, i) => (
+                    <tr
+                      key={s.id}
+                      className="stagger-item align-middle transition-colors hover:bg-muted/30"
+                      style={{ animationDelay: `${Math.min(i * 30, 400)}ms` }}
+                    >
+                      <td className="max-w-[260px] py-[14px] pl-[20px] pr-[12px]">{identity(s)}</td>
+                      <td className="max-w-[280px] px-[12px] py-[14px]">{courseList(s)}</td>
+                      <td className="px-[12px] py-[14px]">{attendance(s)}</td>
+                      <td className="px-[12px] py-[14px]">{progress(s)}</td>
+                      <td className="py-[14px] pl-[12px] pr-[20px] text-right">{reportButton(s)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Phones: one block per student instead of a sideways-scrolling table */}
+            <ul className="adm-rows divide-y divide-border md:hidden">
+              {filtered.map((s) => (
+                <li key={s.id} className="space-y-[12px] px-[16px] py-[14px]">
+                  <div className="flex items-center justify-between gap-[12px]">
+                    {identity(s)}
+                    {reportButton(s, true)}
+                  </div>
+                  {courseList(s)}
+                  <div className="flex items-end gap-[20px]">
+                    <div className="shrink-0">{attendance(s)}</div>
+                    <div className="min-w-0 flex-1">{progress(s)}</div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+
+        <div className="border-t border-border px-[16px] py-[12px] text-[12px] leading-[17px] text-muted-foreground sm:px-[20px]">
+          Showing {filtered.length} of {plural(students.length, "student")}
+        </div>
       </div>
 
-      {/* Student cards */}
-      {filtered.length === 0 ? (
-        <div className="rounded-2xl border-2 border-dashed border-border bg-card/50 p-12 text-center">
-          <Users className="mx-auto h-12 w-12 text-muted-foreground/50" />
-          <p className="mt-4 text-sm text-muted-foreground">No students match your filters</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filtered.map((s, i) => {
-            const isOpen = expandedId === s.id;
-            return (
-              <div
-                key={s.id}
-                className="rounded-2xl border border-border bg-card overflow-hidden hover:border-primary/30 transition-all stagger-item"
-                style={{ animationDelay: `${Math.min(i * 30, 400)}ms` }}
-              >
-                <button
-                  onClick={() => setExpandedId(isOpen ? null : s.id)}
-                  className="w-full flex items-center gap-4 p-5 text-left hover:bg-muted/20 transition-colors"
-                >
-                  <Avatar name={s.name} size={48} style="micah" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-bold">{s.name}</p>
-                      <span className="text-[11px] text-muted-foreground">{s.email}</span>
-                      {s.country && (
-                        <span className="text-[11px] text-muted-foreground">· {s.country}</span>
-                      )}
-                    </div>
-                    <div className="mt-2 flex items-center gap-4 flex-wrap text-[11px] text-muted-foreground">
-                      <span className="inline-flex items-center gap-1">
-                        <BookOpen className="h-3 w-3" /> {s.enrollments.length}{" "}
-                        {s.enrollments.length === 1 ? "course" : "courses"}
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <GraduationCap className="h-3 w-3" /> {s.lessonsCompleted} lessons done
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <Calendar className="h-3 w-3" /> {s.classesAttended} classes
-                      </span>
-                      {s.attendancePct !== null && (
-                        <span className="inline-flex items-center gap-1 text-emerald-600 font-semibold">
-                          <ClipboardCheck className="h-3 w-3" /> {s.attendancePct}% attendance
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="hidden sm:block w-40 shrink-0">
-                    <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="text-muted-foreground">Progress</span>
-                      <span className={`font-bold ${
-                        s.avgProgress >= 100
-                          ? "text-emerald-600"
-                          : s.avgProgress === 0
-                          ? "text-muted-foreground"
-                          : "text-primary"
-                      }`}>
-                        {s.avgProgress}%
-                      </span>
-                    </div>
-                    <div className="h-2 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-700 ${
-                          s.avgProgress >= 100
-                            ? "bg-gradient-to-r from-emerald-500 to-teal-500"
-                            : "bg-gradient-to-r from-primary to-accent"
-                        }`}
-                        style={{ width: `${s.avgProgress}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  {isOpen ? (
-                    <ChevronUp className="h-5 w-5 text-muted-foreground shrink-0" />
-                  ) : (
-                    <ChevronDown className="h-5 w-5 text-muted-foreground shrink-0" />
-                  )}
-                </button>
-
-                {isOpen && (
-                  <div className="border-t border-border bg-background/40 p-5 space-y-4">
-                    <div className="flex justify-end">
-                      <button
-                        onClick={() => setReportModalId(s.id)}
-                        className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-accent px-4 py-2 text-xs font-bold text-primary-foreground shadow-md hover:shadow-lg transition-all"
-                      >
-                        <FileText className="h-3.5 w-3.5" /> View Full Report (Printable)
-                      </button>
-                    </div>
-                    {s.enrollments.length === 0 ? (
-                      <div className="text-center py-6">
-                        <XCircle className="mx-auto h-10 w-10 text-muted-foreground/30" />
-                        <p className="mt-3 text-sm text-muted-foreground">
-                          Not enrolled in any courses
-                        </p>
-                      </div>
-                    ) : (
-                      <>
-                        <p className="text-[11px] uppercase font-semibold text-muted-foreground">
-                          Courses & Progress
-                        </p>
-                        {s.enrollments.map((e) => (
-                          <div
-                            key={e.id}
-                            className="rounded-xl border border-border bg-card p-4"
-                          >
-                            <div className="flex items-start justify-between gap-4 flex-wrap">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <p className="text-sm font-bold">{e.courseName}</p>
-                                  {e.progress >= 100 && (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600">
-                                      <CheckCircle2 className="h-2.5 w-2.5" /> Completed
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="mt-1 flex items-center gap-3 flex-wrap text-[11px] text-muted-foreground">
-                                  {e.teacherName && (
-                                    <span className="inline-flex items-center gap-1">
-                                      <Users className="h-3 w-3" /> {e.teacherName}
-                                    </span>
-                                  )}
-                                  {e.duration && (
-                                    <span className="inline-flex items-center gap-1">
-                                      <Clock className="h-3 w-3" /> {e.duration}
-                                    </span>
-                                  )}
-                                  <span>
-                                    Started{" "}
-                                    {new Date(e.startedAt).toLocaleDateString("en-US", {
-                                      month: "short",
-                                      day: "numeric",
-                                      year: "numeric",
-                                    })}
-                                  </span>
-                                </div>
-                              </div>
-                              <p
-                                className={`text-2xl font-bold shrink-0 ${
-                                  e.progress >= 100
-                                    ? "text-emerald-600"
-                                    : e.progress === 0
-                                    ? "text-muted-foreground"
-                                    : "text-primary"
-                                }`}
-                              >
-                                {e.progress}%
-                              </p>
-                            </div>
-                            <div className="mt-3 h-2 rounded-full bg-muted overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all duration-700 ${
-                                  e.progress >= 100
-                                    ? "bg-gradient-to-r from-emerald-500 to-teal-500"
-                                    : "bg-gradient-to-r from-primary to-accent"
-                                }`}
-                                style={{ width: `${e.progress}%` }}
-                              />
-                            </div>
-                          </div>
-                        ))}
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {reportModalId && (
-        <StudentReportModal
-          studentId={reportModalId}
-          onClose={() => setReportModalId(null)}
-        />
-      )}
-    </div>
-  );
-}
-
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  color,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: number | string;
-  color: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-border bg-card p-5 hover:border-primary/40 hover:shadow-lg transition-all">
-      <div
-        className={`grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br ${color} text-primary-foreground shadow-md`}
-      >
-        <Icon className="h-5 w-5" />
-      </div>
-      <p className="mt-3 text-2xl font-bold">{value}</p>
-      <p className="text-xs text-muted-foreground">{label}</p>
+      {reportFor && <StudentReportModal studentId={reportFor} onClose={() => setReportFor(null)} />}
     </div>
   );
 }

@@ -3,11 +3,11 @@ import {
   Users,
   BookOpen,
   DollarSign,
-  AlertCircle,
   Inbox,
   CalendarCheck,
   Video,
   CalendarClock,
+  ArrowUpRight,
 } from "lucide-react";
 
 const glanceLabels = [
@@ -35,8 +35,13 @@ export default function AdminLoading() {
               key={label}
               className={`${i === 0 ? "adm-hero" : "adm-glass"} flex flex-col rounded-xl border border-border bg-card p-2.5`}
             >
-              <div className="adm-chip grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-primary/15 to-accent/15 text-primary">
-                <Icon className="h-3.5 w-3.5" />
+              <div className="flex items-start justify-between">
+                <div className="adm-icon adm-chip grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-primary/15 to-accent/15 text-primary">
+                  <Icon className="h-3.5 w-3.5" />
+                </div>
+                <span className="adm-arrow relative grid h-6 w-6 place-items-center rounded-full bg-muted text-muted-foreground">
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                </span>
               </div>
               <p className="mt-auto pt-2 text-base font-bold text-muted-foreground/40">—</p>
               <p className="text-[11px] text-muted-foreground">{label}</p>
@@ -46,7 +51,6 @@ export default function AdminLoading() {
         <div className="adm-glass rounded-xl border border-border bg-card p-3">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-bold">Quick Actions</h2>
-            <AlertCircle className="adm-accent-icon h-3.5 w-3.5 text-[hsl(var(--gold))]" />
           </div>
           <div className="space-y-2">
             {["📚 Add a new course", "👨‍🏫 Invite a teacher", "🎓 View all students"].map((t) => (
@@ -73,8 +77,8 @@ export default function AdminLoading() {
           <p className="mt-3 mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">At a glance</p>
           <div className="grid grid-cols-2 gap-2">
             {glanceLabels.map(({ icon: Icon, label }) => (
-              <div key={label} className="adm-tile flex items-center gap-2.5 rounded-lg border border-border bg-background p-2.5">
-                <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+              <div key={label} className="adm-tile relative flex items-center gap-2.5 rounded-lg border border-border bg-background p-2.5">
+                <div className="adm-icon grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
                   <Icon className="h-4 w-4" />
                 </div>
                 <div className="min-w-0">
@@ -82,6 +86,9 @@ export default function AdminLoading() {
                   <p className="truncate text-[11px] font-semibold">{label}</p>
                   <p className="text-[10px] text-muted-foreground/40">—</p>
                 </div>
+                <span className="adm-arrow absolute right-[8px] top-[8px] grid h-6 w-6 place-items-center rounded-full bg-muted text-muted-foreground">
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                </span>
               </div>
             ))}
           </div>

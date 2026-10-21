@@ -29,6 +29,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
+import { FilterSelect } from "@/components/admin/filter-select";
 import { addStudentHref } from "../enrollments/enrollments-list";
 import { LoginCredentialsModal } from "@/components/admin/login-credentials-modal";
 
@@ -90,38 +91,44 @@ export function TrialsList({ trials }: { trials: TrialSession[] }) {
   );
 
   const now = Date.now();
+  const inFilter = (t: TrialSession, f: typeof filter) => {
+    const ts = t.trialTime ? new Date(t.trialTime).getTime() : 0;
+    return (
+      f === "all" ||
+      (f === "upcoming" && ts >= now) ||
+      (f === "past" && ts < now) ||
+      (f === "needs-assign" && !t.assignedTeacherId && ts >= now)
+    );
+  };
   const filtered = trials.filter((t) => {
     const q = query.toLowerCase();
     const matchesQuery =
       t.fullName.toLowerCase().includes(q) ||
       t.email.toLowerCase().includes(q) ||
       t.course.toLowerCase().includes(q);
-    const ts = t.trialTime ? new Date(t.trialTime).getTime() : 0;
-    const matchesFilter =
-      filter === "all" ||
-      (filter === "upcoming" && ts >= now) ||
-      (filter === "past" && ts < now) ||
-      (filter === "needs-assign" && !t.assignedTeacherId && ts >= now);
-    return matchesQuery && matchesFilter;
+    return matchesQuery && inFilter(t, filter);
   });
+  const count = (f: typeof filter) => trials.filter((t) => inFilter(t, f)).length;
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-border bg-card p-4 flex flex-wrap items-center gap-3">
+      {/* relative z-[5]: the filter's menu opens over the cards below */}
+      <div className="relative z-[5] rounded-2xl border border-border bg-card p-4 flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2 shrink-0">
-          <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-primary/15 to-accent/15 text-primary">
+          <div className="adm-icon grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-primary/15 to-accent/15 text-primary">
             <Filter className="h-4 w-4" />
           </div>
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value as typeof filter)}
-            className="rounded-full border border-border bg-background px-4 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          >
-            <option value="upcoming">Upcoming</option>
-            <option value="needs-assign">Needs teacher</option>
-            <option value="past">Past</option>
-            <option value="all">All ({trials.length})</option>
-          </select>
+                    <FilterSelect
+                      label="Show"
+                      value={filter}
+                      onChange={setFilter}
+                      options={[
+                        { value: "upcoming", label: "Upcoming", count: count("upcoming") },
+                        { value: "needs-assign", label: "Needs teacher", count: count("needs-assign") },
+                        { value: "past", label: "Past", count: count("past") },
+                        { value: "all", label: "All", count: trials.length },
+                      ]}
+                    />
         </div>
         <div className="flex-1" />
         <div className="relative max-w-sm w-full sm:w-auto">

@@ -1,5 +1,5 @@
 ﻿﻿import { Suspense } from "react";
-import { PageHeader } from "@/components/dashboard/page-header";
+import { StudentsHeader, StudentsShell } from "./shell";
 import { StudentsTable } from "./students-table";
 import { getCachedStudentsData } from "../_caches";
 
@@ -12,7 +12,7 @@ export default function AdminStudentsPage({
 }) {
   return (
     <div className="space-y-6">
-      <PageHeader title="Students Management" description="Manage all student accounts" />
+      <StudentsHeader />
       <Suspense fallback={<StudentsShell />}>
         <StudentsData searchParams={searchParams} />
       </Suspense>
@@ -91,25 +91,5 @@ async function StudentsData({
 
   return (
     <StudentsTable initialStudents={displayStudents} allCourses={allCourses} prefill={prefill} />
-  );
-}
-
-function StudentsShell() {
-  const cols = ["Student", "Email", "Country", "Course", "Status", "Joined"];
-  return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
-      <div className="flex gap-3 px-4 py-3 border-b border-border bg-muted/20">
-        {cols.map((h) => (
-          <span key={h} className="text-xs font-medium text-muted-foreground flex-1">{h}</span>
-        ))}
-      </div>
-      {Array.from({ length: 7 }).map((_, i) => (
-        <div key={i} className="flex gap-3 px-4 py-3 border-b border-border last:border-0">
-          {cols.map((h) => (
-            <span key={h} className="text-xs text-muted-foreground/40 flex-1">—</span>
-          ))}
-        </div>
-      ))}
-    </div>
   );
 }

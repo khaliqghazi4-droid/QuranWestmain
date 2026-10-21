@@ -78,7 +78,8 @@ export function Sidebar({
           className={cn(
             "flex items-center justify-between gap-2 px-4 py-3 border-b border-border",
             collapsed && "px-[24px] lg:justify-center lg:px-2",
-            isAdmin && "py-[10px]"
+            // 6px + the 36px buttons: as tall as the header (h-12), so their bottom lines meet
+            isAdmin && "py-[6px] adm-sidebar-top"
           )}
         >
           <a

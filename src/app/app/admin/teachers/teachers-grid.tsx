@@ -7,7 +7,10 @@ import {
   Plus,
   UserX,
   Mail,
-  Award,
+  MapPin,
+  Sun,
+  Moon,
+  CalendarDays,
   Users,
   BookOpen,
   Loader2,
@@ -20,10 +23,9 @@ import {
   GraduationCap,
   Calendar,
   ChevronDown,
-  ChevronUp,
 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
-import { AvailabilityEditor } from "@/components/availability/availability-editor";
+import { AvailabilityDialog } from "@/components/availability/availability-editor";
 import { LoginCredentialsModal } from "@/components/admin/login-credentials-modal";
 
 type AvailabilitySlot = {
@@ -36,6 +38,8 @@ type Teacher = {
   id: string;
   name: string;
   email: string;
+  // their own uploaded photo, if any
+  image: string | null;
   phone: string | null;
   loginPassword: string | null;
   country: string | null;
@@ -62,6 +66,60 @@ type CourseOption = {
   assignedTeacherId: string | null;
   assignedTeacherName: string | null;
 };
+
+// "Sep 2026", in Pakistan time so the server and the browser agree
+function joined(iso: string) {
+  return new Date(iso).toLocaleDateString("en-US", {
+    timeZone: "Asia/Karachi",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+// A two-way switch (shift, category) under its label. Tapping the chosen
+// side again clears it, as the old toggle buttons did.
+function Segmented<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: T | null;
+  options: { value: T; label: string; hint?: string; icon: React.ReactNode }[];
+  onChange: (value: T | null) => void;
+}) {
+  return (
+    <div>
+      {/* a span, not a p: the glass cards turn an uppercase p into an eyebrow */}
+      <span className="mb-[6px] block text-[10px] font-bold uppercase leading-[14px] tracking-[0.1em] text-muted-foreground">
+        {label}
+      </span>
+      <div className="adm-seg grid grid-cols-2 gap-[2px] rounded-full border-[1px] border-border bg-muted/60 p-[3px]">
+        {options.map((o) => {
+          const active = value === o.value;
+          return (
+            <button
+              key={o.value}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onChange(active ? null : o.value)}
+              className={`inline-flex min-w-0 items-center justify-center gap-[6px] whitespace-nowrap rounded-full px-[8px] py-[6px] text-[12px] font-semibold leading-[16px] transition-all ${
+                active
+                  ? "adm-badge bg-gradient-to-r from-primary to-accent text-primary-foreground"
+                  : "text-muted-foreground hover:bg-card hover:text-foreground"
+              }`}
+            >
+              {o.icon}
+              {o.label}
+              {o.hint && <span className="font-medium opacity-[0.7]">{o.hint}</span>}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export function TeachersGrid({
   initialTeachers,
@@ -158,166 +216,166 @@ export function TeachersGrid({
 
   function renderCard(t: Teacher, i: number) {
     const totalStudents = t.courses.reduce((s, c) => s + c.students, 0);
+    const scheduleOpen = availabilityOpenId === t.id;
     return (
       <div
         key={t.id}
-        className="group rounded-2xl border border-border bg-card p-5 hover:border-primary/40 hover:shadow-lg hover:-translate-y-0.5 transition-all stagger-item"
+        className="adm-glass group flex flex-col overflow-hidden rounded-2xl border-[1px] border-border bg-card transition-all hover:-translate-y-0.5 hover:border-primary/40 stagger-item"
         style={{ animationDelay: `${i * 60}ms` }}
       >
-        <Link
-          href={`/app/admin/teachers/${t.id}`}
-          className="flex items-start gap-3 group/profile hover:opacity-90 transition-opacity"
-        >
-          <Avatar name={t.name} size={56} style="micah" className="rounded-2xl" />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <p className="text-sm font-bold truncate">{t.name}</p>
-              <Award className="h-3.5 w-3.5 text-[hsl(var(--gold))] shrink-0" />
-              {t.gender && (
-                <span
-                  className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold ${
-                    t.gender === "MALE"
-                      ? "bg-sky-500/10 text-sky-600"
-                      : "bg-pink-500/10 text-pink-600"
-                  }`}
-                >
-                  {t.gender === "MALE" ? "♂ Male" : "♀ Female"}
-                </span>
-              )}
+        {/* Banner in the brand gradient, as on the teacher's own page */}
+        <div className="adm-cover relative h-[76px] shrink-0 overflow-hidden bg-gradient-to-br from-primary via-accent to-primary">
+          <span className="absolute right-[12px] top-[12px] z-[1] inline-flex items-center gap-[6px] rounded-full bg-white/15 px-[10px] py-[4px] text-[11px] font-semibold leading-[14px] text-white ring-1 ring-white/25 backdrop-blur-sm">
+            <CalendarDays className="h-3 w-3" /> Joined {joined(t.createdAt)}
+          </span>
+        </div>
+
+        <div className="flex flex-1 flex-col px-[20px] pb-[20px]">
+          {/* Photo across the banner's edge, the quick actions beside it */}
+          <div className="flex items-end justify-between gap-[12px]">
+            <Link
+              href={`/app/admin/teachers/${t.id}`}
+              aria-label={`Open ${t.name}'s profile`}
+              className="relative z-[1] -mt-[34px] block shrink-0"
+            >
+              <Avatar
+                name={t.name}
+                src={t.image}
+                size={68}
+                className="border-4 border-card shadow-[0_10px_24px_-10px_rgb(0_0_0/0.45)]"
+              />
+            </Link>
+            <div className="inline-flex items-center gap-[2px] rounded-full border-[1px] border-border bg-background/70 p-[3px] text-muted-foreground">
+              <a
+                href={`mailto:${t.email}`}
+                className="grid h-7 w-7 place-items-center rounded-full transition-colors hover:bg-primary/10 hover:text-primary"
+                title="Email"
+                aria-label="Email"
+              >
+                <Mail className="h-3.5 w-3.5" />
+              </a>
+              <button
+                onClick={() => setLoginFor(t)}
+                className="grid h-7 w-7 place-items-center rounded-full transition-colors hover:bg-primary/10 hover:text-primary"
+                title="View / share login credentials"
+                aria-label="View / share login credentials"
+              >
+                <KeyRound className="h-3.5 w-3.5" />
+              </button>
+              <span aria-hidden="true" className="mx-[3px] h-4 w-px bg-border" />
+              <button
+                onClick={() => handleDelete(t.id, t.name)}
+                disabled={deleting === t.id}
+                className="grid h-7 w-7 place-items-center rounded-full transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                title="Remove teacher"
+                aria-label="Remove teacher"
+              >
+                {deleting === t.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserX className="h-3.5 w-3.5" />}
+              </button>
             </div>
-            <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{t.email}</p>
-            {t.country && <p className="text-[11px] text-muted-foreground">{t.country}</p>}
           </div>
-        </Link>
 
-        {/* Shift selector */}
-        <div className="mt-3">
-          <p className="text-[10px] uppercase font-semibold text-muted-foreground mb-1.5">Shift</p>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => handleSetShift(t.id, t.shift === "DAY" ? null : "DAY")}
-              className={`inline-flex items-center justify-center gap-1 rounded-lg border px-2 py-1.5 text-[11px] font-bold transition-all ${
-                t.shift === "DAY"
-                  ? "border-amber-500 bg-amber-500/10 text-amber-600"
-                  : "border-border bg-background text-muted-foreground hover:border-amber-500/40"
-              }`}
-            >
-              ☀️ Day (1-9 PM)
-            </button>
-            <button
-              onClick={() => handleSetShift(t.id, t.shift === "NIGHT" ? null : "NIGHT")}
-              className={`inline-flex items-center justify-center gap-1 rounded-lg border px-2 py-1.5 text-[11px] font-bold transition-all ${
-                t.shift === "NIGHT"
-                  ? "border-indigo-500 bg-indigo-500/10 text-indigo-500"
-                  : "border-border bg-background text-muted-foreground hover:border-indigo-500/40"
-              }`}
-            >
-              🌙 Night (9-4 AM)
-            </button>
-          </div>
-        </div>
-
-        {/* Gender selector */}
-        <div className="mt-3">
-          <p className="text-[10px] uppercase font-semibold text-muted-foreground mb-1.5">Category</p>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => handleSetGender(t.id, t.gender === "MALE" ? null : "MALE")}
-              className={`inline-flex items-center justify-center gap-1 rounded-lg border px-2 py-1.5 text-[11px] font-bold transition-all ${
-                t.gender === "MALE"
-                  ? "border-sky-500 bg-sky-500/10 text-sky-600"
-                  : "border-border bg-background text-muted-foreground hover:border-sky-500/40"
-              }`}
-            >
-              ♂ Male
-            </button>
-            <button
-              onClick={() => handleSetGender(t.id, t.gender === "FEMALE" ? null : "FEMALE")}
-              className={`inline-flex items-center justify-center gap-1 rounded-lg border px-2 py-1.5 text-[11px] font-bold transition-all ${
-                t.gender === "FEMALE"
-                  ? "border-pink-500 bg-pink-500/10 text-pink-600"
-                  : "border-border bg-background text-muted-foreground hover:border-pink-500/40"
-              }`}
-            >
-              ♀ Female
-            </button>
-          </div>
-        </div>
-
-        {t.bio && (
-          <p className="mt-3 text-xs text-muted-foreground leading-relaxed line-clamp-2">
-            {t.bio}
-          </p>
-        )}
-
-        <div className="mt-4 pt-4 border-t border-border grid grid-cols-3 gap-2">
-          <div>
-            <p className="text-[10px] uppercase font-semibold text-muted-foreground">Courses</p>
-            <p className="text-base font-bold mt-0.5 inline-flex items-center gap-1">
-              <BookOpen className="h-3 w-3" /> {t.courses.length}
+          {/* Sizes written out: Bootstrap's .text-sm/.text-xs have no line height */}
+          <Link href={`/app/admin/teachers/${t.id}`} className="group/name mt-[12px] block min-w-0">
+            <p className="truncate text-[16px] font-bold leading-[22px] transition-opacity group-hover/name:opacity-80">
+              {t.name}
             </p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase font-semibold text-muted-foreground">Students</p>
-            <p className="text-base font-bold mt-0.5 inline-flex items-center gap-1">
-              <Users className="h-3 w-3" /> {totalStudents}
+          </Link>
+          <div className="mt-[4px] space-y-[2px] text-[12.5px] leading-[19px] text-muted-foreground">
+            <p className="flex min-w-0 items-center gap-[6px]">
+              <Mail className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{t.email}</span>
             </p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase font-semibold text-muted-foreground">Classes</p>
-            <p className="text-base font-bold mt-0.5 inline-flex items-center gap-1">
-              <Calendar className="h-3 w-3" /> {t.bookings.length}
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <button
-            onClick={() => setAssignTarget(t)}
-            className="inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-primary to-accent px-3 py-2 text-[11px] font-bold text-primary-foreground shadow-md hover:shadow-lg"
-          >
-            <GraduationCap className="h-3.5 w-3.5" /> Assign ({t.courses.length})
-          </button>
-          <button
-            onClick={() => setAvailabilityOpenId(availabilityOpenId === t.id ? null : t.id)}
-            className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-2 text-[11px] font-bold transition-all ${
-              availabilityOpenId === t.id
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-border bg-card text-foreground hover:border-primary/40"
-            }`}
-          >
-            <Calendar className="h-3.5 w-3.5" />
-            Schedule ({t.bookings.length})
-            {availabilityOpenId === t.id ? (
-              <ChevronUp className="h-3 w-3" />
-            ) : (
-              <ChevronDown className="h-3 w-3" />
+            {t.country && (
+              <p className="flex min-w-0 items-center gap-[6px]">
+                <MapPin className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{t.country}</span>
+              </p>
             )}
-          </button>
-        </div>
+          </div>
 
-        {availabilityOpenId === t.id && (
-          <div className="mt-3 rounded-xl border border-border bg-background p-3 space-y-3">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-2">
+          <div className="adm-tile mt-[16px] grid grid-cols-3 divide-x divide-border rounded-xl border-[1px] border-border bg-background/60">
+            {[
+              { icon: BookOpen, label: "Courses", value: t.courses.length },
+              { icon: Users, label: "Students", value: totalStudents },
+              { icon: Calendar, label: "Classes", value: t.bookings.length },
+            ].map((s) => (
+              <div key={s.label} className="px-[6px] py-[10px] text-center">
+                <p className="text-[18px] font-bold leading-[24px]">{s.value}</p>
+                <span className="mt-[2px] inline-flex items-center gap-[4px] text-[11px] font-medium leading-[14px] text-muted-foreground">
+                  <s.icon className="h-3 w-3" /> {s.label}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Always two lines tall, so every card's switches line up */}
+          <p className="mt-[12px] line-clamp-2 min-h-[38px] text-[12.5px] leading-[19px] text-muted-foreground">
+            {t.bio || <span className="italic opacity-[0.7]">No bio added yet.</span>}
+          </p>
+
+          <div className="mt-[16px] space-y-[12px]">
+            <Segmented
+              label="Shift"
+              value={t.shift}
+              onChange={(v) => handleSetShift(t.id, v)}
+              options={[
+                { value: "DAY", label: "Day", hint: "1–9 PM", icon: <Sun className="h-3.5 w-3.5" /> },
+                { value: "NIGHT", label: "Night", hint: "9–4 AM", icon: <Moon className="h-3.5 w-3.5" /> },
+              ]}
+            />
+            <Segmented
+              label="Category"
+              value={t.gender}
+              onChange={(v) => handleSetGender(t.id, v)}
+              options={[
+                { value: "MALE", label: "Male", icon: <span aria-hidden="true">♂</span> },
+                { value: "FEMALE", label: "Female", icon: <span aria-hidden="true">♀</span> },
+              ]}
+            />
+          </div>
+
+          {/* mt-auto: the buttons line up along the bottom of a row of cards */}
+          <div className="mt-auto grid grid-cols-2 gap-[8px] pt-[18px]">
+            <button
+              onClick={() => setAssignTarget(t)}
+              className="inline-flex items-center justify-center gap-[6px] rounded-full bg-gradient-to-r from-primary to-accent px-[12px] py-[9px] text-[12.5px] font-bold leading-[16px] text-primary-foreground shadow-md transition-shadow hover:shadow-lg"
+            >
+              <GraduationCap className="h-4 w-4" /> Assign courses
+            </button>
+            <button
+              onClick={() => setAvailabilityOpenId(scheduleOpen ? null : t.id)}
+              aria-expanded={scheduleOpen}
+              className={`inline-flex items-center justify-center gap-[6px] rounded-full border-[1px] px-[12px] py-[9px] text-[12.5px] font-bold leading-[16px] transition-all ${
+                scheduleOpen
+                  ? "border-[hsl(var(--primary))] bg-primary/10 text-primary"
+                  : "border-border bg-background/70 text-foreground hover:border-primary/40"
+              }`}
+            >
+              <Calendar className="h-4 w-4" /> Schedule
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform ${scheduleOpen ? "rotate-180" : ""}`} />
+            </button>
+          </div>
+
+          {scheduleOpen && (
+            <div className="adm-tile mt-[12px] rounded-xl border-[1px] border-border bg-background p-[12px]">
+              <p className="mb-[8px] text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
                 Booked Classes ({t.bookings.length})
               </p>
               {t.bookings.length === 0 ? (
-                <p className="text-[11px] text-muted-foreground italic">
-                  No classes booked yet.
-                </p>
+                <p className="text-[12px] italic leading-[18px] text-muted-foreground">No classes booked yet.</p>
               ) : (
-                <div className="space-y-1">
+                <div className="space-y-[4px]">
                   {t.bookings.map((b) => (
                     <div
                       key={b.id}
-                      className="flex items-center gap-2 rounded-lg bg-card border border-border px-2 py-1.5 text-[11px]"
+                      className="flex items-center gap-[8px] rounded-lg border-[1px] border-border bg-card px-[8px] py-[6px] text-[11px] leading-[16px]"
                     >
                       <span className="font-bold text-primary">
                         {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][b.dayOfWeek]}
                       </span>
                       <span className="font-mono">{b.startTime} PKT</span>
-                      <span className="text-muted-foreground truncate flex-1">
+                      <span className="flex-1 truncate text-muted-foreground">
                         {b.student} · {b.course}
                       </span>
                     </div>
@@ -326,67 +384,43 @@ export function TeachersGrid({
               )}
               <a
                 href="/app/admin/availability"
-                className="mt-2 w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-primary to-accent px-3 py-1.5 text-[11px] font-bold text-primary-foreground shadow-md hover:shadow-lg"
+                className="mt-[8px] inline-flex w-full items-center justify-center gap-[6px] rounded-full bg-gradient-to-r from-primary to-accent px-[12px] py-[7px] text-[12px] font-bold leading-[16px] text-primary-foreground shadow-md hover:shadow-lg"
               >
                 <Calendar className="h-3.5 w-3.5" />
                 Schedule a class
               </a>
               <button
                 onClick={() => setEditAvailabilityFor(t)}
-                className="mt-1 w-full text-center text-[10px] text-muted-foreground hover:text-foreground underline"
+                className="mt-[6px] w-full text-center text-[11px] leading-[16px] text-muted-foreground underline hover:text-foreground"
               >
                 Set teacher&apos;s available hours ({t.availability.length})
               </button>
             </div>
-          </div>
-        )}
-
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          <a
-            href={`mailto:${t.email}`}
-            className="inline-flex items-center justify-center gap-1 rounded-full border border-border px-2 py-1.5 text-[11px] font-semibold hover:bg-muted"
-            title="Email"
-          >
-            <Mail className="h-3 w-3" /> Email
-          </a>
-          <button
-            onClick={() => setLoginFor(t)}
-            title="View / share login credentials"
-            className="inline-flex items-center justify-center gap-1 rounded-full border border-border px-2 py-1.5 text-[11px] font-semibold text-muted-foreground hover:bg-primary/10 hover:text-primary hover:border-primary/30"
-          >
-            <KeyRound className="h-3 w-3" />
-            Login
-          </button>
-          <button
-            onClick={() => handleDelete(t.id, t.name)}
-            disabled={deleting === t.id}
-            className="inline-flex items-center justify-center gap-1 rounded-full border border-border px-2 py-1.5 text-[11px] font-semibold text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 disabled:opacity-50 col-span-2"
-          >
-            {deleting === t.id ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : (
-              <UserX className="h-3 w-3" />
-            )}
-            Remove Teacher
-          </button>
+          )}
         </div>
       </div>
     );
   }
 
-  function renderSection(label: string, list: Teacher[], badgeClass: string) {
+  // A shift's heading: a glass pill (it sits straight on the background
+  // video) with the icon, name and count, then a line fading out
+  function renderSection(label: string, icon: React.ReactNode, list: Teacher[]) {
     if (list.length === 0) return null;
     return (
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${badgeClass}`}>
-            {label}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            {list.length} teacher{list.length === 1 ? "" : "s"}
-          </span>
+      <div className="space-y-[14px]">
+        <div className="flex items-center gap-[12px]">
+          <div className="adm-glass inline-flex items-center gap-[10px] rounded-full border-[1px] border-border bg-card py-[5px] pl-[5px] pr-[12px]">
+            <span className="adm-icon grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-primary/15 to-accent/15 text-primary">
+              {icon}
+            </span>
+            <h3 className="text-[14px] font-bold leading-[20px]">{label}</h3>
+            <span className="rounded-full bg-primary/10 px-[8px] py-[1px] text-[11px] font-bold leading-[16px] text-primary">
+              {list.length}
+            </span>
+          </div>
+          <div aria-hidden="true" className="adm-fade-line h-px flex-1 bg-gradient-to-r from-border to-transparent" />
         </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid gap-[16px] sm:grid-cols-2 lg:grid-cols-3">
           {list.map((t, i) => renderCard(t, i))}
         </div>
       </div>
@@ -442,9 +476,9 @@ export function TeachersGrid({
         </div>
       ) : (
         <div className="space-y-8">
-          {renderSection("☀️ Day Teachers", dayTeachers, "bg-amber-500/10 text-amber-600")}
-          {renderSection("🌙 Night Teachers", nightTeachers, "bg-indigo-500/10 text-indigo-500")}
-          {renderSection("⚠️ Unassigned (no shift)", unassignedTeachers, "bg-[hsl(var(--gold)/0.15)] text-[hsl(var(--gold))]")}
+          {renderSection("Day Teachers", <Sun className="h-3.5 w-3.5" />, dayTeachers)}
+          {renderSection("Night Teachers", <Moon className="h-3.5 w-3.5" />, nightTeachers)}
+          {renderSection("No shift yet", <AlertCircle className="h-3.5 w-3.5" />, unassignedTeachers)}
         </div>
       )}
 
@@ -576,7 +610,7 @@ function AssignCoursesModal({
       <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-border bg-card shadow-2xl">
         <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-card z-10">
           <div className="flex items-center gap-3">
-            <Avatar name={teacher.name} size={40} style="micah" />
+            <Avatar name={teacher.name} src={teacher.image} size={40} />
             <div>
               <h2 className="text-lg font-bold inline-flex items-center gap-2">
                 <GraduationCap className="h-5 w-5" /> Assign Courses
@@ -641,7 +675,7 @@ function AssignCoursesModal({
                     >
                       {isSelected && <Check className="h-4 w-4" strokeWidth={3} />}
                     </div>
-                    <div className="grid h-10 w-10 place-items-center rounded-lg bg-gradient-to-br from-primary/15 to-accent/15 text-primary shrink-0">
+                    <div className="adm-icon grid h-10 w-10 place-items-center rounded-lg bg-gradient-to-br from-primary/15 to-accent/15 text-primary shrink-0">
                       <BookOpen className="h-4 w-4" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -748,6 +782,7 @@ function InviteTeacherModal({
       id: data.user.id,
       name: data.user.name,
       email: data.user.email,
+      image: null,
       phone: null,
       loginPassword: password,
       country: country || null,
@@ -897,55 +932,16 @@ function EditAvailabilityModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  React.useLayoutEffect(() => {
-    const main = document.querySelector("main") as HTMLElement | null;
-    const html = document.documentElement;
-    if (main) main.style.overflow = "hidden";
-    html.style.overflow = "hidden";
-    document.body.style.overflow = "hidden";
-    return () => {
-      if (main) main.style.overflow = "";
-      html.style.overflow = "";
-      document.body.style.overflow = "";
-    };
-  }, []);
   return (
-    <div
-      className="fixed inset-0 z-50 overflow-y-auto bg-foreground/40 backdrop-blur-sm animate-fade-in"
-      onClick={onClose}
-    >
-      <div className="flex min-h-full items-start sm:items-center justify-center p-4">
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-2xl rounded-3xl border border-border bg-card shadow-2xl my-auto"
-        >
-          <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-card">
-            <div>
-              <h2 className="text-base font-bold">Set Teacher Availability</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Hours <span className="font-semibold text-foreground">{teacher.name}</span> is
-                available for classes (teacher&apos;s local time)
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              className="grid h-9 w-9 place-items-center rounded-full hover:bg-muted"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          <div className="p-4">
-            <AvailabilityEditor
-              saveUrl={`/api/users/${teacher.id}/availability`}
-              initialTimezone={teacher.timezone}
-              initialSlots={teacher.availability}
-              title={`${teacher.name}'s availability`}
-              description="Set the weekly hours this teacher is available for classes"
-              onSaved={onSaved}
-            />
-          </div>
-        </div>
-      </div>
-    </div>
+    <AvailabilityDialog
+      title="Teacher's available hours"
+      subtitle={teacher.name}
+      onClose={onClose}
+      saveUrl={`/api/users/${teacher.id}/availability`}
+      initialTimezone={teacher.timezone}
+      initialSlots={teacher.availability}
+      description="The weekly hours this teacher is free to take classes, in their own time zone."
+      onSaved={onSaved}
+    />
   );
 }

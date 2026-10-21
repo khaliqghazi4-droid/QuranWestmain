@@ -1,9 +1,9 @@
 ﻿﻿import { Suspense } from "react";
-import { PageHeader } from "@/components/dashboard/page-header";
 import type { WebsiteEnrollment } from "@/lib/enroll-source";
 import { EnrollmentsList } from "./enrollments-list";
 import { AlertCircle } from "lucide-react";
 import { getCachedEnrollments } from "../_caches";
+import { EnrollmentsHeader, EnrollmentsShell } from "./shell";
 
 // Rendered per request, not at build time (the build has no database);
 // the data itself stays cached for 10 minutes by its unstable_cache (../_caches).
@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 export default function AdminEnrollmentsPage() {
   return (
     <div className="space-y-6">
-      <PageHeader title="Enrollments" description="Student enrollment requests" />
+      <EnrollmentsHeader />
       <Suspense fallback={<EnrollmentsShell />}>
         <EnrollmentsData />
       </Suspense>
@@ -43,24 +43,4 @@ async function EnrollmentsData() {
   }
 
   return <EnrollmentsList enrollments={enrollments} />;
-}
-
-function EnrollmentsShell() {
-  const cols = ["Status", "Name", "Email", "Course", "Date"];
-  return (
-    <div className="adm-glass rounded-xl border border-border bg-card overflow-hidden">
-      <div className="flex gap-3 px-4 py-3 border-b border-border bg-muted/20">
-        {cols.map((h) => (
-          <span key={h} className="text-xs font-medium text-muted-foreground flex-1">{h}</span>
-        ))}
-      </div>
-      {Array.from({ length: 7 }).map((_, i) => (
-        <div key={i} className="flex gap-3 px-4 py-3 border-b border-border last:border-0">
-          {cols.map((h) => (
-            <span key={h} className="text-xs text-muted-foreground/40 flex-1">—</span>
-          ))}
-        </div>
-      ))}
-    </div>
-  );
 }

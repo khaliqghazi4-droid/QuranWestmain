@@ -109,7 +109,7 @@ export function StudentsFilterMenu({
         aria-expanded={open}
         aria-haspopup="dialog"
         className={cn(
-          "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-colors",
+          "adm-badge inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-colors",
           active > 0 || open
             ? "border-primary/40 bg-primary/10 text-primary"
             : "border-border bg-background hover:bg-muted"
@@ -118,7 +118,7 @@ export function StudentsFilterMenu({
         <Filter className="h-4 w-4" />
         Filter
         {active > 0 && (
-          <span className="grid h-5 min-w-[20px] place-items-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
+          <span className="adm-count grid h-5 min-w-[20px] place-items-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
             {active}
           </span>
         )}

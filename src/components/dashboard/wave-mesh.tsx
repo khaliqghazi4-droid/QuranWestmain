@@ -5,6 +5,8 @@ import { useTheme } from "next-themes";
 
 // Animated wireframe "terrain" behind the admin dashboard, light mode only
 // (globals.css shows the canvas only under html:not(.dark) .admin-brand).
+// Not in use: shell.tsx now draws BrandPattern (brand-pattern.tsx). Kept so
+// it can come back by swapping the import there.
 //
 // A grid of points on a 3D surface (X across, Z away from the camera, Y up)
 // is lifted by a few sine waves and seen through a perspective camera, then

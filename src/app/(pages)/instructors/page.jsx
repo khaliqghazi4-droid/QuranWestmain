@@ -41,9 +41,6 @@ const stats = [
   { value: "99.9%", label: "Satisfaction Rate" },
 ];
 
-// The teachers with the extras spread evenly among them, so they don't all
-// sit together: with 7 teachers and 3 extras, an extra after every 2 or 3
-// teachers. The first card is always a teacher.
 function spread(people, extras) {
   const total = people.length + extras.length;
   const at = new Set(
@@ -56,21 +53,16 @@ function spread(people, extras) {
   );
 }
 
-// The ring: the teachers and the placeholders that fill it to ten cards
 const ring = spread(instructors, upcomingInstructors);
 const N = ring.length;
-const STEP = 360 / N; // degrees between neighbouring cards
-const SPIN = 9; // degrees a second the ring turns by itself (a full turn in 40s)
-const DRAG = 0.12; // degrees the ring turns per pixel dragged
+const STEP = 360 / N;
+const SPIN = 9;
+const DRAG = 0.12;
 
-// Keeps n in 0..m-1, negative n too
 const mod = (n, m) => ((n % m) + m) % m;
-// The card at the front of a ring turned by r degrees
+
 const frontAt = (r) => mod(Math.round(-r / STEP), N);
 
-// The photo in a gold ring; for a teacher still to join, a gold outline of a
-// person. A set width and height, not aspect-square: in the card's column a
-// tall photo would stretch an aspect-square ring into an oval.
 function Avatar({ person }) {
   return (
     <div className="h-[6.5em] w-[6.5em] shrink-0 rounded-full border-[3px] border-[#EECC65] p-[3px] shadow-[0_10px_22px_-10px_rgba(0,0,0,0.7)]">
@@ -94,15 +86,6 @@ function Avatar({ person }) {
   );
 }
 
-// One face of a card: clear frosted glass with no colour of its own (the white
-// and gold page shows through it, blurred, with a light catch along the top),
-// very round corners and a gold edge, the photo, name, role, a line of detail
-// and the trial button, the words in navy and deep gold so they read on the
-// glass. The back face, seen from across the ring, is the same card the right
-// way round (not mirrored), with just the photo, name and role. `shade` fades
-// the card into the page the further round the ring it has turned; the card
-// at the front (`current`) glows gold and is the only one whose link and
-// button can be used.
 function CardFace({ person, current = false, back = false, shade, onBook }) {
   const live = current && !back;
   return (
@@ -116,16 +99,12 @@ function CardFace({ person, current = false, back = false, shade, onBook }) {
       style={back ? { transform: "rotateY(180deg)" } : undefined}
     >
       <Avatar person={person} />
-      {/* The words take the room left between the photo and the button and
-                are cut to fit it (name two lines at most, role and detail one),
-                so a long name never pushes the button down */}
+
       <div className="flex min-h-0 w-full flex-1 flex-col items-center overflow-hidden">
         <h3 className="!mb-0 mt-[0.6em] line-clamp-2 !text-[1.05em] !font-extrabold !leading-tight !text-[#0B1A37]">
           {back || person.upcoming ? (
             person.name
           ) : (
-            // Its ::after covers the whole card, so a click anywhere on
-            // it opens the profile (the button sits above it)
             <Link
               href={`/instructors/${person.id}`}
               tabIndex={live ? undefined : -1}
@@ -146,7 +125,7 @@ function CardFace({ person, current = false, back = false, shade, onBook }) {
           </p>
         )}
       </div>
-      {/* Always in the same place at the foot of the card */}
+
       {!back && (
         <div className="shrink-0 pt-[0.7em]">
           <button
@@ -159,8 +138,7 @@ function CardFace({ person, current = false, back = false, shade, onBook }) {
           </button>
         </div>
       )}
-      {/* Hidden from behind too: Chrome can let a changing child show
-                through a face that is turned away */}
+
       <motion.div
         aria-hidden="true"
         className="pointer-events-none absolute -inset-[3px] rounded-[3.8em] bg-white [-webkit-backface-visibility:hidden] [backface-visibility:hidden]"
@@ -170,9 +148,6 @@ function CardFace({ person, current = false, back = false, shade, onBook }) {
   );
 }
 
-// A card stood in the ring at its own angle, pushed out to the rim, with a
-// face on each side. Clicking a card that isn't at the front turns it there;
-// pointing at any card tells the ring (`onHover`) so it can stop turning.
 function RingCard({
   person,
   index,
@@ -182,7 +157,6 @@ function RingCard({
   onHover,
   onBook,
 }) {
-  // How far the card fades into the page: 0 facing the viewer, up to 0.55 at the back of the ring
   const shade = useTransform(
     rotation,
     (r) => (0.55 * (1 - Math.cos(((index * STEP + r) * Math.PI) / 180))) / 2,
@@ -209,27 +183,18 @@ function RingCard({
   );
 }
 
-// The instructors as a ring of cards seen from a little above, turning slowly
-// by itself (not while the visitor points at a card, has focus on one, has
-// scrolled away, has just moved it, or asks for reduced motion). Dragging
-// turns it and lets it run on and settle on a card; the arrows, arrow keys
-// and a click on a card turn it to that card.
-// Everything is sized in em off the font size set here, so the ring grows and
-// shrinks with the screen: a fixed size on phones and tablets, and on laptops
-// whichever is smaller of the screen's width and height decides, so the
-// heading, ring and buttons fit one screen.
 function InstructorRing({ onBook }) {
   const ref = useRef(null);
   const dragged = useRef(false);
-  const busy = useRef(false); // a drag or a turn is running
-  const restUntil = useRef(0); // after a move, the spin waits until this time
+  const busy = useRef(false);
+  const restUntil = useRef(0);
   const turn = useRef(null);
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const [front, setFront] = useState(0);
   const rotation = useMotionValue(0);
   const reduceMotion = useReducedMotion();
-  // Turning as soon as any of it is on screen, not only once it's well in view
+
   const inView = useInView(ref, { amount: "some" });
 
   useMotionValueEvent(rotation, "change", (r) => setFront(frontAt(r)));
@@ -255,7 +220,6 @@ function InstructorRing({ onBook }) {
     [rotation],
   );
 
-  // One card on (1) or back (-1)
   const step = useCallback(
     (dir) => {
       const k = Math.round(-rotation.get() / STEP);
@@ -267,7 +231,6 @@ function InstructorRing({ onBook }) {
     [rotation, turnTo, reduceMotion],
   );
 
-  // Card i to the front, the shorter way round
   const bringToFront = useCallback(
     (i) => {
       const base = -i * STEP;
@@ -289,10 +252,6 @@ function InstructorRing({ onBook }) {
         if (e.key === "ArrowRight") step(1);
       }}
     >
-      {/* The scene. The room above and below is for the tilted ring: the
-                back cards rise above the stage and the front ones hang below it.
-                Focus here can only be on the front card's link or button, so
-                the ring holds still while one of them has it. */}
       <motion.div
         className="overflow-x-clip pb-[9.5em] pt-[3em] [perspective:120em]"
         style={{ touchAction: "pan-y" }}
@@ -308,7 +267,6 @@ function InstructorRing({ onBook }) {
         }}
         onPan={(_, info) => rotation.set(rotation.get() + info.delta.x * DRAG)}
         onPanEnd={(_, info) => {
-          // Run on in the direction thrown, then settle on the nearest card
           const velocity = info.velocity.x * DRAG;
           const target =
             Math.round((rotation.get() + velocity * 0.35) / STEP) * STEP;
@@ -320,15 +278,12 @@ function InstructorRing({ onBook }) {
           );
         }}
         onClickCapture={(e) => {
-          // A drag that ends on a card isn't also a click on it
           if (dragged.current) {
             e.preventDefault();
             e.stopPropagation();
           }
         }}
       >
-        {/* Seen from a little above (front cards lower, back cards higher),
-                    straight on, so both sides of the ring sit level */}
         <div
           className="relative mx-auto h-[17em] w-[17em] [transform-style:preserve-3d]"
           style={{ transform: "rotateX(-9deg)" }}
@@ -353,7 +308,6 @@ function InstructorRing({ onBook }) {
         </div>
       </motion.div>
 
-      {/* The trial button under the ring, with a small arrow either side */}
       <div className="mt-[0.75rem] flex items-center justify-center gap-[1rem]">
         <button
           type="button"
@@ -383,22 +337,19 @@ function InstructorRing({ onBook }) {
   );
 }
 
-// Phones: every teacher in one list, one under another, in place of the ring
-// (on a narrow screen the ring shows only the card at the front). Each row
-// opens that teacher's profile. Only the teachers, not the "joining soon"
-// cards that fill the ring.
 function InstructorList({ onBook }) {
   return (
     <div className="mx-auto w-full max-w-[30rem] px-[1rem] sm:px-[1.5rem]">
-      {/* minmax(0,1fr) and min-w-0 keep each card inside the screen: without
-          them the column grows to fit the longest line of text (on a 360px
-          phone, or with the phone's text set larger) and pushes the cards out
-          to the screen's edge. The words wrap rather than being cut short:
-          a name takes two lines at most, breaking only between words (never
-          at the hyphen in "Al-Rashid"), and the detail line after its dot. */}
-      <ul id="all-teachers" className="!mb-0 mt-[1.25rem] grid list-none grid-cols-[minmax(0,1fr)] gap-[0.75rem] !pl-0">
+      <ul
+        id="all-teachers"
+        className="!mb-0 mt-[1.25rem] grid list-none grid-cols-[minmax(0,1fr)] gap-[0.75rem] !pl-0"
+      >
         {instructors.map((person, i) => (
-          <motion.li key={person.id} {...reveal(Math.min(i, 3) * 0.06, 16)} className="min-w-0">
+          <motion.li
+            key={person.id}
+            {...reveal(Math.min(i, 3) * 0.06, 16)}
+            className="min-w-0"
+          >
             <Link
               href={`/instructors/${person.id}`}
               className="flex items-center gap-[0.9rem] rounded-[1.25rem] border-[1px] border-[#EECC65]/50 bg-white py-[0.7rem] pl-[0.7rem] pr-[0.9rem] text-left !no-underline shadow-[0_14px_30px_-22px_rgba(11,26,55,0.45)] transition-colors duration-300 hover:border-[#EECC65]"
@@ -423,8 +374,12 @@ function InstructorList({ onBook }) {
                   {person.role}
                 </span>
                 <span className="mt-[0.1rem] block text-[0.78rem] leading-snug text-[#0B1A37]/60">
-                  <span className="whitespace-nowrap">{person.experience} experience ·</span>{" "}
-                  <span className="whitespace-nowrap">{person.students} students</span>
+                  <span className="whitespace-nowrap">
+                    {person.experience} experience ·
+                  </span>{" "}
+                  <span className="whitespace-nowrap">
+                    {person.students} students
+                  </span>
                 </span>
               </span>
               <ChevronRight
@@ -456,16 +411,9 @@ const Page = () => {
   const closeEnroll = useCallback(() => setOpen(false), []);
 
   return (
-    // Movement is turned off for visitors who ask their device for reduced motion
     <MotionConfig reducedMotion="user">
       <Header />
       <section className="page-content">
-        {/* Hero: the words, two buttons and the numbers on the left, the
-                    class photo on the right with a gold frame set off behind it.
-                    On laptops it fills the first screen under the 84px header,
-                    and the sizes follow the screen's height as well as its
-                    width (like the home page's hero), so it all fits even on a
-                    short screen. */}
         <section
           className="relative flex items-center overflow-hidden bg-[#FBF7EE] bg-cover bg-center lg:min-h-[calc(100svh-84px)]"
           style={{
@@ -525,7 +473,6 @@ const Page = () => {
                 className="!mb-0 mt-[clamp(1.25rem,4vh,2.5rem)] grid max-w-[30rem] grid-cols-3 divide-x divide-[#0B1A37]/10 max-lg:mx-auto"
               >
                 {stats.map((stat) => (
-                  // justify-end packs to the top in a reversed column, so the numbers line up even when a label wraps
                   <div
                     key={stat.label}
                     className="flex flex-col-reverse justify-end px-[0.75rem] first:pl-0 last:pr-0 max-lg:items-center"
@@ -541,10 +488,6 @@ const Page = () => {
               </motion.dl>
             </div>
 
-            {/* On laptops no wider than lets the photo (1058×720) stay
-                            12rem shorter than the screen. On phones a little
-                            narrower and to the left, so the gold frame behind
-                            keeps clear of the screen's right edge. */}
             <motion.div
               {...reveal(0.15)}
               className="relative mx-auto w-full max-w-[36rem] max-sm:ml-0 max-sm:w-[calc(100%-1rem)] lg:max-w-[min(100%,calc((100svh_-_12rem)*1.47))]"
@@ -568,15 +511,10 @@ const Page = () => {
           </div>
         </section>
 
-        {/* The instructors: one screen tall on laptops (under the slim
-                    68px header), the heading and the ring centred in it. `safe`
-                    centring: if a screen is too short for it all, it runs on
-                    downwards rather than up under the header. */}
         <section
           id="teachers"
           className="relative isolate flex scroll-mt-[68px] flex-col justify-center overflow-hidden bg-white py-[clamp(1.25rem,4vh,4rem)] [justify-content:safe_center] lg:min-h-[calc(100svh-68px)]"
         >
-          {/* w-full: in this column, auto margins alone would shrink a box to its content */}
           <div className="mx-auto w-full max-w-7xl px-[1rem] text-center sm:px-[1.5rem] lg:px-[2rem]">
             <motion.p
               {...reveal(0)}
@@ -587,8 +525,7 @@ const Page = () => {
             <SectionHeading className="mt-[0.35rem]">
               <Words text="Instructor Profiles" />
             </SectionHeading>
-            {/* Above the ring or list, so it stays where it is when the
-                long list folds away */}
+
             <button
               type="button"
               onClick={() => setShowAll((v) => !v)}

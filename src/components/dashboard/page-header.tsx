@@ -8,7 +8,8 @@ export function PageHeader({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-3 mb-3">
+    // adm-page-header: readable over the admin's background video (globals.css)
+    <div className="adm-page-header flex flex-wrap items-end justify-between gap-3 mb-3">
       <div>
         <h1 className="text-base sm:text-lg font-bold tracking-tight">{title}</h1>
         {description && (

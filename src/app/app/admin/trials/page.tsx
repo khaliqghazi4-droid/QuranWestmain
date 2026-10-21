@@ -1,10 +1,10 @@
 ﻿import { Suspense } from "react";
-import { PageHeader } from "@/components/dashboard/page-header";
 import { trialMeetingLink } from "@/lib/meeting";
 import { checkTeacherFree } from "@/lib/trial-availability";
 import { TrialsList, type TrialSession, type TeacherChoice } from "./trials-list";
 import { AlertCircle } from "lucide-react";
 import { getCachedTrialsRaw } from "../_caches";
+import { TrialsHeader, TrialsShell } from "./shell";
 
 // Rendered per request, not at build time (the build has no database);
 // the data itself stays cached for 10 minutes by its unstable_cache (../_caches).
@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 export default function AdminTrialsPage() {
   return (
     <div className="space-y-6">
-      <PageHeader title="Free Trial Sessions" description="Enrollment requests scheduled for a free trial" />
+      <TrialsHeader />
       <Suspense fallback={<TrialsShell />}>
         <TrialsData />
       </Suspense>
@@ -134,24 +134,4 @@ async function TrialsData() {
   }
 
   return <TrialsList trials={trials} />;
-}
-
-function TrialsShell() {
-  const cols = ["Name", "Course", "Trial Time", "Country", "Status"];
-  return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
-      <div className="flex gap-3 px-4 py-3 border-b border-border bg-muted/20">
-        {cols.map((h) => (
-          <span key={h} className="text-xs font-medium text-muted-foreground flex-1">{h}</span>
-        ))}
-      </div>
-      {Array.from({ length: 7 }).map((_, i) => (
-        <div key={i} className="flex gap-3 px-4 py-3 border-b border-border last:border-0">
-          {cols.map((h) => (
-            <span key={h} className="text-xs text-muted-foreground/40 flex-1">—</span>
-          ))}
-        </div>
-      ))}
-    </div>
-  );
 }

@@ -202,228 +202,248 @@ export function StudentsTable({
     }
   }
 
+  const joined = (iso: string) =>
+    new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+  // Each course as a chip with its duration beside it
+  const courseList = (s: Student) =>
+    s.courses.length === 0 ? (
+      <span className="text-xs italic text-muted-foreground">Not enrolled</span>
+    ) : (
+      <div className="flex flex-col items-start gap-[6px]">
+        {s.courses.map((c) => (
+          <div key={c.id} className="flex items-center gap-[8px]">
+            <span className="whitespace-nowrap rounded-full bg-primary/10 px-[10px] py-[2px] text-[11px] font-semibold text-primary">
+              {c.name}
+            </span>
+            <span className="inline-flex items-center gap-[4px] whitespace-nowrap text-[11px] text-muted-foreground">
+              <Clock className="h-3 w-3 shrink-0" />
+              {c.duration ?? "Self-paced"}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+
+  // The row's actions as one group; suspend and delete after a divider, red on hover
+  const actions = (s: Student) => (
+    <div className="inline-flex items-center gap-[2px] rounded-full border-[1px] border-border bg-background/70 p-[3px] text-muted-foreground">
+      <Link
+        href={`/app/admin/students/${s.id}`}
+        className="grid h-7 w-7 place-items-center rounded-full transition-colors hover:bg-primary/10 hover:text-primary"
+        title="View progress report"
+        aria-label="View progress report"
+      >
+        <FileText className="h-3.5 w-3.5" />
+      </Link>
+      <a
+        href={`mailto:${s.email}`}
+        className="grid h-7 w-7 place-items-center rounded-full transition-colors hover:bg-primary/10 hover:text-primary"
+        title="Email"
+        aria-label="Email"
+      >
+        <Mail className="h-3.5 w-3.5" />
+      </a>
+      <button
+        onClick={() => setEditTarget(s)}
+        className="grid h-7 w-7 place-items-center rounded-full transition-colors hover:bg-primary/10 hover:text-primary"
+        title="Edit student"
+        aria-label="Edit student"
+      >
+        <Pencil className="h-3.5 w-3.5" />
+      </button>
+      <button
+        onClick={() =>
+          setLoginTarget({ id: s.id, name: s.name, email: s.email, phone: s.phone, password: s.loginPassword })
+        }
+        className="grid h-7 w-7 place-items-center rounded-full transition-colors hover:bg-primary/10 hover:text-primary"
+        title="View / share login credentials"
+        aria-label="View / share login credentials"
+      >
+        <KeyRound className="h-3.5 w-3.5" />
+      </button>
+      <span aria-hidden="true" className="mx-[3px] h-4 w-px bg-border" />
+      {s.suspended ? (
+        <button
+          onClick={() => handleSuspend(s, false)}
+          disabled={suspending === s.id}
+          className="grid h-7 w-7 place-items-center rounded-full text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
+          title="Reactivate account"
+          aria-label="Reactivate account"
+        >
+          {suspending === s.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
+        </button>
+      ) : (
+        <button
+          onClick={() => handleSuspend(s, true)}
+          disabled={suspending === s.id}
+          className="grid h-7 w-7 place-items-center rounded-full transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+          title="Suspend account"
+          aria-label="Suspend account"
+        >
+          {suspending === s.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Ban className="h-3.5 w-3.5" />}
+        </button>
+      )}
+      <button
+        onClick={() => handleDelete(s.id, s.name)}
+        disabled={deleting === s.id}
+        className="grid h-7 w-7 place-items-center rounded-full transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+        title="Delete student"
+        aria-label="Delete student"
+      >
+        {deleting === s.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+      </button>
+    </div>
+  );
+
+  // Name, email and the suspended badge, linking to the student's page
+  const identity = (s: Student) => (
+    <Link href={`/app/admin/students/${s.id}`} className="group flex min-w-0 items-center gap-[12px]">
+      <Avatar name={s.name} size={36} style="micah" />
+      <div className="min-w-0">
+        {/* Sizes written out: the website's Bootstrap sheet makes .text-sm and
+            .text-xs 16px and 15px but keeps Tailwind's tighter line height, so
+            `truncate` (overflow hidden) cut off the bottoms of g, p and @ */}
+        <p className="truncate text-[15px] font-semibold leading-[22px] transition-colors group-hover:text-primary">
+          {s.name}
+        </p>
+        <p className="truncate text-[13px] leading-[19px] text-muted-foreground">{s.email}</p>
+        {s.suspended && (
+          <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-bold text-destructive">
+            <Ban className="h-2.5 w-2.5" /> Suspended
+          </span>
+        )}
+      </div>
+    </Link>
+  );
+
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-border bg-card p-4 flex flex-wrap items-center gap-3">
-        <StudentsFilterMenu
-          value={filters}
-          onChange={setFilters}
-          teachers={teacherOptions}
-          courses={courseOptions}
-          counts={filterCounts}
-        />
-
-        <div className="flex-1" />
-
-        <div className="relative max-w-sm w-full sm:w-auto">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by name, email, country..."
-            className="w-full sm:w-72 rounded-full border border-border bg-background pl-10 pr-4 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-        </div>
-
-        <button
-          onClick={() => setAddOpen(true)}
-          className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-accent px-4 py-2 text-sm font-semibold text-primary-foreground shadow-md hover:shadow-lg transition-all shrink-0"
-        >
-          <UserPlus className="h-4 w-4" /> Add Student
-        </button>
-      </div>
-
-      <ActiveStudentFilters
-        value={filters}
-        onChange={setFilters}
-        teachers={teacherOptions}
-        courses={courseOptions}
-      />
-
-      {filtered.length === 0 ? (
-        <div className="rounded-2xl border-2 border-dashed border-border bg-card/50 p-12 text-center">
-          <GraduationCap className="mx-auto h-12 w-12 text-muted-foreground/50" />
-          <p className="mt-4 text-sm text-muted-foreground">
-            {query || filtersActive
-              ? "No students match your filter"
-              : "No students yet"}
-          </p>
-        </div>
-      ) : (
-        <div className="rounded-2xl border border-border bg-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-muted/40">
-                <tr className="text-left text-[11px] uppercase tracking-wide text-muted-foreground">
-                  <th className="px-6 py-4 font-semibold">Student</th>
-                  <th className="px-6 py-4 font-semibold">Courses</th>
-                  <th className="px-6 py-4 font-semibold">Duration</th>
-                  <th className="px-6 py-4 font-semibold">Country</th>
-                  <th className="px-6 py-4 font-semibold">Joined</th>
-                  <th className="px-6 py-4 font-semibold text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {filtered.map((s, i) => (
-                  <tr
-                    key={s.id}
-                    className="hover:bg-muted/20 transition-colors stagger-item"
-                    style={{ animationDelay: `${Math.min(i * 30, 400)}ms` }}
-                  >
-                    <td className="px-6 py-4">
-                      <Link
-                        href={`/app/admin/students/${s.id}`}
-                        className="flex items-center gap-3 group"
-                      >
-                        <Avatar name={s.name} size={36} style="micah" />
-                        <div>
-                          <p className="text-sm font-semibold group-hover:text-primary transition-colors">{s.name}</p>
-                          <p className="text-[11px] text-muted-foreground">{s.email}</p>
-                          {s.suspended && (
-                            <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-bold text-destructive">
-                              <Ban className="h-2.5 w-2.5" /> Suspended
-                            </span>
-                          )}
-                        </div>
-                      </Link>
-                    </td>
-                    <td className="px-6 py-4 align-top">
-                      {s.courses.length === 0 ? (
-                        <span className="text-xs text-muted-foreground italic">
-                          Not enrolled
-                        </span>
-                      ) : (
-                        <div className="space-y-1.5">
-                          {s.courses.map((c) => (
-                            <div key={c.id} className="h-6 flex items-center">
-                              <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
-                                {c.name}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 align-top">
-                      {s.courses.length === 0 ? (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      ) : (
-                        <div className="space-y-1.5">
-                          {s.courses.map((c) => (
-                            <div
-                              key={c.id}
-                              className="h-6 flex items-center gap-1 text-xs text-foreground"
-                            >
-                              <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
-                              {c.duration ?? "Self-paced"}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">
-                      {s.country ?? "—"}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">
-                      {new Date(s.createdAt).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-1">
-                        <Link
-                          href={`/app/admin/students/${s.id}`}
-                          className="grid h-8 w-8 place-items-center rounded-full hover:bg-primary/10 hover:text-primary"
-                          title="View progress report"
-                        >
-                          <FileText className="h-3.5 w-3.5 text-muted-foreground hover:text-primary" />
-                        </Link>
-                        <a
-                          href={`mailto:${s.email}`}
-                          className="grid h-8 w-8 place-items-center rounded-full hover:bg-muted"
-                          title="Email"
-                        >
-                          <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                        </a>
-                        <button
-                          onClick={() => setEditTarget(s)}
-                          className="grid h-8 w-8 place-items-center rounded-full hover:bg-primary/10 hover:text-primary"
-                          title="Edit student"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() =>
-                            setLoginTarget({
-                              id: s.id,
-                              name: s.name,
-                              email: s.email,
-                              phone: s.phone,
-                              password: s.loginPassword,
-                            })
-                          }
-                          className="grid h-8 w-8 place-items-center rounded-full hover:bg-primary/10 hover:text-primary"
-                          title="View / share login credentials"
-                        >
-                          <KeyRound className="h-3.5 w-3.5" />
-                        </button>
-                        {s.suspended ? (
-                          <button
-                            onClick={() => handleSuspend(s, false)}
-                            disabled={suspending === s.id}
-                            className="grid h-8 w-8 place-items-center rounded-full text-[hsl(var(--primary))] hover:bg-primary/10 disabled:opacity-50"
-                            title="Reactivate account"
-                          >
-                            {suspending === s.id ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <ShieldCheck className="h-3.5 w-3.5" />
-                            )}
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleSuspend(s, true)}
-                            disabled={suspending === s.id}
-                            className="grid h-8 w-8 place-items-center rounded-full hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                            title="Suspend account"
-                          >
-                            {suspending === s.id ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <Ban className="h-3.5 w-3.5" />
-                            )}
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleDelete(s.id, s.name)}
-                          disabled={deleting === s.id}
-                          className="grid h-8 w-8 place-items-center rounded-full hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                          title="Delete student"
-                        >
-                          {deleting === s.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-3.5 w-3.5" />
-                          )}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="flex items-center justify-between p-4 border-t border-border text-xs text-muted-foreground">
-            <p>
-              Showing {filtered.length} of {students.length} students
-              {(query || filtersActive) && " (filtered)"}
+      {/* One card: the toolbar on top, then the table and a footer with the
+          count. `adm-glass` makes it the dashboard's glass card in light mode.
+          Gaps and borders are written out ([12px], [1px]) because the
+          website's Bootstrap sheet overrides .gap-3 and .border. No
+          overflow-hidden: the Filter menu opens below the toolbar and runs
+          past the card's bottom when there are few rows. */}
+      <div className="adm-glass rounded-2xl border border-border bg-card">
+        <div className="flex flex-wrap items-center gap-[12px] border-b border-border px-[16px] py-[14px] sm:px-[20px]">
+          <div className="mr-auto min-w-0">
+            <h2 className="text-sm font-bold">All students</h2>
+            <p className="text-[11px] text-muted-foreground">
+              {students.length} {students.length === 1 ? "account" : "accounts"}
             </p>
           </div>
+          {/* Phones: one row, with Add as an icon so all three fit */}
+          <div className="flex w-full items-center gap-[8px] sm:w-auto">
+            <StudentsFilterMenu
+              value={filters}
+              onChange={setFilters}
+              teachers={teacherOptions}
+              courses={courseOptions}
+              counts={filterCounts}
+            />
+            <div className="relative min-w-0 flex-1 sm:w-64 sm:flex-none">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search name, email, country"
+                className="w-full rounded-full border-[1px] border-border bg-background py-2 pl-9 pr-4 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            <button
+              onClick={() => setAddOpen(true)}
+              aria-label="Add student"
+              className="inline-flex shrink-0 items-center gap-2 rounded-full bg-gradient-to-r from-primary to-accent px-[12px] py-2 text-sm font-semibold text-primary-foreground shadow-md transition-all hover:shadow-lg sm:px-4"
+            >
+              <UserPlus className="h-4 w-4" />
+              <span className="hidden sm:inline">Add Student</span>
+            </button>
+          </div>
         </div>
-      )}
+
+        {filtersActive && (
+          <div className="border-b border-border px-[16px] py-[12px] sm:px-[20px]">
+            <ActiveStudentFilters
+              value={filters}
+              onChange={setFilters}
+              teachers={teacherOptions}
+              courses={courseOptions}
+            />
+          </div>
+        )}
+
+        {filtered.length === 0 ? (
+          <div className="px-6 py-14 text-center">
+            <GraduationCap className="mx-auto h-10 w-10 text-muted-foreground/50" />
+            <p className="mt-3 text-sm text-muted-foreground">
+              {query || filtersActive ? "No students match your filter" : "No students yet"}
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Tablets and up: a table. `adm-rows` gives the rows a little
+                more white than the glass card in light mode, so the data
+                reads clearly over the background video. */}
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full min-w-[720px]">
+                <thead>
+                  <tr className="border-b border-border text-left text-[11px] uppercase tracking-[0.06em] text-muted-foreground">
+                    <th className="px-[20px] py-[12px] font-semibold">Student</th>
+                    <th className="px-[20px] py-[12px] font-semibold">Courses</th>
+                    <th className="px-[20px] py-[12px] font-semibold">Country</th>
+                    <th className="px-[20px] py-[12px] font-semibold">Joined</th>
+                    <th className="px-[20px] py-[12px] text-right font-semibold">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="adm-rows divide-y divide-border">
+                  {filtered.map((s, i) => (
+                    <tr
+                      key={s.id}
+                      className="stagger-item align-middle transition-colors hover:bg-muted/30"
+                      style={{ animationDelay: `${Math.min(i * 30, 400)}ms` }}
+                    >
+                      <td className="px-[20px] py-[14px]">{identity(s)}</td>
+                      <td className="px-[20px] py-[14px]">{courseList(s)}</td>
+                      <td className="px-[20px] py-[14px] text-sm">
+                        {s.country ?? <span className="text-muted-foreground">—</span>}
+                      </td>
+                      <td className="whitespace-nowrap px-[20px] py-[14px] text-sm tabular-nums text-muted-foreground">
+                        {joined(s.createdAt)}
+                      </td>
+                      <td className="px-[20px] py-[14px]">
+                        <div className="flex justify-end">{actions(s)}</div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Phones: one block per student instead of a sideways-scrolling table */}
+            <ul className="adm-rows divide-y divide-border md:hidden">
+              {filtered.map((s) => (
+                <li key={s.id} className="space-y-[10px] px-[16px] py-[14px]">
+                  {identity(s)}
+                  {courseList(s)}
+                  <div className="flex flex-wrap items-center justify-between gap-[8px]">
+                    <p className="text-xs text-muted-foreground">
+                      {s.country ?? "—"} · Joined {joined(s.createdAt)}
+                    </p>
+                    {actions(s)}
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            <div className="border-t border-border px-[16px] py-[12px] text-xs text-muted-foreground sm:px-[20px]">
+              Showing {filtered.length} of {students.length} students
+              {(query || filtersActive) && " (filtered)"}
+            </div>
+          </>
+        )}
+      </div>
 
       {addOpen && (
         <AddStudentModal

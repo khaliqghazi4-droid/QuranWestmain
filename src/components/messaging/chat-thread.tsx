@@ -123,7 +123,13 @@ export function ChatThread({
         // always visible, darker on hover
         const options =
           !deleted && !pending && !editing ? (
-            <div className="relative shrink-0" data-chat-menu>
+            // adm-*: hooks for the admin inbox's light-mode look (globals.css);
+            // nothing elsewhere, so the student and teacher chats are unchanged
+            <div
+              className="adm-msg-menu relative shrink-0"
+              data-chat-menu
+              data-open={menuFor === m.id ? "" : undefined}
+            >
               <button
                 type="button"
                 onClick={() => setMenuFor(menuFor === m.id ? null : m.id)}
@@ -161,23 +167,24 @@ export function ChatThread({
           <React.Fragment key={m.id}>
             {newDay && (
               <div className="flex justify-center my-3 first:mt-0">
-                <span className="rounded-md bg-white/90 px-2.5 py-1 text-[11px] font-medium text-[#54656f] shadow-sm dark:bg-[#182229] dark:text-[#8696a0]">
+                <span className="adm-day rounded-md bg-white/90 px-2.5 py-1 text-[11px] font-medium text-[#54656f] shadow-sm dark:bg-[#182229] dark:text-[#8696a0]">
                   {dayLabel(m.createdAt)}
                 </span>
               </div>
             )}
             <div
               id={`msg-${m.id}`}
-              className={`group flex items-center gap-1 ${isMe ? "justify-end" : "justify-start"} ${
+              className={`adm-msg-row group flex items-center gap-1 ${isMe ? "justify-end" : "justify-start"} ${
                 firstInGroup ? "mt-2" : "mt-0.5"
               }`}
             >
               {isMe && options}
               <div
-                className={`relative max-w-[80%] sm:max-w-[65%] rounded-lg px-2.5 pt-1.5 pb-1 text-[13.5px] leading-snug shadow-sm transition-shadow ${
+                className={`adm-bubble ${isMe ? "adm-bubble-me" : "adm-bubble-them"} relative max-w-[80%] sm:max-w-[65%] rounded-lg px-2.5 pt-1.5 pb-1 text-[13.5px] leading-snug shadow-sm transition-shadow ${
                   isMe
                     ? "bg-[#d9fdd3] text-[#111b21] dark:bg-[#005c4b] dark:text-[#e9edef]"
-                    : "bg-white text-[#111b21] dark:bg-[#202c33] dark:text-[#e9edef]"
+                    : // bg-[#fff], not bg-white: Bootstrap's !important .bg-white beat the dark colour
+                      "bg-[#fff] text-[#111b21] dark:bg-[#202c33] dark:text-[#e9edef]"
                 } ${firstInGroup ? (isMe ? "rounded-tr-none" : "rounded-tl-none") : ""} ${
                   highlightId === m.id ? "ring-2 ring-primary/60" : ""
                 } ${editing ? "w-72 max-w-full" : ""}`}
@@ -206,12 +213,12 @@ export function ChatThread({
                       <button
                         type="button"
                         onClick={() => jumpTo(m.replyTo!.id)}
-                        className={`mb-1 block w-full rounded-md border-l-4 bg-black/5 px-2 py-1 text-left dark:bg-white/10 ${
+                        className={`adm-quote ${m.replyTo.senderId === currentUserId ? "adm-quote-me" : ""} mb-1 block w-full rounded-md border-l-4 bg-black/5 px-2 py-1 text-left dark:bg-white/10 ${
                           m.replyTo.senderId === currentUserId ? "border-[#06cf9c]" : "border-[#53bdeb]"
                         }`}
                       >
                         <span
-                          className={`block text-[11px] font-semibold ${
+                          className={`adm-quote-name block text-[11px] font-semibold ${
                             m.replyTo.senderId === currentUserId ? "text-[#06cf9c]" : "text-[#53bdeb]"
                           }`}
                         >
@@ -294,7 +301,7 @@ export function ChatThread({
 
                 {!editing && (
                   <span
-                    className={`text-[10px] leading-none text-black/45 dark:text-white/55 ${
+                    className={`adm-stamp text-[10px] leading-none text-black/45 dark:text-white/55 ${
                       m.content || deleted ? "absolute bottom-1 right-2" : "block text-right pb-0.5"
                     }`}
                   >

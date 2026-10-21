@@ -2,7 +2,7 @@
 import { unstable_cache } from "next/cache";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { MOCK_RECENT_SIGNUPS } from "./_mock-data";
+import { MOCK_RECENT_SIGNUPS } from "../_mock-data";
 import { ACTIVE_STUDENT } from "@/lib/auth";
 import { pktDayYmd } from "@/lib/pkt-day";
 import {
@@ -12,7 +12,6 @@ import {
   TrendingUp,
   ArrowUpRight,
   UserPlus,
-  AlertCircle,
   BookOpen,
   PlusCircle,
   UserCheck,
@@ -91,7 +90,6 @@ function QuickActionsCard() {
     <div className="adm-glass rounded-xl border border-border bg-card p-3">
       <div className="flex items-center justify-between mb-2">
         <h2 className="text-sm font-bold">Quick Actions</h2>
-        <AlertCircle className="adm-accent-icon h-3.5 w-3.5 text-[hsl(var(--gold))]" />
       </div>
       <div className="space-y-2">
         {actions.map((a) => (
@@ -100,7 +98,7 @@ function QuickActionsCard() {
             href={a.href}
             className="adm-tile flex items-center gap-2.5 rounded-xl border border-border bg-background p-2 hover:border-primary/40 transition-colors"
           >
-            <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+            <div className="adm-icon grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
               <a.icon className="h-3.5 w-3.5" />
             </div>
             <div>
@@ -131,9 +129,12 @@ function StatsShell() {
           className={`${i === 0 ? "adm-hero" : "adm-glass"} flex flex-col rounded-xl border border-border bg-card p-2.5`}
         >
           <div className="flex items-start justify-between">
-            <div className="adm-chip grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-primary/15 to-accent/15 text-primary">
+            <div className="adm-icon adm-chip grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-primary/15 to-accent/15 text-primary">
               <Icon className="h-3.5 w-3.5" />
             </div>
+            <span className="adm-arrow relative grid h-6 w-6 place-items-center rounded-full bg-muted text-muted-foreground">
+              <ArrowUpRight className="h-3.5 w-3.5" />
+            </span>
           </div>
           <p className="mt-auto pt-2 text-base font-bold text-muted-foreground/40">—</p>
           <p className="text-[11px] text-muted-foreground">{label}</p>
@@ -212,12 +213,12 @@ async function DashboardStats() {
           style={{ animationDelay: `${i * 80}ms` }}
         >
           <div className="flex items-start justify-between">
-            <div className="adm-chip grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-primary/15 to-accent/15 text-primary group-hover:scale-110 group-hover:rotate-3 transition-transform">
+            <div className="adm-icon adm-chip grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-primary/15 to-accent/15 text-primary group-hover:scale-110 group-hover:rotate-3 transition-transform">
               <s.icon className="h-3.5 w-3.5" />
             </div>
-            <span className="adm-pill adm-live inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-600">
-              <ArrowUpRight className="h-2.5 w-2.5" />
-              Live
+            {/* fills with the gradient on hover (light mode: .adm-arrow) */}
+            <span className="adm-arrow relative grid h-6 w-6 place-items-center rounded-full bg-muted text-muted-foreground transition-colors group-hover:bg-gradient-to-br group-hover:from-primary group-hover:to-accent group-hover:text-primary-foreground">
+              <ArrowUpRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:rotate-45" />
             </span>
           </div>
           <p className="mt-auto pt-2 text-base font-bold">
@@ -323,19 +324,26 @@ function GlanceGrid({ items }: { items?: GlanceItem[] }) {
           <Link
             key={g.href}
             href={g.href}
-            className="adm-tile group flex items-center gap-2.5 rounded-lg border border-border bg-background p-2.5 hover:border-primary/40 transition-colors"
+            className="adm-tile group relative flex items-center gap-2.5 rounded-lg border border-border bg-background p-2.5 hover:border-primary/40 transition-colors"
           >
-            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary group-hover:scale-105 transition-transform">
+            <div className="adm-icon grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary group-hover:scale-105 transition-transform">
               <g.icon className="h-4 w-4" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className={`text-base font-bold leading-tight ${items ? "" : "text-muted-foreground/40"}`}>{g.value}</p>
+              <p className={`pr-[28px] text-base font-bold leading-tight ${items ? "" : "text-muted-foreground/40"}`}>{g.value}</p>
               <p className="truncate text-[11px] font-semibold">{g.label}</p>
               <p className="truncate text-[10px] text-muted-foreground">{g.sub}</p>
             </div>
-            {g.attention && (
-              <span className="h-2 w-2 shrink-0 self-start rounded-full bg-amber-500" title="Needs attention" />
-            )}
+            {/* Top-right corner: the "needs attention" dot, then an arrow that
+                fills with the gradient on hover (light mode: .adm-arrow) */}
+            <span className="absolute right-[8px] top-[8px] flex items-center gap-[6px]">
+              {g.attention && (
+                <span className="h-2 w-2 rounded-full bg-amber-500" title="Needs attention" />
+              )}
+              <span className="adm-arrow relative grid h-6 w-6 place-items-center rounded-full bg-muted text-muted-foreground transition-colors group-hover:bg-gradient-to-br group-hover:from-primary group-hover:to-accent group-hover:text-primary-foreground">
+                <ArrowUpRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:rotate-45" />
+              </span>
+            </span>
           </Link>
         ))}
       </div>
@@ -353,7 +361,7 @@ async function DashboardRecentSignups() {
           <h2 className="text-sm font-bold">Recent Signups</h2>
           <p className="text-[11px] text-muted-foreground mt-0.5">Latest user registrations</p>
         </div>
-        <Link href="/app/admin/students" className="text-[11px] font-semibold text-primary hover:text-accent">
+        <Link href="/app/admin/students" className="adm-badge rounded-full px-[10px] py-[4px] text-[11px] font-semibold text-primary hover:text-accent transition-[filter,box-shadow]">
           View all
         </Link>
       </div>
@@ -364,7 +372,7 @@ async function DashboardRecentSignups() {
             className="relative flex items-center gap-2 rounded-lg hover:bg-muted/30 p-1.5 transition-colors stagger-item"
             style={{ animationDelay: `${i * 60 + 200}ms` }}
           >
-            {/* Light mode: a thin gold line under the row, fading at both ends (globals.css) */}
+            {/* Light mode: a thin navy line under the row, fading at both ends (globals.css) */}
             <span aria-hidden="true" className="adm-divider pointer-events-none absolute -bottom-[2px] left-[10%] right-[25%] h-px" />
             <Avatar name={s.name} size={28} style="micah" />
             <div className="flex-1 min-w-0">
@@ -373,7 +381,7 @@ async function DashboardRecentSignups() {
               <p className="truncate text-[10px] text-muted-foreground">{s.email} · {s.country ?? s.role}</p>
             </div>
             <span className="text-[10px] text-muted-foreground">{timeAgo(s.createdAt)}</span>
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary inline-flex items-center gap-0.5">
+            <span className="adm-badge rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary inline-flex items-center gap-0.5">
               <UserPlus className="h-2.5 w-2.5" /> {s.role.toLowerCase()}
             </span>
           </div>

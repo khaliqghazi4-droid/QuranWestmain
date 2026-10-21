@@ -145,8 +145,8 @@ export default async function StudentReportPage({
           <div className="absolute -bottom-12 left-6">
             <Avatar
               name={student.name}
+              src={student.image}
               size={96}
-              style="micah"
               className="rounded-2xl border-4 border-card shadow-xl"
             />
           </div>

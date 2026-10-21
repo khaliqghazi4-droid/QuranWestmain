@@ -1,13 +1,13 @@
 ﻿import { Suspense } from "react";
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { PageHeader } from "@/components/dashboard/page-header";
 import { SchedulingBoard } from "./scheduling-board";
+import { AvailabilityHeader, AvailabilityShell } from "./shell";
 
 const getCachedAvailability = unstable_cache(
   () => prisma.enrollment.findMany({
     include: {
-      student: { select: { id: true, name: true, email: true, country: true, timezone: true } },
+      student: { select: { id: true, name: true, email: true, country: true, timezone: true, image: true } },
       course: { select: { id: true, name: true, level: true, classDuration: true } },
       teacher: { select: { id: true, name: true } },
       availability: { orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }] },
@@ -29,7 +29,7 @@ export const dynamic = "force-dynamic";
 export default function AdminAvailabilityPage() {
   return (
     <div className="space-y-6">
-      <PageHeader title="Scheduling & Availability" description="Manage student schedules and teacher bookings" />
+      <AvailabilityHeader />
       <Suspense fallback={<AvailabilityShell />}>
         <AvailabilityData />
       </Suspense>
@@ -48,6 +48,7 @@ async function AvailabilityData() {
       email: e.student.email,
       country: e.student.country,
       timezone: e.student.timezone ?? "UTC",
+      image: e.student.image ?? null,
     },
     course: {
       id: e.course.id,
@@ -72,24 +73,4 @@ async function AvailabilityData() {
   }));
 
   return <SchedulingBoard enrollments={data} />;
-}
-
-function AvailabilityShell() {
-  const cols = ["Student", "Course", "Teacher", "Schedule", "Bookings"];
-  return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
-      <div className="flex gap-3 px-4 py-3 border-b border-border bg-muted/20">
-        {cols.map((h) => (
-          <span key={h} className="text-xs font-medium text-muted-foreground flex-1">{h}</span>
-        ))}
-      </div>
-      {Array.from({ length: 7 }).map((_, i) => (
-        <div key={i} className="flex gap-3 px-4 py-3 border-b border-border last:border-0">
-          {cols.map((h) => (
-            <span key={h} className="text-xs text-muted-foreground/40 flex-1">—</span>
-          ))}
-        </div>
-      ))}
-    </div>
-  );
 }

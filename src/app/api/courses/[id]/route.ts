@@ -10,6 +10,7 @@ function revalidateCourseTouched() {
   revalidatePath("/app/admin/teachers");
   revalidatePath("/app/admin/students");
   revalidatePath("/app/admin/trials");
+  revalidatePath("/app/admin/payments"); // the course fees
   revalidatePath("/app/admin");
   revalidatePath("/app/teacher", "layout");
 }

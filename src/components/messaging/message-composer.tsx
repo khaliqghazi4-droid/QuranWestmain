@@ -133,10 +133,12 @@ export function MessageComposer({
   }
 
   return (
-    <form onSubmit={handleSend} className="border-t border-border bg-card">
+    // adm-composer*: hooks for the admin inbox's light-mode look (globals.css);
+    // they do nothing in the student and teacher chats
+    <form onSubmit={handleSend} className="adm-composer border-t border-border bg-card">
       {replyTo && (
         <div className={compact ? "px-3 pt-2" : "px-4 pt-3"}>
-          <div className="flex items-start gap-2 rounded-lg border-l-4 border-primary bg-muted/60 px-3 py-1.5">
+          <div className="adm-composer-reply flex items-start gap-2 rounded-lg border-l-4 border-primary bg-muted/60 px-3 py-1.5">
             <div className="min-w-0 flex-1">
               <p className="text-[11px] font-semibold text-primary">Replying to {replyTo.label}</p>
               <p className="truncate text-xs text-muted-foreground">{replyTo.text}</p>
@@ -199,7 +201,7 @@ export function MessageComposer({
           onClick={() => fileRef.current?.click()}
           disabled={recording || sending || uploading}
           title="Attach a file or image"
-          className={`grid ${btnSize} place-items-center rounded-full border border-border bg-card hover:bg-muted disabled:opacity-50`}
+          className={`adm-composer-btn grid ${btnSize} place-items-center rounded-full border border-border bg-card hover:bg-muted disabled:opacity-50`}
         >
           <Paperclip className="h-4 w-4" />
         </button>
@@ -224,7 +226,7 @@ export function MessageComposer({
             onClick={startRecording}
             disabled={sending || uploading || !!pending}
             title="Record a voice message"
-            className={`grid ${btnSize} place-items-center rounded-full border border-border bg-card hover:bg-muted disabled:opacity-50`}
+            className={`adm-composer-btn grid ${btnSize} place-items-center rounded-full border border-border bg-card hover:bg-muted disabled:opacity-50`}
           >
             <Mic className="h-4 w-4" />
           </button>
@@ -236,7 +238,7 @@ export function MessageComposer({
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder={pending ? "Add a caption (optional)…" : placeholder ?? "Type your message…"}
-          className={`flex-1 rounded-full border border-border bg-muted/50 px-4 ${compact ? "py-2" : "py-2.5"} text-sm focus:border-primary focus:bg-card focus:outline-none focus:ring-2 focus:ring-primary/20`}
+          className={`adm-composer-input flex-1 rounded-full border border-border bg-muted/50 px-4 ${compact ? "py-2" : "py-2.5"} text-sm focus:border-primary focus:bg-card focus:outline-none focus:ring-2 focus:ring-primary/20`}
         />
         <button
           type="submit"

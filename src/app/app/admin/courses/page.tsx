@@ -3,6 +3,7 @@ import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { CoursesManager } from "./courses-manager";
 import { MOCK_COURSES_LIST, MOCK_COURSES_TEACHERS } from "../_mock-data";
+import { CoursesShell } from "./shell";
 
 const getCachedCoursesData = unstable_cache(
   async () => {
@@ -11,7 +12,7 @@ const getCachedCoursesData = unstable_cache(
         include: {
           courseTeachers: {
             include: {
-              teacher: { select: { id: true, name: true } },
+              teacher: { select: { id: true, name: true, image: true } },
             },
           },
           enrollments: {
@@ -23,7 +24,7 @@ const getCachedCoursesData = unstable_cache(
       }),
       prisma.user.findMany({
         where: { role: "TEACHER" },
-        select: { id: true, name: true },
+        select: { id: true, name: true, image: true },
         orderBy: { name: "asc" },
       }),
     ]);
@@ -67,6 +68,7 @@ async function CoursesData() {
         const teachersList = c.courseTeachers.map((ct) => ({
           id: ct.teacher.id,
           name: ct.teacher.name,
+          image: ct.teacher.image,
           isPrimary: c.teacherId === ct.teacher.id,
           studentsCount: c.enrollments.filter((e) => e.teacherId === ct.teacher.id).length,
         }));
@@ -87,25 +89,5 @@ async function CoursesData() {
       })}
       teachers={teachers}
     />
-  );
-}
-
-function CoursesShell() {
-  return (
-    <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="rounded-xl border border-border bg-card overflow-hidden">
-          <div className="h-32 bg-muted/20 border-b border-border" />
-          <div className="p-4 space-y-2">
-            <div className="text-sm font-medium text-muted-foreground/40">—</div>
-            <div className="text-xs text-muted-foreground/30">—</div>
-            <div className="flex gap-2 pt-1">
-              <span className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground/40">— students</span>
-              <span className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground/40">—</span>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
   );
 }

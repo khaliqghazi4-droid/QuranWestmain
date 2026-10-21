@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
+import { FilterSelect } from "@/components/admin/filter-select";
 import type { WebsiteEnrollment } from "@/lib/enroll-source";
 
 export function addStudentHref(
@@ -85,25 +86,23 @@ export function EnrollmentsList({ enrollments }: { enrollments: WebsiteEnrollmen
 
   return (
     <div className="space-y-4">
-      {/* Toolbar. `adm-*` classes: light-mode glass look, see globals.css */}
-      <div className="adm-glass rounded-2xl border border-border bg-card p-4 flex flex-wrap items-center gap-3">
+      {/* Toolbar. `adm-*` classes: light-mode glass look, see globals.css.
+          relative z-[5]: the filter's menu opens over the cards below */}
+      <div className="adm-glass relative z-[5] rounded-2xl border border-border bg-card p-4 flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2 shrink-0">
-          <div className="adm-chip grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-primary/15 to-accent/15 text-primary">
+          <div className="adm-icon adm-chip grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-primary/15 to-accent/15 text-primary">
             <Filter className="h-4 w-4" />
           </div>
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value as typeof filter)}
-            className="rounded-full border border-border bg-background px-4 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          >
-            <option value="all">All requests ({enrollments.length})</option>
-            <option value="adult">
-              Adults ({enrollments.filter((e) => e.courseFor === "adult").length})
-            </option>
-            <option value="kid">
-              Kids ({enrollments.filter((e) => e.courseFor === "kid").length})
-            </option>
-          </select>
+                    <FilterSelect
+                      label="Show"
+                      value={filter}
+                      onChange={setFilter}
+                      options={[
+                        { value: "all", label: "All requests", count: enrollments.length },
+                        { value: "adult", label: "Adults", count: enrollments.filter((e) => e.courseFor === "adult").length },
+                        { value: "kid", label: "Kids", count: enrollments.filter((e) => e.courseFor === "kid").length },
+                      ]}
+                    />
         </div>
         <div className="flex-1" />
         <div className="relative max-w-sm w-full sm:w-auto">

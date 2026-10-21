@@ -20,9 +20,11 @@ import {
   Filter,
   Video,
   Check,
+  BookOpen,
 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
-import { AvailabilityEditor } from "@/components/availability/availability-editor";
+import { FilterSelect } from "@/components/admin/filter-select";
+import { AvailabilityDialog } from "@/components/availability/availability-editor";
 import { DAYS, formatTime12h } from "@/lib/timezones";
 import { formatSlotRange, SHIFT_RANGES } from "@/lib/shifts";
 
@@ -42,6 +44,8 @@ type Enrollment = {
     email: string;
     country: string | null;
     timezone: string;
+    // their own uploaded photo, if any
+    image: string | null;
   };
   course: { id: string; name: string; level: string; classDuration: number };
   teacherName: string | null;
@@ -74,43 +78,47 @@ export function SchedulingBoard({ enrollments }: { enrollments: Enrollment[] }) 
 
   return (
     <div className="space-y-4">
-      {/* Toolbar */}
-      <div className="rounded-2xl border border-border bg-card p-4 flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-primary/15 to-accent/15 text-primary">
+      {/* Toolbar, as on Enrollments: the navy filter with its own chevron, then search.
+          Sizes and gaps are written out ([13px], [12px]…) in this file: the
+          website's Bootstrap sheet overrides .p-5, .mt-4, .text-sm, .text-xs…
+          relative z-[5]: the filter's menu opens over the cards below */}
+      <div className="adm-glass relative z-[5] flex flex-wrap items-center gap-[12px] rounded-2xl border-[1px] border-border bg-card p-[16px]">
+        <div className="flex shrink-0 items-center gap-[8px]">
+          <div className="adm-icon adm-chip grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-primary/15 to-accent/15 text-primary">
             <Filter className="h-4 w-4" />
           </div>
-          <select
+          <FilterSelect
+            label="Show"
             value={filter}
-            onChange={(e) => setFilter(e.target.value as typeof filter)}
-            className="rounded-full border border-border bg-background px-4 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          >
-            <option value="all">All enrollments</option>
-            <option value="no-availability">Needs student times</option>
-            <option value="not-booked">Not booked yet</option>
-            <option value="booked">Has bookings</option>
-          </select>
+            onChange={setFilter}
+            options={[
+              { value: "all", label: "All enrollments", count: enrollments.length },
+              { value: "no-availability", label: "Needs student times", count: enrollments.filter((e) => e.availability.length === 0).length },
+              { value: "not-booked", label: "Not booked yet", count: enrollments.filter((e) => e.bookings.length === 0).length },
+              { value: "booked", label: "Has bookings", count: enrollments.filter((e) => e.bookings.length > 0).length },
+            ]}
+          />
         </div>
         <div className="flex-1" />
-        <div className="relative max-w-sm w-full sm:w-auto">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="relative w-full max-w-sm sm:w-auto">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search student or course..."
-            className="w-full sm:w-72 rounded-full border border-border bg-background pl-10 pr-4 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="w-full rounded-full border-[1px] border-border bg-background py-[8px] pl-[40px] pr-[16px] text-[13.5px] leading-[20px] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 sm:w-72"
           />
         </div>
       </div>
 
       {filtered.length === 0 ? (
-        <div className="rounded-2xl border-2 border-dashed border-border bg-card/50 p-12 text-center">
+        <div className="adm-glass rounded-2xl border-[1px] border-dashed border-border bg-card/50 p-[48px] text-center">
           <Calendar className="mx-auto h-12 w-12 text-muted-foreground/50" />
-          <p className="mt-4 text-sm text-muted-foreground">No enrollments match your filter</p>
+          <p className="mt-[16px] text-[14px] text-muted-foreground">No enrollments match your filter</p>
         </div>
       ) : (
-        <div className="grid gap-3 lg:grid-cols-2">
+        <div className="grid gap-[16px] md:grid-cols-2 lg:grid-cols-3">
           {filtered.map((e) => (
             <EnrollmentCard
               key={e.id}
@@ -156,96 +164,125 @@ function EnrollmentCard({
   const hasAvailability = e.availability.length > 0;
   const hasBookings = e.bookings.length > 0;
 
+  // One tag for where this enrollment stands, top right
+  const status = hasBookings
+    ? { label: "Scheduled", cls: "bg-emerald-500/10 text-emerald-700" }
+    : hasAvailability
+      ? { label: "Not booked", cls: "bg-primary/10 text-primary" }
+      : { label: "Needs times", cls: "bg-amber-500/15 text-amber-700" };
+
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 hover:border-primary/30 transition-colors">
-      <div className="flex items-start gap-3">
-        <Avatar name={e.student.name} size={42} style="micah" />
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold truncate">{e.student.name}</p>
-          <p className="text-[11px] text-muted-foreground truncate">{e.student.email}</p>
-          <div className="mt-1 flex items-center gap-2 flex-wrap">
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-              {e.course.name}
-            </span>
-            <span className="text-[10px] text-muted-foreground inline-flex items-center gap-1">
-              <Globe className="h-2.5 w-2.5" /> {e.student.timezone}
-            </span>
-            <span className="text-[10px] text-muted-foreground">{e.course.classDuration}m class</span>
-          </div>
+    // flex-col + mt-auto on the buttons: they line up along the bottom of a row
+    <div className="adm-glass flex min-w-0 flex-col rounded-2xl border-[1px] border-border bg-card p-[16px]">
+      <div className="flex items-start gap-[10px]">
+        <Avatar name={e.student.name} src={e.student.image} size={38} />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[14px] font-semibold leading-[20px]">{e.student.name}</p>
+          <p className="truncate text-[12px] leading-[17px] text-muted-foreground">{e.student.email}</p>
         </div>
+        <span className={`shrink-0 rounded-full px-[8px] py-[2px] text-[11px] font-semibold leading-[16px] ${status.cls}`}>
+          {status.label}
+        </span>
       </div>
 
-      {/* Status row */}
-      <div className="mt-4 grid grid-cols-2 gap-2">
-        <div
-          className={`rounded-xl border p-2.5 text-[11px] ${
-            hasAvailability
-              ? "border-emerald-500/30 bg-emerald-500/5"
-              : "border-[hsl(var(--gold))]/40 bg-[hsl(var(--gold)/0.08)]"
-          }`}
-        >
-          <div className="flex items-center gap-1.5 font-semibold">
-            {hasAvailability ? (
-              <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-            ) : (
-              <AlertCircle className="h-3 w-3 text-[hsl(var(--gold))]" />
-            )}
-            Student times
-          </div>
-          <p className="text-muted-foreground mt-0.5">
-            {hasAvailability ? `${e.availability.length} window(s) set` : "Not set yet"}
-          </p>
-        </div>
-        <div
-          className={`rounded-xl border p-2.5 text-[11px] ${
-            hasBookings ? "border-primary/30 bg-primary/5" : "border-border bg-background"
-          }`}
-        >
-          <div className="flex items-center gap-1.5 font-semibold">
-            <Calendar className="h-3 w-3 text-primary" /> Classes
-          </div>
-          <p className="text-muted-foreground mt-0.5">
-            {hasBookings ? `${e.bookings.length} booked` : "None booked"}
-          </p>
-        </div>
+      <div className="mt-[10px] flex flex-wrap items-center gap-x-[10px] gap-y-[6px] text-[11.5px] leading-[16px] text-muted-foreground">
+        <span className="inline-flex min-w-0 items-center gap-[5px] rounded-full bg-primary/10 px-[8px] py-[2px] font-semibold text-primary">
+          <BookOpen className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">{e.course.name}</span>
+        </span>
+        <span className="inline-flex items-center gap-[5px]">
+          <Globe className="h-3.5 w-3.5" /> {e.student.timezone}
+        </span>
+        <span className="inline-flex items-center gap-[5px]">
+          <Clock className="h-3.5 w-3.5" /> {e.course.classDuration} min class
+        </span>
       </div>
 
-      {/* Booked slots */}
+      {/* Where it stands: the student's free times, and the booked classes */}
+      <div className="mt-[12px] grid grid-cols-2 gap-[8px]">
+        <StatusTile
+          icon={hasAvailability ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertCircle className="h-3.5 w-3.5" />}
+          tone={hasAvailability ? "ok" : "warn"}
+          label="Student times"
+          value={hasAvailability ? `${e.availability.length} ${e.availability.length === 1 ? "window" : "windows"} set` : "Not set yet"}
+        />
+        <StatusTile
+          icon={<Calendar className="h-3.5 w-3.5" />}
+          tone={hasBookings ? "ok" : "none"}
+          label="Classes"
+          value={hasBookings ? `${e.bookings.length} booked` : "None booked"}
+        />
+      </div>
+
       {hasBookings && (
-        <div className="mt-3 space-y-1">
+        <ul className="adm-rows mt-[10px] divide-y divide-border overflow-hidden rounded-xl border-[1px] border-border">
           {e.bookings.map((b) => (
-            <div
+            <li
               key={b.id}
-              className="flex items-center gap-2 rounded-lg bg-muted/50 px-2.5 py-1.5 text-[11px]"
+              title={`${DAYS[b.dayOfWeek].short} ${formatSlotRange(b.startTime)} PKT · ${b.teacherName}`}
+              className="flex items-center gap-[8px] px-[10px] py-[7px] text-[12px] leading-[17px]"
             >
-              <Clock className="h-3 w-3 text-primary shrink-0" />
-              <span className="font-semibold">{DAYS[b.dayOfWeek].short}</span>
-              <span>{formatSlotRange(b.startTime)}</span>
-              <span className="text-muted-foreground">PKT</span>
-              <span className="ml-auto text-muted-foreground truncate">{b.teacherName}</span>
-            </div>
+              <span className="adm-badge grid h-6 w-9 shrink-0 place-items-center rounded-md bg-gradient-to-br from-primary to-accent text-[11px] font-bold text-primary-foreground">
+                {DAYS[b.dayOfWeek].short}
+              </span>
+              <span className="whitespace-nowrap font-semibold">{formatSlotRange(b.startTime)}</span>
+              {/* only where the card is wide enough beside the time and teacher (the row's tooltip always has it) */}
+              <span className="hidden text-muted-foreground sm:inline lg:hidden 2xl:inline">PKT</span>
+              <span className="ml-auto inline-flex min-w-0 items-center gap-[5px] text-muted-foreground">
+                <User className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{b.teacherName}</span>
+              </span>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
 
-      <div className="mt-4 grid grid-cols-2 gap-2">
+      <div className="mt-auto grid grid-cols-2 gap-[8px] pt-[14px]">
         <button
           onClick={onEdit}
-          className={`inline-flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-bold transition-all ${
+          className={`inline-flex items-center justify-center gap-[6px] rounded-full px-[10px] py-[8px] text-[12.5px] font-semibold leading-[17px] transition-all ${
             hasAvailability
-              ? "border border-border bg-card text-foreground hover:bg-muted"
+              ? "border-[1px] border-border bg-background/70 text-foreground hover:bg-muted"
               : "bg-gradient-to-r from-[hsl(var(--gold))] to-amber-500 text-[hsl(220_32%_10%)] shadow-md"
           }`}
         >
-          <Calendar className="h-3.5 w-3.5" />
+          <Calendar className="h-4 w-4" />
           {hasAvailability ? "Edit Times" : "Set Times"}
         </button>
         <button
           onClick={onBook}
-          className="inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-primary to-accent px-3 py-2 text-xs font-bold text-primary-foreground shadow-md"
+          className="inline-flex items-center justify-center gap-[6px] rounded-full bg-gradient-to-r from-primary to-accent px-[12px] py-[9px] text-[13px] font-semibold leading-[18px] text-primary-foreground shadow-md"
         >
-          <CalendarPlus className="h-3.5 w-3.5" /> Book Class
+          <CalendarPlus className="h-4 w-4" /> Book Class
         </button>
+      </div>
+    </div>
+  );
+}
+
+// A small status box: icon in a tinted circle, label, then the value
+function StatusTile({
+  icon,
+  tone,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  tone: "ok" | "warn" | "none";
+  label: string;
+  value: string;
+}) {
+  const iconCls =
+    tone === "ok"
+      ? "bg-emerald-500/10 text-emerald-600"
+      : tone === "warn"
+        ? "bg-amber-500/15 text-amber-600"
+        : "bg-muted text-muted-foreground";
+  return (
+    <div className="adm-tile flex min-w-0 items-center gap-[8px] rounded-xl border-[1px] border-border bg-background/60 p-[8px]">
+      <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg ${iconCls}`}>{icon}</span>
+      <div className="min-w-0">
+        <p className="truncate text-[12px] font-semibold leading-[16px]">{label}</p>
+        <p className="truncate text-[11.5px] leading-[15px] text-muted-foreground">{value}</p>
       </div>
     </div>
   );
@@ -260,60 +297,21 @@ function AvailabilityModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  React.useLayoutEffect(() => {
-    const main = document.querySelector("main") as HTMLElement | null;
-    const html = document.documentElement;
-    if (main) main.style.overflow = "hidden";
-    html.style.overflow = "hidden";
-    document.body.style.overflow = "hidden";
-    return () => {
-      if (main) main.style.overflow = "";
-      html.style.overflow = "";
-      document.body.style.overflow = "";
-    };
-  }, []);
   return (
-    <div
-      className="fixed inset-0 z-50 overflow-y-auto bg-foreground/40 backdrop-blur-sm animate-fade-in"
-      onClick={onClose}
-    >
-      <div className="flex min-h-full items-start sm:items-center justify-center p-4">
-        <div
-          onClick={(ev) => ev.stopPropagation()}
-          className="w-full max-w-2xl rounded-3xl border border-border bg-card shadow-2xl my-auto"
-        >
-          <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-card">
-            <div>
-              <h2 className="text-base font-bold">Set Student Available Times</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {enrollment.student.name} ·{" "}
-                <span className="font-semibold text-foreground">{enrollment.course.name}</span>
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              className="grid h-9 w-9 place-items-center rounded-full hover:bg-muted"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          <div className="p-4">
-            <AvailabilityEditor
-              saveUrl={`/api/enrollments/${enrollment.id}/availability`}
-              initialTimezone={enrollment.student.timezone}
-              initialSlots={enrollment.availability.map((a) => ({
-                dayOfWeek: a.dayOfWeek,
-                startTime: a.startTime,
-                endTime: a.endTime,
-              }))}
-              title={`Available Times for ${enrollment.student.name}`}
-              description={`Class is ${enrollment.course.classDuration} min. Set hours the student can attend (their local time)`}
-              onSaved={onSaved}
-            />
-          </div>
-        </div>
-      </div>
-    </div>
+    <AvailabilityDialog
+      title="Student's available times"
+      subtitle={`${enrollment.student.name} · ${enrollment.course.name} · ${enrollment.course.classDuration} min class`}
+      onClose={onClose}
+      saveUrl={`/api/enrollments/${enrollment.id}/availability`}
+      initialTimezone={enrollment.student.timezone}
+      initialSlots={enrollment.availability.map((a) => ({
+        dayOfWeek: a.dayOfWeek,
+        startTime: a.startTime,
+        endTime: a.endTime,
+      }))}
+      description="The hours this student can attend each week, in their own time zone."
+      onSaved={onSaved}
+    />
   );
 }
 
@@ -460,20 +458,22 @@ function BookingModal({
           className="w-full max-w-4xl rounded-3xl border border-border bg-card shadow-2xl my-4"
         >
           {/* Header */}
-          <div className="sticky top-0 z-20 flex items-center justify-between p-4 border-b border-border bg-card rounded-t-3xl">
-            <div className="min-w-0">
-              <h2 className="text-base font-bold inline-flex items-center gap-2">
-                <CalendarPlus className="h-4 w-4 text-primary" /> Book a Class
-              </h2>
-              <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                {enrollment.student.name} ·{" "}
-                <span className="font-semibold text-foreground">{enrollment.course.name}</span> ·{" "}
-                {enrollment.course.classDuration} min
+          {/* Same header as the Student's available times pop-up: navy icon
+              square, title, then student · course · length */}
+          <div className="sticky top-0 z-20 flex items-center gap-[12px] rounded-t-3xl border-b border-border bg-card px-[20px] py-[16px] sm:px-[24px]">
+            <span className="adm-icon grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-primary/15 to-accent/15 text-primary">
+              <CalendarPlus className="h-[18px] w-[18px]" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-[17px] font-bold leading-[24px]">Book a class</h2>
+              <p className="truncate text-[12.5px] leading-[18px] text-muted-foreground">
+                {enrollment.student.name} · {enrollment.course.name} · {enrollment.course.classDuration} min class
               </p>
             </div>
             <button
               onClick={onClose}
-              className="grid h-9 w-9 place-items-center rounded-full hover:bg-muted shrink-0"
+              aria-label="Close"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               <X className="h-4 w-4" />
             </button>
