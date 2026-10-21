@@ -35,13 +35,6 @@ import CoverflowSlider from "@/components/blog/coverflow-slider";
 import { Accent, Words, wordsParent } from "@/components/lux/effects";
 import { blogs } from "./data";
 
-// Page order: hero with search, featured article, category pills, then the
-// articles as a 3D slider or a grid with a sidebar. Colours are the site's
-// navy (#0B1A37) and gold (#EECC65); on white, gold text uses the darker
-// #9B7930, since the brand gold is hard to read there.
-
-// `key`: the React key for each post's cards (position as well as id, so a
-// repeated id in data.js can't break the lists)
 const posts = blogs.map((post, i) => ({ ...post, key: `${post.id}-${i}` }));
 const featuredPost = posts.find((post) => post.featured) || posts[0];
 const categories = ["All", ...new Set(posts.map((post) => post.category))];
@@ -61,7 +54,6 @@ const popularTags = Object.entries(
   .slice(0, 12)
   .map(([tag]) => tag);
 
-// Post dates are written "21 July 2026"
 const MONTHS = [
   "january",
   "february",
@@ -85,7 +77,6 @@ const latestPosts = [...posts]
   .sort((a, b) => dateValue(b.date) - dateValue(a.date))
   .slice(0, 4);
 
-// Grid page size below lg; beside the sidebar it follows the sidebar's height
 const POSTS_PER_PAGE = 6;
 
 const matchesQuery = (post, q) =>
@@ -106,9 +97,6 @@ const filterPosts = (category, query) => {
   );
 };
 
-// Hero: heading, intro, a search box and the categories. Typing filters the
-// articles below and lists up to 5 matches under the box (arrow keys + Enter
-// to open one).
 const BlogHero = ({ query, onQueryChange, category, onCategory }) => {
   const router = useRouter();
   const reduceMotion = useReducedMotion();
@@ -152,7 +140,6 @@ const BlogHero = ({ query, onQueryChange, category, onCategory }) => {
     }
   };
 
-  // Outline shapes drifting in the background (md+)
   const float = (animate, duration) =>
     reduceMotion
       ? {}
@@ -160,7 +147,6 @@ const BlogHero = ({ query, onQueryChange, category, onCategory }) => {
 
   return (
     <section className="relative z-20 flex min-h-[40vh] items-center justify-center !bg-[#0B1A37] py-[2rem] md:py-[2.25rem]">
-      {/* Soft gold glows */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
@@ -183,7 +169,6 @@ const BlogHero = ({ query, onQueryChange, category, onCategory }) => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
         >
-          {/* one line at every width: the size follows the screen width */}
           <motion.h1
             initial="hidden"
             animate="shown"
@@ -294,7 +279,6 @@ const BlogHero = ({ query, onQueryChange, category, onCategory }) => {
           </motion.div>
         </motion.div>
 
-        {/* wider than the heading's column, so on laptops they fit one row */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -323,11 +307,6 @@ const BlogHero = ({ query, onQueryChange, category, onCategory }) => {
   );
 };
 
-// One large card: image on the left from lg up (on top below that). It comes
-// after the articles, whose section's bottom padding spaces it from them.
-// It shows the slider's centre article, so it changes with the slider: the
-// picture crossfades, and the words fade out and the new ones in, the card
-// keeping its size throughout.
 const FeaturedPost = ({ post }) => (
   <section className="pb-16 md:pb-24">
     <div className="container">
@@ -378,10 +357,7 @@ const FeaturedPost = ({ post }) => (
                   </motion.div>
                 </AnimatePresence>
               </div>
-              {/* Every article's words sit stacked in one grid cell, only the
-                  shown one visible: the cell is as tall as the longest, so
-                  the card keeps one size whichever article it shows (on
-                  laptops the picture beside it stretches to the same height) */}
+
               <div className="grid content-center p-6 md:p-8 lg:p-10">
                 {posts.map((p) => {
                   const shown = p.key === post.key;
@@ -393,15 +369,15 @@ const FeaturedPost = ({ post }) => (
                       style={{
                         opacity: shown ? 1 : 0,
                         visibility: shown ? "visible" : "hidden",
-                        // the old words fade out, then the new ones in
                         transition: shown
                           ? "opacity 0.35s ease-out 0.25s, visibility 0s"
                           : "opacity 0.25s ease-in, visibility 0s linear 0.25s",
                       }}
                     >
-                      {/* the editor's pick says so; the others give their topic */}
                       <p className={`${label} !mb-2`}>
-                        {p.key === featuredPost.key ? "Editor’s Pick" : p.tags?.[0] || p.category}
+                        {p.key === featuredPost.key
+                          ? "Editor’s Pick"
+                          : p.tags?.[0] || p.category}
                       </p>
                       <h2
                         className={`${titleClass} !mb-3 !text-xl !leading-tight md:!text-2xl lg:!text-3xl`}
@@ -442,9 +418,6 @@ const FeaturedPost = ({ post }) => (
   </section>
 );
 
-// The categories, under the hero's search box, on its navy: tags that wrap
-// onto as many centred lines as they need, so every category shows at once
-// (on phones too, rather than a row that scrolls sideways out of sight)
 const CategoryPills = ({ active, onSelect }) => (
   <div className="mt-[1.25rem]">
     <div
@@ -474,7 +447,6 @@ const CategoryPills = ({ active, onSelect }) => (
   </div>
 );
 
-// Up to 5 page numbers, centred on the current page where possible
 const Pagination = ({ page, totalPages, onChange }) => {
   let start = Math.max(1, page - 2);
   const end = Math.min(totalPages, start + 4);
@@ -538,10 +510,6 @@ const PostGrid = ({ posts: list, page, onPageChange, sidebarRef }) => {
   const [perPage, setPerPage] = useState(POSTS_PER_PAGE);
   const hasPosts = list.length > 0;
 
-  // Beside the sidebar (lg+), a page holds as many rows of cards as fill the
-  // sidebar's height, so no empty space is left next to it; page numbers only
-  // appear when there are more posts than that. Below lg the sidebar sits
-  // under the cards, so a page is POSTS_PER_PAGE.
   useEffect(() => {
     const aside = sidebarRef?.current;
     if (!aside || !hasPosts) return;
@@ -596,7 +564,7 @@ const PostGrid = ({ posts: list, page, onPageChange, sidebarRef }) => {
   }
 
   const totalPages = Math.ceil(list.length / perPage);
-  // A bigger page (wider screen) can leave fewer pages than the one shown
+
   const current = Math.min(page, totalPages);
   const pagePosts = list.slice((current - 1) * perPage, current * perPage);
   const goToPage = (p) => {
@@ -649,9 +617,6 @@ const SidebarCard = ({ title, Icon, delay = 0, children }) => (
   </motion.div>
 );
 
-// Grid view sidebar: latest articles, categories, tags and a free trial card
-// lg:self-start keeps the sidebar its own height (not stretched to the row),
-// which PostGrid measures to size its pages
 const BlogSidebar = ({
   activeCategory,
   onCategory,
@@ -768,19 +733,11 @@ const BlogSidebar = ({
   </aside>
 );
 
-// The view the visitor picked (slider or grid) lasts for their visit, so
-// coming back from an article shows the same one until they switch it
 const VIEW_KEY = "quranwest:blogs-view";
 
-// useLayoutEffect in the browser (it runs before the first paint, so the
-// saved view shows without the slider flashing first); React warns about it
-// on the server, where useEffect is used instead
 const useBrowserLayoutEffect =
   typeof window === "undefined" ? useEffect : useLayoutEffect;
 
-// Where the list's heading lands when a filter scrolls to it: under the 68px
-// sticky header, with a little air. The slider keeps that much of the screen
-// free, so after the scroll it shows whole.
 const LIST_SCROLL_MARGIN = 120;
 
 const VIEWS = [
@@ -797,18 +754,14 @@ const Page = () => {
     try {
       const saved = sessionStorage.getItem(VIEW_KEY);
       if (saved === "slider" || saved === "grid") setView(saved);
-    } catch {
-      // storage blocked (private mode, settings): stay on the slider
-    }
+    } catch {}
   }, []);
 
   const chooseView = (value) => {
     setView(value);
     try {
       sessionStorage.setItem(VIEW_KEY, value);
-    } catch {
-      // storage blocked: the choice just won't be remembered
-    }
+    } catch {}
   };
   const [page, setPage] = useState(1);
   const [enrollOpen, setEnrollOpen] = useState(false);
@@ -820,17 +773,16 @@ const Page = () => {
     [category, query],
   );
 
-  // The featured article follows the slider's centre card; in the grid, or
-  // when nothing matches the filter, it is the editor's pick
   const [slidePost, setSlidePost] = useState(null);
   const shownFeature =
-    view === "slider" && filtered.length > 0 && slidePost ? slidePost : featuredPost;
+    view === "slider" && filtered.length > 0 && slidePost
+      ? slidePost
+      : featuredPost;
 
   useEffect(() => {
     setPage(1);
   }, [category, query]);
 
-  // The article pages link their tags and author here as /blogs?q=...
   useEffect(() => {
     const q = new URLSearchParams(window.location.search).get("q");
     if (q) {
@@ -839,8 +791,6 @@ const Page = () => {
     }
   }, []);
 
-  // The hero's categories and the sidebar's filters change the list, so
-  // bring the list into view
   const showInList = (apply) => {
     apply();
     listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -857,8 +807,6 @@ const Page = () => {
           onCategory={(c) => showInList(() => setCategory(c))}
         />
 
-        {/* overflow-x-clip: the slider's side cards reach past the screen
-            edge on phones */}
         <section className="overflow-x-clip pb-24 pt-[3rem] md:pt-[4rem]">
           <div className="container">
             <div
@@ -866,7 +814,6 @@ const Page = () => {
               className="mb-[16px] flex items-center justify-between gap-[16px] border-b border-solid border-[#0B1A37]/10 pb-[10px]"
               style={{ scrollMarginTop: LIST_SCROLL_MARGIN }}
             >
-              {/* Named only in the grid; the slider needs no label */}
               {view === "grid" && (
                 <span className="text-[12px] font-bold uppercase tracking-widest text-[#0B1A37]/55">
                   All Articles
@@ -938,7 +885,6 @@ const Page = () => {
       </div>
       <Footer />
 
-      {/* Book a Free Trial: the enrollment form, as on the About page */}
       <AnimatePresence>
         {enrollOpen && (
           <motion.section

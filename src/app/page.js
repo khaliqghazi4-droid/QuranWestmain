@@ -18,7 +18,6 @@ import HomeFaq from "@/components/home/HomeFaq";
 
 export default function Home() {
   const [open, setOpen] = useState(false);
-  // The course the enrolment form starts on, when it's opened from a plan
   const [course, setCourse] = useState();
   const openEnroll = useCallback(() => {
     setCourse(undefined);
@@ -31,16 +30,10 @@ export default function Home() {
   const closeEnroll = useCallback(() => setOpen(false), []);
 
   return (
-    // Movement is turned off for visitors who ask their device for reduced motion
     <MotionConfig reducedMotion="user">
-      {/* clip, not hidden: hidden would make this a scroll box and stop the sticky header.
-          `noor-snap` turns on section snapping for this page (globals.css). */}
       <div className="noor-snap w-full overflow-x-clip">
         <Header />
         <main className="w-full">
-          {/* The hero and the reviews ribbon share the first screen under the header.
-              The 16px scroll margin makes its snap point the very top of the page,
-              where the header is still at its full 84px. */}
           <div className="flex min-h-[calc(100svh-84px)] flex-col lg:snap-start lg:scroll-mt-[16px]">
             <HeroLux onEnroll={openEnroll} />
             <ReviewMarquee />
@@ -48,15 +41,12 @@ export default function Home() {
           <WhyFamilies />
           <ProgrammesSection onEnroll={openEnroll} />
           <StepsTimeline onEnroll={openEnroll} />
-          {/* Previews of other pages, each with a button through to it:
-              About (map), Instructors, Blog, FAQs and, last, Pricing */}
           <WhoWeTeach />
           <MeetTeachers />
           <BlogShowcase />
           <HomeFaq onEnroll={openEnroll} />
           <HomePricing onChoose={enrollFor} />
         </main>
-        {/* The last place the page settles: the bottom, footer in view */}
         <div className="lg:snap-start">
           <Footer />
         </div>

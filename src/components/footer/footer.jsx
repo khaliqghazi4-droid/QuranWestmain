@@ -16,7 +16,6 @@ const fadeUp = (delay = 0) => ({
   transition: { duration: 0.6, ease: "easeOut", delay },
 });
 
-// The first revealed verse (Al-Alaq 96:1): "Read in the name of your Lord who created"
 const VERSE = "اقْرَأْ بِاسْمِ رَبِّكَ الَّذِي خَلَقَ";
 
 const LINK_COLUMNS = [
@@ -50,9 +49,6 @@ const LINK_COLUMNS = [
   },
 ];
 
-// A black badge in the style of an app-store button: a small line over a big one.
-// `compact` is a smaller one that fills its column (on phones, beside the
-// Studies links)
 function Badge({ icon, small, big, compact = false, ...props }) {
   const Tag = props.href ? "a" : "button";
   return (
@@ -82,7 +78,6 @@ const contactIcon = "mt-[0.2rem] h-[1.1rem] w-[1.1rem] shrink-0 text-[#E3C26B]";
 const Footer = () => {
   const [trialOpen, setTrialOpen] = useState(false);
 
-  // The two ways to get started, full size or `compact`
   const startBadges = (compact) => (
     <>
       <Badge
@@ -117,10 +112,6 @@ const Footer = () => {
 
   return (
     <footer className="relative isolate overflow-hidden bg-[#111D37]">
-      {/* the artwork across the top: the white crown with the verse in gold,
-                the gold band and the blue, at its own proportions (on phones a
-                fixed height, cropped at the sides); below it the footer carries
-                on in the artwork's last colour */}
       <div className="absolute inset-x-0 top-0 -z-10 h-[16rem] sm:h-auto sm:aspect-[3168/1344]">
         <Image
           src="/footer-bg.jpg"
@@ -135,20 +126,14 @@ const Footer = () => {
         {VERSE}
       </p>
 
-      {/* the content starts just under the point of the band (45.5% of the
-                artwork's height, which is 19.3% of its width) */}
       <div className="mx-auto w-full max-w-[78rem] px-[1rem] pt-[8.5rem] sm:px-[1.5rem] sm:pt-[calc(19.3%+1.75rem)] lg:px-[2.5rem]">
         <div className="grid gap-[2.75rem] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_auto_auto] lg:gap-x-[1.75rem] xl:grid-cols-[minmax(0,1.1fr)_auto_minmax(0,1.45fr)_auto_auto] xl:gap-x-[2.5rem]">
-          {/* the logo and how to reach us */}
           <motion.section {...fadeUp(0)}>
             <Link
               href="/"
               className="inline-block"
               aria-label="Quran West home"
             >
-              {/* a fine white rim round the logo's shapes lifts the navy
-                                letters off the navy footer; a softer white glow
-                                beyond it pulses slowly (held still for reduced motion) */}
               <Image
                 src="/quran-academy-logo.png"
                 alt="Quran West Academy"
@@ -180,7 +165,6 @@ const Footer = () => {
               <li className="flex gap-[0.75rem]">
                 <MapPin className={contactIcon} aria-hidden="true" />
                 <div className="space-y-[0.5rem] text-[0.94rem] font-medium leading-[1.5] text-white/85">
-                  {/* <p className="!mb-0 !text-[0.94rem] !leading-[1.5] !text-white/85">Watford Education Centre, Leavesden Road,<br />Watford, WD24 5ER</p> */}
                   <p className="!mb-0 !text-[0.94rem] !leading-[1.5] !text-white/85">
                     372-B, Block B People&apos;s Colony No 1,
                     <br />
@@ -205,7 +189,6 @@ const Footer = () => {
             className="hidden w-[1px] self-stretch bg-[linear-gradient(180deg,transparent,#D4AF37_20%,#D4AF37_80%,transparent)] xl:block"
           />
 
-          {/* quick links, in three columns */}
           <motion.nav {...fadeUp(0.1)} aria-label="Footer">
             <h2 className="!mb-0 !text-[1.6rem] !font-extrabold !leading-tight !tracking-[-0.02em] !text-white">
               Quick{" "}
@@ -233,7 +216,6 @@ const Footer = () => {
                   </ul>
                 </div>
               ))}
-              {/* phones: the badges fill the empty cell beside Studies */}
               <div className="flex flex-col gap-[0.6rem] sm:hidden">
                 {startBadges(true)}
               </div>
@@ -245,8 +227,6 @@ const Footer = () => {
             className="hidden w-[1px] self-stretch bg-[linear-gradient(180deg,transparent,#D4AF37_20%,#D4AF37_80%,transparent)] lg:block"
           />
 
-          {/* two ways to get started, and the rating; on phones the
-                        badges sit in the links above and the rating is centred */}
           <motion.div
             {...fadeUp(0.2)}
             className="flex flex-col items-center gap-[0.85rem] sm:items-start lg:items-center"
@@ -272,9 +252,6 @@ const Footer = () => {
         </div>
 
         <div className="mt-[2.75rem] h-[1px] bg-[linear-gradient(90deg,transparent,#D4AF37_18%,#F1D67E_50%,#D4AF37_82%,transparent)]" />
-        {/* on phones, two short centred lines with room below, so the
-                    floating WhatsApp and back-to-top buttons (bottom right)
-                    don't sit on them */}
         <p className="!mb-0 pb-[3.5rem] pt-[1.4rem] text-center max-sm:mx-auto max-sm:max-w-[12rem] sm:pb-[1.4rem] !text-[0.95rem] font-medium tracking-[0.01em] !text-[#E3C26B]">
           © {new Date().getFullYear()} Quran West.{" "}
           <span className="whitespace-nowrap">All rights reserved.</span>

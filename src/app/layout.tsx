@@ -24,8 +24,6 @@ const amiri = Amiri({
   display: "swap",
 });
 
-// The whole site: Manrope for headings and text (put on every element in
-// globals.css), Instrument Serif italic for the gold accent words (`.font-accent`)
 const manrope = Manrope({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
@@ -49,10 +47,10 @@ export const metadata: Metadata = {
   },
   description: siteConfig.description,
   alternates: {
-    canonical: '/',
+    canonical: "/",
   },
   openGraph: {
-    type: 'website',
+    type: "website",
     locale: siteConfig.locale,
     url: siteConfig.url,
     siteName: siteConfig.name,
@@ -60,7 +58,7 @@ export const metadata: Metadata = {
     description: siteConfig.description,
     images: [
       {
-        url: '/favicon.ico',
+        url: "/favicon.ico",
         width: 1200,
         height: 630,
         alt: siteConfig.name,
@@ -68,10 +66,10 @@ export const metadata: Metadata = {
     ],
   },
   twitter: {
-    card: 'summary_large_image',
+    card: "summary_large_image",
     title: siteConfig.name,
     description: siteConfig.description,
-    images: ['/favicon.ico'],
+    images: ["/favicon.ico"],
   },
   robots: {
     index: true,
@@ -79,27 +77,27 @@ export const metadata: Metadata = {
     googleBot: {
       index: true,
       follow: true,
-      'max-image-preview': 'large',
+      "max-image-preview": "large",
     },
   },
   icons: {
     icon: [
-      { url: '/favicon.ico' },
-      { url: '/favicon.ico', sizes: '192x192', type: 'image/png' },
-      { url: '/favicon.ico', sizes: '512x512', type: 'image/png' },
+      { url: "/favicon.ico" },
+      { url: "/favicon.ico", sizes: "192x192", type: "image/png" },
+      { url: "/favicon.ico", sizes: "512x512", type: "image/png" },
     ],
-    apple: '/favicon.ico',
+    apple: "/favicon.ico",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0B1A37',
+  themeColor: "#0B1A37",
 };
 
 const organizationJsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'Organization',
-  '@id': `${siteConfig.url}/#org`,
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": `${siteConfig.url}/#org`,
   name: siteConfig.name,
   url: siteConfig.url,
   logo: `${siteConfig.url}${siteConfig.logoPath}`,
@@ -107,18 +105,26 @@ const organizationJsonLd = {
 };
 
 const websiteJsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'WebSite',
-  '@id': `${siteConfig.url}/#website`,
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "@id": `${siteConfig.url}/#website`,
   name: siteConfig.name,
   url: siteConfig.url,
-  publisher: { '@id': `${siteConfig.url}/#org` },
-  inLanguage: 'en-US',
+  publisher: { "@id": `${siteConfig.url}/#org` },
+  inLanguage: "en-US",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html lang="en" className={`h-full antialiased ${inter.variable} ${amiri.variable} ${manrope.variable} ${instrumentSerif.variable}`} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`h-full antialiased ${inter.variable} ${amiri.variable} ${manrope.variable} ${instrumentSerif.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
         <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com" />
@@ -128,12 +134,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify([organizationJsonLd, websiteJsonLd]).replace(/</g, '\\u003c'),
+            __html: JSON.stringify([organizationJsonLd, websiteJsonLd]).replace(
+              /</g,
+              "\\u003c",
+            ),
           }}
         />
-        {/* <!-- Google Tag Manager --> */}
-        <script dangerouslySetInnerHTML={{ __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-WXNK5K3S');` }} />
-        {/* <!-- End Google Tag Manager --> */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-WXNK5K3S');`,
+          }}
+        />
       </head>
       <Script
         src="https://www.googletagmanager.com/gtag/js?id=G-VNVN2J9GY8"
@@ -148,13 +159,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         `}
       </Script>
       <body className="font-sans">
-        {/* <!-- Google Tag Manager (noscript) --> */}
-        <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-WXNK5K3S"
-          height="0" width="0" style={{ display: 'none', visibility: 'hidden' }}></iframe></noscript>
-        {/* <!-- End Google Tag Manager (noscript) --> */}
-        
-        {/* The page-loading bar along the top, in the site's gold (the deeper
-            shade, so it shows against the white header) */}
+        <noscript>
+          <iframe
+            src="https://www.googletagmanager.com/ns.html?id=GTM-WXNK5K3S"
+            height="0"
+            width="0"
+            style={{ display: "none", visibility: "hidden" }}
+          ></iframe>
+        </noscript>
         <NextTopLoader color="#C9A13B" showSpinner={false} height={2} />
         <AuthSessionProvider>
           <ThemeProvider
@@ -171,14 +183,31 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <DeferredCSS />
           </ThemeProvider>
         </AuthSessionProvider>
-
       </body>
-      <Script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" strategy="afterInteractive" />
-      <Script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" strategy="afterInteractive" />
-      <Script src="https://cdnjs.cloudflare.com/ajax/libs/magnific-popup.js/1.1.0/jquery.magnific-popup.min.js" strategy="afterInteractive" />
-      <Script src="https://cdnjs.cloudflare.com/ajax/libs/imagesloaded/5.0.0/imagesloaded.pkgd.min.js" strategy="lazyOnload" />
-      <Script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.isotope/3.0.6/isotope.pkgd.min.js" strategy="lazyOnload" />
-      <Script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js" strategy="afterInteractive" />
+      <Script
+        src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
+        strategy="afterInteractive"
+      />
+      <Script
+        src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        strategy="afterInteractive"
+      />
+      <Script
+        src="https://cdnjs.cloudflare.com/ajax/libs/magnific-popup.js/1.1.0/jquery.magnific-popup.min.js"
+        strategy="afterInteractive"
+      />
+      <Script
+        src="https://cdnjs.cloudflare.com/ajax/libs/imagesloaded/5.0.0/imagesloaded.pkgd.min.js"
+        strategy="lazyOnload"
+      />
+      <Script
+        src="https://cdnjs.cloudflare.com/ajax/libs/jquery.isotope/3.0.6/isotope.pkgd.min.js"
+        strategy="lazyOnload"
+      />
+      <Script
+        src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"
+        strategy="afterInteractive"
+      />
       <Script src="/assets/js/slider.js" strategy="afterInteractive" />
     </html>
   );

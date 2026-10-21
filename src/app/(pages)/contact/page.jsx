@@ -23,14 +23,17 @@ import {
 import Footer from "@/components/footer/footer";
 import Header from "@/components/header/header";
 import Goldenlines from "@/components/goldenlines";
-import { Accent, PageTitle, SectionHeading as LuxHeading, Words, leadClass } from "@/components/lux/effects";
+import {
+  Accent,
+  PageTitle,
+  SectionHeading as LuxHeading,
+  Words,
+  leadClass,
+} from "@/components/lux/effects";
 import EnrollModal from "@/components/enroll-modal";
 import { WHATSAPP_NUMBER } from "@/components/WhatsappButton";
 import { siteConfig } from "@/lib/siteConfig";
 
-// ─── Contact details ─────────────────────────────────────────────────────────
-// Must match the footer, every page and the Google listing word for word.
-// [..] are facts still to confirm.
 const WHATSAPP_MESSAGE = "Assalamu alaykum, I'd like to book a free trial.";
 const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`;
 const EMAIL = "info@quranwest.com";
@@ -43,14 +46,10 @@ const PK_ADDRESS =
 const REPLY_TIME = "[24 hours]";
 const OFFICE_HOURS = "[Monday to Sunday, 9am to 10pm]";
 
-// Turn the map on only once families can visit the Watford office (a Google
-// listing that shows an address nobody can visit can get suspended)
 const SHOW_MAP = false;
 const MAP_EMBED_URL =
   "https://www.google.com/maps?q=Watford+Education+Centre,+Leavesden+Road,+Watford+WD24+5ER&output=embed";
 
-// Only the main WhatsApp card is a link (it opens a chat with the ready
-// message); the others just show the details
 const CONTACT_METHODS = [
   {
     Icon: FaWhatsapp,
@@ -71,7 +70,6 @@ const CONTACT_METHODS = [
   { Icon: FaEnvelope, label: "Email", value: EMAIL },
 ];
 
-// Recheck when the clocks change in March/April and October/November
 const HOURS_BY_REGION = [
   ["UK", "[9am – 10pm]"],
   ["Europe (Paris, Berlin)", "[10am – 11pm]"],
@@ -101,10 +99,8 @@ const QUICK_LINKS = [
   },
 ];
 
-// Form options
 const COUNTRIES = ["UK", "USA", "Canada", "Europe", "Australia", "Other"];
-// Short labels keep the buttons on one line; `value` (what the email shows)
-// keeps the full wording
+
 const ENQUIRY_OPTIONS = [
   { value: "Book a free trial", label: "Free trial" },
   { value: "Prices", label: "Prices" },
@@ -117,8 +113,6 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SEND_FAILED =
   "Sorry, your message didn't send. Please try again or message us on WhatsApp.";
 
-// Structured data for search engines. The street address is left out until
-// it's confirmed families can visit the Watford office.
 const orgJsonLd = JSON.stringify({
   "@context": "https://schema.org",
   "@type": "EducationalOrganization",
@@ -165,17 +159,13 @@ const HOVER_LIFT = {
   transition: { type: "spring", stiffness: 300, damping: 20 },
 };
 
-// One size and shape for every button on the page
 const BTN = "btn btn-standard btn-lg !h-[54px] !rounded-[14px]";
-// The two column headings ("Talk to Our Team", "Send Us a Message")
+
 const COLUMN_H2 =
   "!m-0 !text-[22px] !font-extrabold !leading-tight !tracking-[-0.02em] !text-[#0B1A37] md:!text-[24px]";
-// The same padding above and below every section
+
 const SECTION_PAD = "py-[56px] lg:py-[72px]";
 
-// Section entrances, a different one for each part of the page. Like the
-// other pages, they play every time a section scrolls into view (once: false),
-// up or down.
 const slideIn = (from, delay = 0) => ({
   initial: { opacity: 0, x: from === "left" ? -50 : 50 },
   whileInView: { opacity: 1, x: 0 },
@@ -194,8 +184,7 @@ const zoomIn = {
   viewport: { once: false, amount: 0.3 },
   transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] },
 };
-// A parent with `stagger` shows its children (`rise`, `rowIn`) one after
-// another
+
 const stagger = (gap = 0.08, delayChildren = 0) => ({
   hidden: {},
   show: { transition: { staggerChildren: gap, delayChildren } },
@@ -208,7 +197,7 @@ const rowIn = {
   hidden: { opacity: 0, x: -16 },
   show: { opacity: 1, x: 0, transition: { duration: 0.4, ease: "easeOut" } },
 };
-// The form card slides in from the right; its fields follow (see the form)
+
 const formCardIn = {
   hidden: { opacity: 0, x: 50 },
   show: {
@@ -218,10 +207,6 @@ const formCardIn = {
   },
 };
 
-// ─── Small pieces ────────────────────────────────────────────────────────────
-
-// A section's heading in the home page's style: `title`, then `accent` in
-// the gold serif, and an intro line under it
 function SectionHeading({ title, accent, intro, light = false }) {
   const tone = light ? "dark" : "light";
   return (
@@ -252,7 +237,7 @@ function TrialButton({ onClick, className = "" }) {
 
 function ContactCard({ method, delay }) {
   const { Icon, label, value, note, href, external, main } = method;
-  // A card with a link opens it (and lifts on hover); the rest only show details
+
   const Card = href ? motion.a : motion.div;
   const linkProps = href
     ? {
@@ -397,8 +382,6 @@ function HoursCard() {
   );
 }
 
-// ─── Contact form ────────────────────────────────────────────────────────────
-
 const EMPTY_FORM = {
   firstName: "",
   lastName: "",
@@ -410,7 +393,7 @@ const EMPTY_FORM = {
   preferredTime: "",
   message: "",
   updates: false,
-  website: "", // spam trap, never shown to people
+  website: "",
 };
 
 const INPUT =
@@ -515,7 +498,7 @@ function PillGroup({ name, label, required, options, value, onChange, error }) {
 function ContactForm() {
   const [values, setValues] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
-  const [status, setStatus] = useState("idle"); // idle | sending | sent | error
+  const [status, setStatus] = useState("idle");
   const [serverError, setServerError] = useState("");
   const [sentName, setSentName] = useState("");
   const [showMore, setShowMore] = useState(false);
@@ -584,7 +567,6 @@ function ContactForm() {
       />
       <AnimatePresence mode="wait">
         {status === "sent" ? (
-          // Thank-you message, shown on the same page after sending
           <motion.div
             key="thanks"
             initial={{ opacity: 0, scale: 0.96 }}
@@ -639,8 +621,6 @@ function ContactForm() {
             onSubmit={onSubmit}
             noValidate
             className="flex flex-1 flex-col"
-            // Takes "hidden"/"show" from the card, so the fields appear as it
-            // slides in (and again when coming back from the thank-you message)
             variants={stagger(0.06, 0.3)}
             exit={{ opacity: 0 }}
           >
@@ -691,7 +671,6 @@ function ContactForm() {
               </Field>
             </motion.div>
 
-            {/* One of these two is needed */}
             <motion.div variants={rise} className="mt-[14px]">
               <div className="grid gap-[14px] sm:grid-cols-2">
                 <Field id="c-whatsapp" label="WhatsApp number">
@@ -765,7 +744,6 @@ function ContactForm() {
               </Field>
             </motion.div>
 
-            {/* Optional details, folded away so the form stays short */}
             <motion.div variants={rise} className="mt-[10px]">
               <button
                 type="button"
@@ -791,7 +769,6 @@ function ContactForm() {
                 }`}
                 {...(!showMore && { inert: "" })}
               >
-                {/* Side padding keeps the focus glow from being clipped */}
                 <div className="-mx-[4px] min-h-0 overflow-hidden px-[4px]">
                   <div className="grid gap-[14px] pt-[14px] sm:grid-cols-2">
                     <Field id="c-country" label="Country">
@@ -838,7 +815,6 @@ function ContactForm() {
               </div>
             </motion.div>
 
-            {/* Spam trap: hidden from people, bots fill it in */}
             <div
               aria-hidden="true"
               className="absolute left-[-9999px] h-0 w-0 overflow-hidden"
@@ -853,7 +829,6 @@ function ContactForm() {
               />
             </div>
 
-            {/* Marketing consent: optional and unticked (UK GDPR) */}
             <motion.label
               variants={rise}
               className="mt-[16px] flex cursor-pointer items-start gap-[10px] border-t-[1px] border-solid border-[#0B1A37]/[0.07] pt-[16px] text-[13px] leading-snug text-[#3b4456]"
@@ -904,7 +879,6 @@ function ContactForm() {
                   />
                 </span>
               </button>
-              {/* Link the privacy policy here once that page exists */}
               <p className="!m-0 !text-[13px] !text-[#3b4456]/75">
                 We only use your details to reply to you.
               </p>
@@ -916,20 +890,16 @@ function ContactForm() {
   );
 }
 
-// ─── Page ────────────────────────────────────────────────────────────────────
-
 const Page = () => {
   const [enrollOpen, setEnrollOpen] = useState(false);
   const openTrial = () => setEnrollOpen(true);
 
-  // /contact?trial=1 (used by the automatic reply email) opens the trial form
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("trial") === "1")
       setEnrollOpen(true);
   }, []);
 
   return (
-    // Movement is turned off for visitors who ask their device for reduced motion
     <MotionConfig reducedMotion="user">
       <Header />
       <section className="page-content">
@@ -972,7 +942,6 @@ const Page = () => {
                   />
                 </span>
               </a>
-              {/* Same size as the WhatsApp button, outlined */}
               <button
                 type="button"
                 onClick={openTrial}
@@ -990,21 +959,13 @@ const Page = () => {
             </motion.div>
           </motion.div>
         </section>
-        {/* end::Hero */}
-
-        {/* begin::Contact options + form. On phones the options come first */}
         <section className={`section-area !bg-[#F3F5F9] ${SECTION_PAD}`}>
           <div className="container">
-            {/* Both columns start with their heading on the same line and end
-                level: on desktop the form card stretches to the left column's
-                height */}
             <div className="grid items-stretch gap-[24px] lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-[32px]">
               <div className="flex flex-col">
                 <motion.h2 className={COLUMN_H2} {...slideIn("left")}>
                   Talk to Our Team
                 </motion.h2>
-                {/* Two across on tablets, where this column is full width; a
-                    single list beside the form */}
                 <div className="mt-[14px] grid gap-[10px] sm:grid-cols-2 lg:grid-cols-1">
                   {CONTACT_METHODS.map((method, i) => (
                     <ContactCard
@@ -1014,7 +975,6 @@ const Page = () => {
                     />
                   ))}
                 </div>
-                {/* Stretches when the form is taller (extra details open) */}
                 <div className="mt-[10px] flex flex-1 flex-col">
                   <HoursCard />
                 </div>
@@ -1030,9 +990,7 @@ const Page = () => {
             </div>
           </div>
         </section>
-        {/* end::Contact options + form */}
 
-        {/* begin::Quick links */}
         <section className={`section-area bg-white ${SECTION_PAD}`}>
           <div className="container">
             <SectionHeading title="Looking for Something" accent="Quick?" />
@@ -1068,9 +1026,6 @@ const Page = () => {
             </div>
           </div>
         </section>
-        {/* end::Quick links */}
-
-        {/* begin::Location */}
         <section className={`section-area !bg-[#F3F5F9] ${SECTION_PAD}`}>
           <div className="container">
             <SectionHeading
@@ -1141,9 +1096,6 @@ const Page = () => {
             )}
           </div>
         </section>
-        {/* end::Location */}
-
-        {/* begin::Final call to action */}
         <section className={`bg-white px-[16px] ${SECTION_PAD}`}>
           <motion.div
             className="relative mx-auto max-w-[1100px] overflow-hidden rounded-[24px] bg-[#0B1A37] px-[24px] py-[44px] text-center md:px-[48px] md:py-[56px]"
@@ -1167,7 +1119,6 @@ const Page = () => {
             </div>
           </motion.div>
         </section>
-        {/* end::Final call to action */}
 
         <script
           type="application/ld+json"
