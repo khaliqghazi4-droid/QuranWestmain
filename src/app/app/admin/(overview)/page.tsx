@@ -395,7 +395,8 @@ async function DashboardRecentSignups() {
 
 export default function AdminDashboard() {
   return (
-    <div className="space-y-3">
+    // adm-night: the black-and-gold dark mode (globals.css), page by page
+    <div className="adm-night space-y-3">
       {/* Stats as a 2×2 grid on the left, Quick Actions beside it */}
       <div className="grid lg:grid-cols-3 gap-3">
         <div className="lg:col-span-2">

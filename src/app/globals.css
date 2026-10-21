@@ -982,6 +982,345 @@ html:not(.dark) .admin-brand .adm-tip-glass.rounded-lg {
   }
 }
 
+/* ─── Admin dark mode: black with metallic gold (2026-10-21) ───────────────
+   Rolled out page by page: a page opts in with .adm-night on its root (the
+   dashboard first), and while such a page shows, the whole shell (sidebar,
+   header, background) follows. Other pages keep the original dark look until
+   they get the class. The user found the old dark gold a flat yellow, so the
+   gold here is a gradient, champagne to bronze, with a warm solid gold for
+   text. The tokens are swapped on the shell, so the markup's own classes
+   (bg-card, text-muted-foreground, from-primary…) follow. */
+html.dark .admin-brand:has(.adm-night) {
+  --night-gold: linear-gradient(135deg, #f4dc98 0%, #d9ad55 45%, #a87a2e 100%);
+  --night-gold-ink: #e0bb68; /* gold for text and marks on black */
+  --night-ink: #19140b; /* near-black brown for text on the gold */
+  --night-line: rgb(255 255 255 / 0.07);
+
+  --background: 240 6% 4%;
+  --foreground: 40 30% 94%;
+  --card: 240 5% 9%;
+  --card-foreground: 40 30% 94%;
+  --muted: 240 4% 14%;
+  --muted-foreground: 40 7% 66%;
+  --border: 240 4% 17%;
+  --primary: 40 62% 61%; /* #D9AE5B */
+  --primary-foreground: 39 39% 7%;
+  --accent: 35 56% 40%; /* #9F722D, the bronze end of the gradients */
+  --accent-foreground: 39 39% 7%;
+  --gold: 40 62% 61%;
+  color: hsl(var(--foreground));
+}
+/* Black, with the Quran video faint behind it */
+html.dark .admin-brand:has(.adm-night) .adm-video {
+  background: radial-gradient(120% 80% at 50% 0%, #17171a 0%, #0a0a0b 55%, #050506 100%);
+}
+html.dark .admin-brand:has(.adm-night) .adm-video video {
+  opacity: 0.28;
+}
+/* Edges follow the token. :where() keeps this below the coloured-border
+   restores near the top of the file (destructive, amber, emerald…). */
+html.dark .admin-brand:where(:has(.adm-night)) *,
+html.dark .admin-brand:where(:has(.adm-night)) *::before,
+html.dark .admin-brand:where(:has(.adm-night)) *::after {
+  border-color: hsl(var(--border)) !important;
+}
+/* Bootstrap's .text-primary is a pale yellow and its .bg-primary navy, both !important */
+html.dark .admin-brand:has(.adm-night) .text-primary {
+  color: var(--night-gold-ink) !important;
+}
+html.dark .admin-brand:has(.adm-night) .bg-primary {
+  background-color: hsl(var(--primary)) !important;
+}
+/* Every gold fill (the open sidebar link, buttons, the theme switch) gets
+   the metallic gradient instead of the two-stop token one */
+html.dark .admin-brand:has(.adm-night) .from-primary.to-accent {
+  background-image: var(--night-gold);
+}
+
+/* Sidebar: a shade above the black, the open page in gold */
+html.dark .admin-brand:has(.adm-night) .adm-sidebar {
+  --card: 240 6% 6%;
+  --muted: 240 4% 13%;
+  --muted-foreground: 40 10% 76%;
+  --border: 240 4% 13%;
+}
+/* The logo strip and the header: one dark glass bar */
+html.dark .admin-brand:has(.adm-night) .adm-sidebar-top,
+html.dark .admin-brand:has(.adm-night) .adm-header {
+  background-color: rgb(14 14 16 / 0.72);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+}
+html.dark .admin-brand:has(.adm-night) .adm-header {
+  box-shadow: 0 10px 26px -22px rgb(0 0 0 / 0.9);
+}
+/* The website's fine white rim round the logo (its navy footer and sign-in
+   page), so the logo's navy letters show on black; the logo isn't recoloured */
+html.dark .admin-brand:has(.adm-night) .adm-sidebar-top img {
+  filter: drop-shadow(0 0 1px rgb(255 255 255 / 0.85)) drop-shadow(0 0 8px rgb(255 255 255 / 0.3));
+}
+/* !important edge: the dark "border-primary" restore near the top of the file
+   matches the field's focus:border-primary class and kept it gold at rest */
+html.dark .admin-brand:has(.adm-night) .adm-search {
+  background-color: rgb(255 255 255 / 0.05);
+  border-color: rgb(255 255 255 / 0.1) !important;
+}
+html.dark .admin-brand:has(.adm-night) .adm-search:focus {
+  background-color: rgb(255 255 255 / 0.08);
+  border-color: var(--night-gold-ink) !important;
+  box-shadow: 0 0 0 3px rgb(217 173 85 / 0.18);
+}
+
+/* Cards: dark smoked glass over the video, a faint light edge */
+html.dark .admin-brand:has(.adm-night) .adm-glass {
+  background-color: rgb(19 19 21 / 0.74);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+  backdrop-filter: blur(10px) saturate(120%);
+  border-color: var(--night-line) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 18px 40px -24px rgb(0 0 0 / 0.95);
+}
+html.dark .admin-brand:has(.adm-night) .adm-glass.group:hover {
+  border-color: rgb(217 173 85 / 0.35) !important;
+}
+/* Card titles: the short bar of the light mode's titles, in gold */
+html.dark .admin-brand:has(.adm-night) .adm-glass h2::before {
+  content: "";
+  display: inline-block;
+  width: 3px;
+  height: 0.95em;
+  margin-right: 0.45rem;
+  vertical-align: -0.12em;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, #f4dc98, #a87a2e);
+}
+/* Small uppercase labels ("At a glance"): the eyebrow with its line, in gold */
+html.dark .admin-brand:has(.adm-night) .adm-glass p.uppercase {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--night-gold-ink);
+  letter-spacing: 0.14em;
+}
+html.dark .admin-brand:has(.adm-night) .adm-glass p.uppercase::before {
+  content: "";
+  width: 1.1rem;
+  height: 1px;
+  background: currentColor;
+}
+/* Tiles inside the cards, a touch lighter; gold edge on hover */
+html.dark .admin-brand:has(.adm-night) .adm-tile {
+  background-color: rgb(255 255 255 / 0.035);
+  border-color: var(--night-line) !important;
+}
+html.dark .admin-brand:has(.adm-night) a.adm-tile:hover,
+html.dark .admin-brand:has(.adm-night) button.adm-tile:hover {
+  background-color: rgb(255 255 255 / 0.06);
+  border-color: rgb(217 173 85 / 0.35) !important;
+}
+html.dark .admin-brand:has(.adm-night) .adm-rows {
+  background-color: rgb(255 255 255 / 0.02);
+}
+/* Recent Signups: a thin gold line under each row, fading at both ends */
+html.dark .admin-brand:has(.adm-night) .adm-divider {
+  display: block;
+  background: linear-gradient(90deg, transparent, rgb(217 173 85 / 0.28), transparent);
+}
+
+/* Icon squares, initials and tags: the gold gradient with a dark icon (the
+   light mode's are navy with white) */
+html.dark .admin-brand:has(.adm-night) .adm-icon,
+html.dark .admin-brand:has(.adm-night) .adm-badge {
+  background-color: #d9ad55;
+  background-image: var(--night-gold);
+  color: var(--night-ink) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), 0 6px 14px -8px rgb(217 173 85 / 0.45);
+}
+html.dark .admin-brand:has(.adm-night) a.adm-badge:hover,
+html.dark .admin-brand:has(.adm-night) button.adm-badge:hover {
+  filter: brightness(1.08);
+}
+/* "N total": a gold pill */
+html.dark .admin-brand:has(.adm-night) .adm-pill {
+  color: var(--night-ink);
+  background-color: #d9ad55;
+  background-image: var(--night-gold);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35);
+}
+/* Progress bar: gold, brightening toward its end, on a faint track */
+html.dark .admin-brand:has(.adm-night) .adm-track {
+  background-color: rgb(255 255 255 / 0.08);
+}
+html.dark .admin-brand:has(.adm-night) .adm-track > div {
+  background-image: linear-gradient(90deg, #a87a2e, #d9ad55 60%, #f4dc98);
+}
+
+/* First stat card: the one gold card, as the light mode's is the one navy
+   card; a sheen across its top and a soft light in its corner */
+html.dark .admin-brand:has(.adm-night) .adm-hero {
+  position: relative;
+  overflow: hidden;
+  color: var(--night-ink);
+  background-color: #c99a45;
+  background-image: linear-gradient(135deg, #f2d690 0%, #d6a64e 42%, #b2843a 70%, #8e6423 100%);
+  border-color: rgb(244 220 152 / 0.55) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.4), 0 18px 40px -20px rgb(217 173 85 / 0.5);
+}
+html.dark .admin-brand:has(.adm-night) .adm-hero::before,
+html.dark .admin-brand:has(.adm-night) .adm-hero::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+html.dark .admin-brand:has(.adm-night) .adm-hero::before {
+  inset: 0 0 50% 0;
+  background: linear-gradient(to bottom, rgb(255 255 255 / 0.18), transparent);
+}
+html.dark .admin-brand:has(.adm-night) .adm-hero::after {
+  top: -2.5rem;
+  right: -2rem;
+  width: 7rem;
+  height: 7rem;
+  border-radius: 9999px;
+  background: rgb(255 244 214 / 0.45);
+  filter: blur(28px);
+}
+html.dark .admin-brand:has(.adm-night) .adm-hero > * {
+  position: relative;
+  z-index: 1;
+}
+html.dark .admin-brand:has(.adm-night) .adm-hero .text-muted-foreground {
+  color: rgb(25 20 11 / 0.78);
+}
+html.dark .admin-brand:has(.adm-night) .adm-hero .text-muted-foreground\/40 {
+  color: rgb(25 20 11 / 0.4);
+}
+/* On the gold card a gold square would vanish: black, with a gold icon */
+html.dark .admin-brand:has(.adm-night) .adm-hero .adm-icon {
+  background-color: #17130b;
+  background-image: none;
+  color: var(--night-gold-ink) !important;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08), 0 6px 14px -8px rgb(0 0 0 / 0.6);
+}
+
+/* Corner arrows: gold on a faint gold ring, filling with the gold gradient
+   when the card or tile is hovered (on ::before, so it can fade in) */
+html.dark .admin-brand:has(.adm-night) .adm-arrow {
+  isolation: isolate;
+  overflow: hidden;
+  color: var(--night-gold-ink);
+  background-color: rgb(217 173 85 / 0.1);
+  background-image: none;
+  box-shadow: inset 0 0 0 1px rgb(217 173 85 / 0.22);
+  transition: color 0.3s, box-shadow 0.3s;
+}
+html.dark .admin-brand:has(.adm-night) .adm-arrow::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background-image: var(--night-gold);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+html.dark .admin-brand:has(.adm-night) .group:hover .adm-arrow,
+html.dark .admin-brand:has(.adm-night) .group:focus-visible .adm-arrow {
+  color: var(--night-ink);
+  background-image: none;
+  box-shadow: 0 6px 14px -8px rgb(217 173 85 / 0.5);
+}
+html.dark .admin-brand:has(.adm-night) .group:hover .adm-arrow::before,
+html.dark .admin-brand:has(.adm-night) .group:focus-visible .adm-arrow::before {
+  opacity: 1;
+}
+/* On the gold card: dark arrow, filling black */
+html.dark .admin-brand:has(.adm-night) .adm-hero .adm-arrow {
+  color: var(--night-ink);
+  background-color: rgb(25 20 11 / 0.1);
+  box-shadow: inset 0 0 0 1px rgb(25 20 11 / 0.2);
+}
+html.dark .admin-brand:has(.adm-night) .adm-hero .adm-arrow::before {
+  background-image: none;
+  background-color: #17130b;
+}
+html.dark .admin-brand:has(.adm-night) .adm-hero.group:hover .adm-arrow {
+  color: var(--night-gold-ink);
+}
+
+/* Scrollbars: see-through gold */
+@media (hover: hover) and (pointer: fine) {
+  html.dark .admin-brand:has(.adm-night) ::-webkit-scrollbar-thumb {
+    background: rgb(217 173 85 / 0.35);
+    background-clip: padding-box;
+  }
+  html.dark .admin-brand:has(.adm-night) ::-webkit-scrollbar-thumb:hover {
+    background: rgb(217 173 85 / 0.55);
+    background-clip: padding-box;
+  }
+}
+
+/* Printing a student's report ("Print / Save as PDF", .adm-report), on the
+   student's page or in the Reports page's pop-up: the report alone, at its
+   full length, on white. The dashboard frame is one screen tall with its own
+   scrolling main, which cut the printout off after one page, and the sidebar,
+   header and video printed with it. Of the shell's children only the one
+   holding the report prints: the page column, or the pop-up portalled into
+   the shell (then the Reports page behind it is left out). */
+@media print {
+  .admin-dashboard:has(.adm-report) {
+    display: block;
+    height: auto;
+    overflow: visible;
+    background: #fff;
+  }
+  .admin-dashboard:has(.adm-report) > :not(:has(.adm-report)),
+  .admin-dashboard:has(.adm-report) header {
+    display: none !important;
+  }
+  .admin-dashboard:has(.adm-report) > .flex-1,
+  .admin-dashboard:has(.adm-report) main {
+    display: block;
+    overflow: visible !important;
+    padding: 0 !important;
+    animation: none;
+  }
+  /* The light admin's navy on white paper in either theme, with the badges,
+     bars and tags printed in colour */
+  .adm-report {
+    --background: 0 0% 100%;
+    --foreground: 220 67% 13%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 67% 13%;
+    --muted: 42 45% 93%;
+    --muted-foreground: 220 14% 38%;
+    --border: 220 14% 84%;
+    --primary: 220 67% 13%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 215 65% 21%;
+    --accent-foreground: 0 0% 100%;
+    color: hsl(var(--foreground));
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  /* `html .admin-dashboard`: outranks the light glass's white edge (also !important) */
+  html .admin-dashboard .adm-report .adm-glass,
+  html .admin-dashboard .adm-report .adm-tile {
+    background-color: #fff !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    box-shadow: none !important;
+    border-color: hsl(var(--border)) !important;
+  }
+  /* Dark mode's forced dark edges, and Bootstrap's gold .text-primary (both
+     !important), would print black lines and gold icons */
+  html.dark .admin-dashboard .adm-report * {
+    border-color: hsl(var(--border)) !important;
+  }
+  html .admin-dashboard .adm-report .text-primary {
+    color: hsl(var(--primary)) !important;
+  }
+}
+
 /* Tailwind preflight sets --tw-ring-offset-color: #fff globally.
    In dark mode match it to the background so ring offsets are invisible. */
 html.dark * {

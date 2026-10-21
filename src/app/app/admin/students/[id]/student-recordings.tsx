@@ -1,18 +1,8 @@
 "use client";
 
 import * as React from "react";
-import {
-  PlayCircle,
-  Download,
-  Clock,
-  User,
-  BookOpen,
-  X,
-  Film,
-  Calendar,
-  Video,
-  Eye,
-} from "lucide-react";
+import { createPortal } from "react-dom";
+import { PlayCircle, Play, Download, Clock, X, Film, Eye } from "lucide-react";
 import { RecordingThumbnail } from "@/components/recording-thumbnail";
 import { ShareRecordingButton } from "@/components/admin/share-recording-button";
 
@@ -27,8 +17,9 @@ export type StudentRecordingItem = {
   shared: boolean; // visible on the student's Schedule page
 };
 
-// The class recordings of one student, on the admin's student page.
-// Recordings are admin-only until the admin shows one to the student.
+// The class recordings of one student, on the admin's student page, as cards
+// like the Recordings page's. Recordings are admin-only until the admin shows
+// one to the student.
 export function StudentRecordings({ items }: { items: StudentRecordingItem[] }) {
   const [playing, setPlaying] = React.useState<StudentRecordingItem | null>(null);
   const [sharedIds, setSharedIds] = React.useState(
@@ -49,71 +40,57 @@ export function StudentRecordings({ items }: { items: StudentRecordingItem[] }) 
 
   if (items.length === 0) {
     return (
-      <div className="rounded-2xl border-2 border-dashed border-border bg-card/50 p-10 text-center">
-        <Film className="mx-auto h-10 w-10 text-muted-foreground/40" />
-        <p className="mt-3 text-sm font-semibold">No class recordings for this student yet</p>
-        <p className="mt-1 text-xs text-muted-foreground max-w-md mx-auto">
-          Classes the teacher records with Start Class show up here after the class ends.
-        </p>
+      <div className="flex items-center gap-[12px] rounded-xl border-[1px] border-dashed border-border px-[16px] py-[14px] text-[13px] leading-[18px] text-muted-foreground">
+        <span className="adm-icon grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-primary/15 to-accent/15 text-primary">
+          <Film className="h-4 w-4" />
+        </span>
+        No class recordings yet. Classes the teacher records with Start Class show up here after the class ends.
       </div>
     );
   }
 
   return (
     <>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-[12px] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {items.map((r) => (
           <div
             key={r.id}
-            className="rounded-2xl border border-border bg-card overflow-hidden flex flex-col hover:border-primary/40 transition-colors"
+            className="adm-tile flex flex-col overflow-hidden rounded-xl border-[1px] border-border bg-background/60"
           >
             <button
               onClick={() => setPlaying(r)}
-              className="relative aspect-video overflow-hidden bg-gradient-to-br from-primary/20 via-accent/20 to-primary/10 grid place-items-center group"
+              aria-label="Watch recording"
+              className="group/thumb relative grid aspect-video place-items-center overflow-hidden bg-gradient-to-br from-primary/20 via-accent/20 to-primary/10"
             >
               <RecordingThumbnail url={r.url} durationSec={r.durationSec} />
               {sharedIds.has(r.id) && (
-                <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white shadow">
-                  <Eye className="h-2.5 w-2.5" /> Shared with student
+                <span className="absolute left-[8px] top-[8px] inline-flex items-center gap-[4px] rounded-md bg-emerald-600 px-[7px] py-[2px] text-[10.5px] font-bold leading-[15px] text-white shadow-md">
+                  <Eye className="h-3 w-3" /> Shared
                 </span>
               )}
-              <div className="relative grid h-14 w-14 place-items-center rounded-full bg-white/90 text-primary shadow-lg group-hover:scale-110 transition-transform">
-                <PlayCircle className="h-7 w-7" />
-              </div>
-              {r.durationSec && (
-                <span className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-md bg-black/70 px-2 py-0.5 text-[10px] font-bold text-white">
-                  <Clock className="h-2.5 w-2.5" />
+              <span className="relative grid h-11 w-11 place-items-center rounded-full bg-white/90 text-primary shadow-[0_8px_20px_-6px_rgb(0_0_0/0.45)] transition-transform group-hover/thumb:scale-110">
+                <Play className="ml-[2px] h-5 w-5 fill-current" />
+              </span>
+              {r.durationSec ? (
+                <span className="absolute bottom-[8px] right-[8px] inline-flex items-center gap-[4px] rounded-md bg-black/70 px-[7px] py-[2px] text-[10.5px] font-bold leading-[15px] text-white">
+                  <Clock className="h-3 w-3" />
                   {formatDuration(r.durationSec)}
                 </span>
-              )}
+              ) : null}
             </button>
-            <div className="p-3 flex flex-col gap-1.5 flex-1">
-              <p className="text-sm font-bold truncate inline-flex items-center gap-1.5">
-                <BookOpen className="h-3.5 w-3.5 text-primary" />
-                {r.courseName ?? "Class recording"}
-              </p>
+            <div className="flex flex-1 flex-col p-[12px]">
+              <p className="truncate text-[13.5px] font-bold leading-[19px]">{r.courseName ?? "Class recording"}</p>
               {r.teacherName && (
-                <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1.5">
-                  <User className="h-3 w-3" /> {r.teacherName}
-                </p>
+                <p className="truncate text-[12px] leading-[17px] text-muted-foreground">with {r.teacherName}</p>
               )}
-              <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1.5">
-                <Calendar className="h-3 w-3" />
-                {new Date(r.startedAt).toLocaleString("en-US", {
-                  timeZone: "Asia/Karachi",
-                  month: "short",
-                  day: "numeric",
-                  hour: "numeric",
-                  minute: "2-digit",
-                  hour12: true,
-                })}{" "}
-                PKT
-                {r.sizeBytes ? <span>· {formatSize(r.sizeBytes)}</span> : null}
+              <p className="truncate text-[12px] leading-[17px] text-muted-foreground">
+                {when(r.startedAt)}
+                {r.sizeBytes ? ` · ${formatSize(r.sizeBytes)}` : ""}
               </p>
-              <div className="mt-auto pt-2 flex items-center gap-2">
+              <div className="mt-auto flex items-center gap-[8px] pt-[10px]">
                 <button
                   onClick={() => setPlaying(r)}
-                  className="flex-1 inline-flex items-center justify-center gap-1 rounded-full bg-gradient-to-r from-primary to-accent px-3 py-1.5 text-xs font-bold text-primary-foreground shadow-md"
+                  className="inline-flex flex-1 items-center justify-center gap-[6px] rounded-full bg-gradient-to-r from-primary to-accent px-[12px] py-[7px] text-[12.5px] font-bold leading-[17px] text-primary-foreground shadow-md"
                 >
                   <PlayCircle className="h-3.5 w-3.5" /> Watch
                 </button>
@@ -122,60 +99,77 @@ export function StudentRecordings({ items }: { items: StudentRecordingItem[] }) 
                   download
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-1 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-bold hover:bg-muted"
                   title="Download"
+                  aria-label="Download recording"
+                  className="grid h-[31px] w-[38px] shrink-0 place-items-center rounded-full border-[1px] border-border bg-card text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
                 >
                   <Download className="h-3.5 w-3.5" />
                 </a>
               </div>
-              <ShareRecordingButton
-                recordingId={r.id}
-                shared={r.shared}
-                onChange={(shared) => markShared(r.id, shared)}
-              />
+              <div className="pt-[8px]">
+                <ShareRecordingButton
+                  recordingId={r.id}
+                  shared={r.shared}
+                  onChange={(shared) => markShared(r.id, shared)}
+                />
+              </div>
             </div>
           </div>
         ))}
       </div>
 
-      {playing && (
-        <div
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={() => setPlaying(null)}
-        >
+      {/* Portalled to the shell: the glass card's blur (backdrop-filter)
+          would trap a fixed overlay inside the card. The shell keeps
+          .admin-brand, so the admin colours still apply. */}
+      {playing &&
+        createPortal(
           <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-5xl bg-card rounded-2xl overflow-hidden border border-border shadow-2xl"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-[16px] backdrop-blur-sm"
+            onClick={() => setPlaying(null)}
           >
-            <div className="flex items-center justify-between p-3 border-b border-border">
-              <div className="min-w-0">
-                <p className="text-sm font-bold truncate inline-flex items-center gap-1.5">
-                  <Video className="h-3.5 w-3.5 text-primary" />
-                  {playing.courseName ?? "Class recording"}
-                </p>
-                {playing.teacherName && (
-                  <p className="text-[11px] text-muted-foreground">
-                    with {playing.teacherName}
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-5xl overflow-hidden rounded-2xl border-[1px] border-border bg-card shadow-2xl"
+            >
+              <div className="flex items-center justify-between gap-[12px] border-b border-border px-[16px] py-[12px]">
+                <div className="min-w-0">
+                  <p className="truncate text-[14px] font-bold leading-[20px]">
+                    {playing.courseName ?? "Class recording"}
                   </p>
-                )}
+                  <p className="truncate text-[12px] leading-[17px] text-muted-foreground">
+                    {[playing.teacherName && `with ${playing.teacherName}`, when(playing.startedAt)]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setPlaying(null)}
+                  aria-label="Close"
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
-              <button
-                onClick={() => setPlaying(null)}
-                className="grid h-9 w-9 place-items-center rounded-full hover:bg-muted"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              <video src={playing.url} controls autoPlay className="max-h-[75vh] w-full bg-black" />
             </div>
-            <video
-              src={playing.url}
-              controls
-              autoPlay
-              className="w-full bg-black max-h-[75vh]"
-            />
-          </div>
-        </div>
-      )}
+          </div>,
+          document.querySelector(".admin-dashboard") ?? document.body
+        )}
     </>
+  );
+}
+
+// "Oct 6, 2:12 PM PKT": recordings are dated in Pakistan time, as the classes are
+function when(iso: string) {
+  return (
+    new Date(iso).toLocaleString("en-US", {
+      timeZone: "Asia/Karachi",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    }) + " PKT"
   );
 }
 

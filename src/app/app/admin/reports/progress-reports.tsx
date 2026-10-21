@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import {
   Search,
   Download,
@@ -147,9 +146,15 @@ export function ProgressReports({ students, stats }: { students: Student[]; stat
     );
   };
 
-  // Name and email, linking to the student's page
+  // Name and email: opens the same report pop-up as the Report button (the
+  // user didn't want it leaving Reports for the student's page)
   const identity = (s: Student) => (
-    <Link href={`/app/admin/students/${s.id}`} className="group flex min-w-0 items-center gap-[12px]">
+    <button
+      type="button"
+      onClick={() => setReportFor(s.id)}
+      title="Open the full report"
+      className="group flex min-w-0 items-center gap-[12px] text-left"
+    >
       <Avatar name={s.name} src={s.image} size={36} />
       <div className="min-w-0">
         {/* Sizes written out: Bootstrap's .text-sm/.text-xs have no line height */}
@@ -158,7 +163,7 @@ export function ProgressReports({ students, stats }: { students: Student[]; stat
         </p>
         <p className="truncate text-[12.5px] leading-[18px] text-muted-foreground">{s.email}</p>
       </div>
-    </Link>
+    </button>
   );
 
   // Each course as a chip with its teacher beside it

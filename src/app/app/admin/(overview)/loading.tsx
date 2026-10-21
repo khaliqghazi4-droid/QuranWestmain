@@ -26,7 +26,8 @@ export default function AdminLoading() {
   ];
 
   return (
-    <div className="space-y-3">
+    // adm-night: the dashboard's black-and-gold dark mode, also while it loads
+    <div className="adm-night space-y-3">
       {/* Stat cards (2×2) + Quick Actions. `adm-*` classes: light-mode look, see globals.css */}
       <div className="grid lg:grid-cols-3 gap-3">
         <div className="lg:col-span-2 grid grid-cols-2 gap-3">
