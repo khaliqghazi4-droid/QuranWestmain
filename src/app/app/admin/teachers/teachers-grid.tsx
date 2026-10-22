@@ -27,6 +27,7 @@ import {
 import { Avatar } from "@/components/avatar";
 import { AvailabilityDialog } from "@/components/availability/availability-editor";
 import { LoginCredentialsModal } from "@/components/admin/login-credentials-modal";
+import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 
 type AvailabilitySlot = {
   dayOfWeek: number;
@@ -158,17 +159,28 @@ export function TeachersGrid({
     router.refresh();
   }
 
-  async function handleDelete(id: string, name: string) {
-    if (!confirm(`Remove ${name}? Their assigned courses will be unassigned.`)) return;
-    setDeleting(id);
-    const res = await fetch(`/api/users/${id}`, { method: "DELETE" });
+  // The Remove pop-up (ConfirmDialog, not the browser's confirm): it stays
+  // open while the request runs and shows the error if it fails
+  const [removeTarget, setRemoveTarget] = React.useState<Teacher | null>(null);
+  const [removeError, setRemoveError] = React.useState<string | null>(null);
+
+  function askRemove(t: Teacher) {
+    setRemoveError(null);
+    setRemoveTarget(t);
+  }
+
+  async function handleDelete(t: Teacher) {
+    setDeleting(t.id);
+    setRemoveError(null);
+    const res = await fetch(`/api/users/${t.id}`, { method: "DELETE" }).catch(() => null);
     setDeleting(null);
-    if (res.ok) {
-      setTeachers(teachers.filter((t) => t.id !== id));
+    if (res?.ok) {
+      setTeachers((prev) => prev.filter((x) => x.id !== t.id));
+      setRemoveTarget(null);
       router.refresh();
     } else {
-      const data = await res.json();
-      alert(data.error ?? "Delete failed");
+      const data = (await res?.json().catch(() => ({}))) ?? {};
+      setRemoveError(data.error ?? "Couldn't remove this teacher. Try again in a moment.");
     }
   }
 
@@ -264,7 +276,7 @@ export function TeachersGrid({
               </button>
               <span aria-hidden="true" className="mx-[3px] h-4 w-px bg-border" />
               <button
-                onClick={() => handleDelete(t.id, t.name)}
+                onClick={() => askRemove(t)}
                 disabled={deleting === t.id}
                 className="grid h-7 w-7 place-items-center rounded-full transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
                 title="Remove teacher"
@@ -521,7 +533,41 @@ export function TeachersGrid({
           }}
         />
       )}
+
+      {/* Deleting the account: their students stay enrolled with no teacher
+          (Enrollment.teacher and Course.teacher are optional, so set to null);
+          course links, weekly classes, availability, files, recordings and
+          workday attendance go with it (onDelete: Cascade in the schema) */}
+      {removeTarget && (
+        <ConfirmDialog
+          title={`Remove ${removeTarget.name}?`}
+          icon={UserX}
+          confirmLabel="Remove teacher"
+          busy={deleting === removeTarget.id}
+          error={removeError}
+          onConfirm={() => handleDelete(removeTarget)}
+          onCancel={() => setRemoveTarget(null)}
+        >
+          <RemoveTeacherText teacher={removeTarget} />
+        </ConfirmDialog>
+      )}
     </div>
+  );
+}
+
+// What removing a teacher does, with their own numbers (the same ones the
+// card shows: students summed over their courses, booked weekly classes)
+function RemoveTeacherText({ teacher: t }: { teacher: Teacher }) {
+  const students = t.courses.reduce((n, c) => n + c.students, 0);
+  const classes = t.bookings.length;
+  return (
+    <>
+      <span className="font-semibold text-foreground">{t.name}</span>&apos;s account will be removed for good.
+      {students > 0 &&
+        ` ${students === 1 ? "Their student stays" : `Their ${students} students stay`} enrolled, with no teacher until you assign one.`}
+      {classes > 0 && ` ${classes} weekly ${classes === 1 ? "class is" : "classes are"} cancelled.`} Their
+      recordings, files and attendance are deleted too. This can&apos;t be undone.
+    </>
   );
 }
 

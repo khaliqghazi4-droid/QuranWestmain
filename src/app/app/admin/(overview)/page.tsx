@@ -3,7 +3,8 @@ import { unstable_cache } from "next/cache";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { MOCK_RECENT_SIGNUPS } from "../_mock-data";
-import { ACTIVE_STUDENT } from "@/lib/auth";
+// The layout warms this same cache, so the page doesn't keep its own copy
+import { getCachedDashboard } from "../_caches";
 import { pktDayYmd } from "@/lib/pkt-day";
 import {
   Users,
@@ -27,33 +28,6 @@ import { Avatar } from "@/components/avatar";
 // Colours come from the theme tokens, which is the dark look. In light mode
 // the admin shell turns them the website's navy, gold and cream, and the `adm-*`
 // hook classes (globals.css) add the white cards and the navy first stat card.
-
-const getCachedDashboard = unstable_cache(
-  async () => {
-    const [totalStudents, totalTeachers, totalCourses, totalEnrollments, recentSignups, revenueAgg] =
-      await Promise.all([
-        prisma.user.count({ where: ACTIVE_STUDENT }),
-        prisma.user.count({ where: { role: "TEACHER" } }),
-        prisma.course.count({ where: { isActive: true } }),
-        prisma.enrollment.count(),
-        prisma.user.findMany({
-          where: { role: { in: ["STUDENT", "TEACHER"] } },
-          orderBy: { createdAt: "desc" },
-          take: 5,
-          select: { id: true, name: true, email: true, role: true, country: true, createdAt: true },
-        }),
-        prisma.enrollment.findMany({
-          include: { course: { select: { price: true } } },
-        }),
-      ]);
-
-    const monthlyRevenue = revenueAgg.reduce((sum, e) => sum + e.course.price, 0);
-
-    return { totalStudents, totalTeachers, totalCourses, totalEnrollments, recentSignups, monthlyRevenue };
-  },
-  ["admin-dashboard"],
-  { revalidate: 600 }
-);
 
 // "At a glance" counts for the activity card: work waiting for the admin and
 // how today is going. Keyed by the PKT day ("YYYY-MM-DD") so it rolls over at
@@ -355,7 +329,7 @@ async function DashboardRecentSignups() {
   const { recentSignups } = await getCachedDashboard();
   const signups = recentSignups.length > 0 ? recentSignups : MOCK_RECENT_SIGNUPS;
   return (
-    <div className="adm-glass rounded-xl border border-border bg-card p-3">
+    <div className="adm-glass flex flex-col rounded-xl border border-border bg-card p-3">
       <div className="flex items-center justify-between mb-2">
         <div>
           <h2 className="text-sm font-bold">Recent Signups</h2>
@@ -365,12 +339,25 @@ async function DashboardRecentSignups() {
           View all
         </Link>
       </div>
-      <div className="space-y-1">
+      {/* A window of 5 rows; more scroll inside it, with the thin scrollbar
+          (.scroller) and room kept for it. Stacked (below lg): 5 rows of
+          44px, 4px apart. Beside Platform Activity (lg), the card is
+          stretched to that card's height, so the window fills the rest of
+          it and each row takes a fifth (size containment: cqh is the
+          window's own height, and its rows don't make the card taller).
+          pb-[2px]: the last row's divider hangs 2px below it and would
+          otherwise make a short list scroll. */}
+      <div
+        className={`scroller max-h-[238px] space-y-1 overflow-y-auto pb-[2px] lg:max-h-none lg:min-h-0 lg:flex-1 lg:[container-type:size] ${
+          signups.length > 5 ? "pr-[6px]" : ""
+        }`}
+      >
         {signups.map((s, i) => (
           <div
             key={s.id}
-            className="relative flex items-center gap-2 rounded-lg hover:bg-muted/30 p-1.5 transition-colors stagger-item"
-            style={{ animationDelay: `${i * 60 + 200}ms` }}
+            className="relative flex h-[44px] items-center gap-2 rounded-lg hover:bg-muted/30 p-1.5 transition-colors stagger-item lg:h-[max(44px,calc((100cqh-16px)/5))]"
+            // the ones below the window come in with the 5th
+            style={{ animationDelay: `${Math.min(i, 4) * 60 + 200}ms` }}
           >
             {/* Light mode: a thin navy line under the row, fading at both ends (globals.css) */}
             <span aria-hidden="true" className="adm-divider pointer-events-none absolute -bottom-[2px] left-[10%] right-[25%] h-px" />

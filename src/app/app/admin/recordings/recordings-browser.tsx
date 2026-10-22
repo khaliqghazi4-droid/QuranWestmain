@@ -19,6 +19,7 @@ import {
 import { Avatar } from "@/components/avatar";
 import { ShareRecordingButton } from "@/components/admin/share-recording-button";
 import { RecordingThumbnail } from "@/components/recording-thumbnail";
+import { RecordingVideo } from "@/components/recording-video";
 
 export type Person = { id: string; name: string; image: string | null };
 
@@ -489,7 +490,7 @@ function Player({
             <X className="h-4 w-4" />
           </button>
         </div>
-        <video src={recording.url} controls autoPlay className="max-h-[75vh] w-full bg-black" />
+        <RecordingVideo src={recording.url} durationSec={recording.durationSec} className="max-h-[75vh]" />
       </div>
     </div>
   );

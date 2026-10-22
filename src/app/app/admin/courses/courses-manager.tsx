@@ -26,6 +26,7 @@ import {
 import { Avatar } from "@/components/avatar";
 import { IconBadge } from "@/components/dashboard/icon-badge";
 import { StatTiles, type StatTile } from "@/components/admin/stat-tiles";
+import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 
 type TeacherWithCount = {
   id: string;
@@ -115,14 +116,30 @@ export function CoursesManager({
     setModalOpen(true);
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("Are you sure you want to delete this course?")) return;
-    const res = await fetch(`/api/courses/${id}`, { method: "DELETE" });
-    if (res.ok) {
-      setCourses(courses.filter((c) => c.id !== id));
+  // The course the delete pop-up asks about; it stays open until the request ends
+  const [deleting, setDeleting] = React.useState<Course | null>(null);
+  const [deleteBusy, setDeleteBusy] = React.useState(false);
+  const [deleteError, setDeleteError] = React.useState<string | null>(null);
+
+  function askDelete(c: Course) {
+    setDeleteError(null);
+    setDeleting(c);
+  }
+
+  async function handleDelete() {
+    if (!deleting) return;
+    setDeleteBusy(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch(`/api/courses/${deleting.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      setCourses((list) => list.filter((c) => c.id !== deleting.id));
+      setDeleting(null);
       router.refresh();
-    } else {
-      alert("Failed to delete");
+    } catch {
+      setDeleteError("Couldn't delete this course. Try again in a moment.");
+    } finally {
+      setDeleteBusy(false);
     }
   }
 
@@ -170,7 +187,7 @@ export function CoursesManager({
             course={c}
             index={i}
             onEdit={() => openEdit(c)}
-            onDelete={() => handleDelete(c.id)}
+            onDelete={() => askDelete(c)}
             onOpenTeacher={(teacherId) => setStudentsModal({ course: c, teacherId })}
           />
         ))}
@@ -209,6 +226,25 @@ export function CoursesManager({
           teacherId={studentsModal.teacherId}
           onClose={() => setStudentsModal(null)}
         />
+      )}
+
+      {/* Deleting a course deletes its enrollments, lessons and classes too
+          (onDelete: Cascade in the schema) and unlinks its teachers */}
+      {deleting && (
+        <ConfirmDialog
+          title="Delete this course?"
+          confirmLabel="Delete course"
+          busy={deleteBusy}
+          error={deleteError}
+          onConfirm={handleDelete}
+          onCancel={() => setDeleting(null)}
+        >
+          <span className="font-semibold text-foreground">{deleting.name}</span> will be removed for good, with{" "}
+          {deleting.totalEnrollments > 0
+            ? `its ${deleting.totalEnrollments} ${deleting.totalEnrollments === 1 ? "enrollment" : "enrollments"}, lessons and classes`
+            : "its lessons and classes"}
+          . Its teachers are unassigned. This can&apos;t be undone.
+        </ConfirmDialog>
       )}
     </div>
   );
@@ -736,14 +772,18 @@ function TeacherStudentsModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-[16px] backdrop-blur-sm animate-fade-in">
       <div className="adm-modal max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border-[1px] border-border bg-card shadow-2xl">
         <div className="adm-cover relative overflow-hidden rounded-t-3xl bg-gradient-to-br from-primary to-accent p-[24px] text-primary-foreground">
+          {/* z-[2]: above the z-[1] name row after it, which spans the whole
+              banner and otherwise takes the clicks meant for this button */}
           <button
+            type="button"
             onClick={onClose}
             aria-label="Close"
-            className="absolute right-[16px] top-[16px] z-[1] grid h-9 w-9 place-items-center rounded-full bg-primary-foreground/10 backdrop-blur-md hover:bg-primary-foreground/20"
+            className="absolute right-[16px] top-[16px] z-[2] grid h-9 w-9 place-items-center rounded-full bg-primary-foreground/10 backdrop-blur-md hover:bg-primary-foreground/20"
           >
             <X className="h-4 w-4" />
           </button>
-          <div className="relative z-[1] flex items-center gap-[12px]">
+          {/* pr: a long name stops short of the close button */}
+          <div className="relative z-[1] flex items-center gap-[12px] pr-[48px]">
             <Avatar name={teacherName} src={known?.image} size={56} className="!border-white/30" />
             <div>
               <p className="text-[11px] font-semibold uppercase leading-[16px] tracking-wide text-primary-foreground/80">

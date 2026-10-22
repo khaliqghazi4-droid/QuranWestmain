@@ -25,12 +25,14 @@ import { Avatar, AvatarInitial } from "@/components/avatar";
 import { PhotoCropper } from "./photo-cropper";
 
 // Shown under the name and in "Account Type"
-function roleLabel(role: string) {
+export function roleLabel(role: string) {
   if (role === "ADMIN") return "Admin";
   if (role === "TEACHER") return "Teacher";
   if (role === "PARENT") return "Parent";
   return "Student";
 }
+
+export type ProfileUser = User;
 
 type User = {
   id: string;
@@ -45,12 +47,13 @@ type User = {
   image?: string | null;
 };
 
-export function ProfileEditor({ user: initialUser }: { user: User }) {
+// The profile's fields, saving and photo upload, shared by ProfileEditor (the
+// teacher and student profiles) and the admin's Settings page, which lays
+// them out its own way
+export function useProfileEditor(initialUser: User) {
   const router = useRouter();
   const { update: updateSession } = useSession();
   const [user, setUser] = React.useState(initialUser);
-  // Profile photo: admin only for now (teacher/student profiles come later)
-  const canChangePhoto = user.role === "ADMIN";
   const fileRef = React.useRef<HTMLInputElement>(null);
   const [photoBusy, setPhotoBusy] = React.useState(false);
   const [photoError, setPhotoError] = React.useState<string | null>(null);
@@ -78,7 +81,6 @@ export function ProfileEditor({ user: initialUser }: { user: User }) {
   const [saving, setSaving] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [pwOpen, setPwOpen] = React.useState(false);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -144,6 +146,67 @@ export function ProfileEditor({ user: initialUser }: { user: User }) {
     setError(null);
   }
 
+  return {
+    user,
+    fileRef,
+    photoBusy,
+    photoError,
+    cropFile,
+    pickPhoto,
+    closeCropper,
+    changePhoto,
+    editing,
+    setEditing,
+    name,
+    setName,
+    phone,
+    setPhone,
+    country,
+    setCountry,
+    timezone,
+    setTimezone,
+    bio,
+    setBio,
+    saving,
+    saved,
+    error,
+    handleSave,
+    cancel,
+  };
+}
+
+export function ProfileEditor({ user: initialUser }: { user: User }) {
+  const {
+    user,
+    fileRef,
+    photoBusy,
+    photoError,
+    cropFile,
+    pickPhoto,
+    closeCropper,
+    changePhoto,
+    editing,
+    setEditing,
+    name,
+    setName,
+    phone,
+    setPhone,
+    country,
+    setCountry,
+    timezone,
+    setTimezone,
+    bio,
+    setBio,
+    saving,
+    saved,
+    error,
+    handleSave,
+    cancel,
+  } = useProfileEditor(initialUser);
+  // Profile photo: admin only for now (teacher/student profiles come later)
+  const canChangePhoto = user.role === "ADMIN";
+  const [pwOpen, setPwOpen] = React.useState(false);
+
   return (
     <div className="space-y-6">
       {saved && (
@@ -203,7 +266,7 @@ export function ProfileEditor({ user: initialUser }: { user: User }) {
                       file={cropFile}
                       onCancel={closeCropper}
                       onSave={(photo) => {
-                        setCropFile(null);
+                        closeCropper();
                         changePhoto(photo);
                       }}
                     />
@@ -434,7 +497,9 @@ function ReadField({ value, muted }: { value: string; muted?: boolean }) {
   );
 }
 
-function PasswordModal({ onClose }: { onClose: () => void }) {
+// The Change Password form's state and request, shared by PasswordModal and
+// the admin Settings page's own pop-up. `onDone` runs a moment after success.
+export function usePasswordChange(onDone: () => void) {
   const [current, setCurrent] = React.useState("");
   const [pw, setPw] = React.useState("");
   const [confirm, setConfirm] = React.useState("");
@@ -467,8 +532,15 @@ function PasswordModal({ onClose }: { onClose: () => void }) {
     }
 
     setSuccess(true);
-    setTimeout(onClose, 1500);
+    setTimeout(onDone, 1500);
   }
+
+  return { current, setCurrent, pw, setPw, confirm, setConfirm, showPw, setShowPw, loading, error, success, handleSubmit };
+}
+
+function PasswordModal({ onClose }: { onClose: () => void }) {
+  const { current, setCurrent, pw, setPw, confirm, setConfirm, showPw, setShowPw, loading, error, success, handleSubmit } =
+    usePasswordChange(onClose);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/40 backdrop-blur-sm animate-fade-in">

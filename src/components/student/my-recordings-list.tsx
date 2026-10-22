@@ -12,6 +12,7 @@ import {
   Video,
 } from "lucide-react";
 import { RecordingThumbnail } from "@/components/recording-thumbnail";
+import { RecordingVideo } from "@/components/recording-video";
 
 export type MyRecordingItem = {
   id: string;
@@ -123,12 +124,7 @@ export function MyRecordingsList({ items }: { items: MyRecordingItem[] }) {
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <video
-              src={playing.url}
-              controls
-              autoPlay
-              className="w-full bg-black max-h-[75vh]"
-            />
+            <RecordingVideo src={playing.url} durationSec={playing.durationSec} className="max-h-[75vh]" />
           </div>
         </div>
       )}

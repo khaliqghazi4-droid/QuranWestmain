@@ -1,18 +1,8 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { ProfileEditor } from "@/components/profile/profile-editor";
-import { SettingsHeader } from "./shell";
-import { Settings, Mail, Bell, CreditCard, Shield, Globe } from "lucide-react";
-
-const sections = [
-  { icon: Settings, title: "General Settings", desc: "Academy name, logo, contact information" },
-  { icon: Mail, title: "Email Configuration", desc: "SMTP settings, email templates, broadcasts" },
-  { icon: Bell, title: "Notifications", desc: "Customize alerts for admins and users" },
-  { icon: CreditCard, title: "Payment Gateways", desc: "Stripe, PayPal, and pricing plans" },
-  { icon: Shield, title: "Security & Privacy", desc: "Authentication, 2FA, GDPR settings" },
-  { icon: Globe, title: "Localization", desc: "Languages, timezones, regional settings" },
-];
+import { AccountSettings } from "./account-settings";
+import { SETTINGS_SECTIONS, SettingsHeader } from "./shell";
 
 export default async function AdminSettings() {
   const session = await getServerSession(authOptions);
@@ -35,32 +25,38 @@ export default async function AdminSettings() {
     : null;
 
   return (
-    <div className="space-y-6">
+    // adm-night: the black-and-gold dark mode (globals.css), page by page
+    <div className="adm-night space-y-[20px]">
       <SettingsHeader />
 
-      {me && (
-        <section className="space-y-3">
-          <h2 className="text-sm font-bold">My Account</h2>
-          <ProfileEditor user={{ ...me, createdAt: me.createdAt.toISOString() }} />
-        </section>
-      )}
+      {me && <AccountSettings user={{ ...me, createdAt: me.createdAt.toISOString() }} />}
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {sections.map((s) => (
-          <button
-            key={s.title}
-            className="adm-glass group text-left rounded-2xl border border-border bg-card p-6 hover:border-primary/40 hover:shadow-lg hover:-translate-y-0.5 transition-all"
-          >
-            <div className="adm-icon grid h-12 w-12 place-items-center rounded-xl bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-md mb-4 group-hover:scale-110 transition-transform">
-              <s.icon className="h-5 w-5" />
-            </div>
-            <h3 className="text-sm font-bold group-hover:text-primary transition-colors">
-              {s.title}
-            </h3>
-            <p className="text-xs text-muted-foreground mt-1">{s.desc}</p>
-          </button>
-        ))}
-      </div>
+      {/* Not built yet: plain tiles marked Soon, nothing to click. Sizes
+          written out: Bootstrap's .text-sm/.text-xs have no line height. */}
+      <section className="adm-glass overflow-hidden rounded-2xl border-[1px] border-border bg-card">
+        <div className="px-[20px] py-[16px]">
+          <h2 className="text-[16px] font-bold leading-[22px]">Academy settings</h2>
+        </div>
+        <ul className="grid gap-[10px] px-[20px] pb-[20px] sm:grid-cols-2 lg:grid-cols-3">
+          {SETTINGS_SECTIONS.map((s) => (
+            <li
+              key={s.title}
+              className="adm-tile flex items-center gap-[12px] rounded-xl border-[1px] border-border bg-background/60 p-[12px]"
+            >
+              <span className="adm-icon grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-primary/15 to-accent/15 text-primary">
+                <s.icon className="h-[18px] w-[18px]" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[13.5px] font-bold leading-[19px]">{s.title}</p>
+                <p className="text-[12px] leading-[17px] text-muted-foreground">{s.desc}</p>
+              </div>
+              <span className="adm-chip shrink-0 self-start rounded-full bg-primary/10 px-[8px] py-[2px] text-[10.5px] font-bold leading-[15px] text-primary">
+                Soon
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   );
 }

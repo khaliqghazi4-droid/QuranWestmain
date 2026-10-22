@@ -287,8 +287,10 @@ export function ClassesBoard({
                         </span>
                       )}
                       {locked ? (
-                        // Not a link: the room can't be opened from here
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-foreground/[0.08] px-4 py-2 text-xs font-bold text-muted-foreground">
+                        // Not a link: the room can't be opened from here.
+                        // relative: holds the sr-only text, which otherwise
+                        // hangs off the scrolling main and scrolls the window
+                        <span className="relative inline-flex items-center gap-1.5 rounded-full bg-foreground/[0.08] px-4 py-2 text-xs font-bold text-muted-foreground">
                           <Lock className="h-3.5 w-3.5" /> Join
                           <span className="sr-only">(locked)</span>
                         </span>

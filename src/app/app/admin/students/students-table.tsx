@@ -16,13 +16,25 @@ import {
   FileText,
   UserPlus,
   RefreshCw,
-  AlertCircle,
   Pencil,
   Plus,
   Ban,
   ShieldCheck,
+  AlertTriangle,
+  Save,
+  RotateCcw,
 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
+import { ConfirmDialog } from "@/components/admin/confirm-dialog";
+import { FormSelect, type FormOption } from "@/components/admin/form-select";
+import {
+  AdminModal,
+  MODAL_FIELD,
+  MODAL_LABEL,
+  ModalError,
+  ModalSecondary,
+  ModalSubmit,
+} from "@/components/admin/modal-frame";
 import {
   LoginCredentialsModal,
   useLockPageScroll,
@@ -166,39 +178,57 @@ export function StudentsTable({
     return matchesQuery && matchesEnrollment && matchesDate;
   });
 
-  async function handleDelete(id: string, name: string) {
-    if (!confirm(`Delete ${name}? This will remove all their enrollments. This cannot be undone.`)) return;
-    setDeleting(id);
-    const res = await fetch(`/api/users/${id}`, { method: "DELETE" });
+  // The Delete / Suspend pop-up (ConfirmDialog, not the browser's confirm):
+  // which student it asks about, and how the request is going. Reactivating
+  // asks nothing; the pop-up opens only if it fails, to show why and retry.
+  const [confirmAction, setConfirmAction] = React.useState<{
+    kind: "delete" | "suspend" | "reactivate";
+    student: Student;
+  } | null>(null);
+  const [actionBusy, setActionBusy] = React.useState(false);
+  const [actionError, setActionError] = React.useState<string | null>(null);
+
+  function ask(kind: "delete" | "suspend", s: Student) {
+    setActionError(null);
+    setConfirmAction({ kind, student: s });
+  }
+
+  async function handleDelete(s: Student) {
+    setDeleting(s.id);
+    setActionBusy(true);
+    setActionError(null);
+    const res = await fetch(`/api/users/${s.id}`, { method: "DELETE" }).catch(() => null);
     setDeleting(null);
-    if (res.ok) {
-      setStudents(students.filter((s) => s.id !== id));
+    setActionBusy(false);
+    if (res?.ok) {
+      setStudents((prev) => prev.filter((x) => x.id !== s.id));
+      setConfirmAction(null);
       router.refresh();
     } else {
-      const data = await res.json();
-      alert(data.error ?? "Delete failed");
+      const data = (await res?.json().catch(() => ({}))) ?? {};
+      setActionError(data.error ?? "Couldn't delete this student. Try again in a moment.");
     }
   }
 
   async function handleSuspend(s: Student, suspend: boolean) {
-    if (
-      suspend &&
-      !confirm(`Suspend ${s.name}'s account? They will be signed out and can't log in until you reactivate it.`)
-    )
-      return;
     setSuspending(s.id);
+    setActionBusy(true);
+    setActionError(null);
     const res = await fetch(`/api/admin/students/${s.id}/suspend`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ suspend }),
-    });
+    }).catch(() => null);
     setSuspending(null);
-    if (res.ok) {
+    setActionBusy(false);
+    if (res?.ok) {
       setStudents((prev) => prev.map((x) => (x.id === s.id ? { ...x, suspended: suspend } : x)));
+      setConfirmAction(null);
       router.refresh();
     } else {
-      const data = await res.json().catch(() => ({}));
-      alert(data.error ?? (suspend ? "Could not suspend" : "Could not reactivate"));
+      const data = (await res?.json().catch(() => ({}))) ?? {};
+      setActionError(data.error ?? (suspend ? "Couldn't suspend this account." : "Couldn't reactivate this account."));
+      setConfirmAction({ kind: suspend ? "suspend" : "reactivate", student: s });
     }
   }
 
@@ -275,7 +305,7 @@ export function StudentsTable({
         </button>
       ) : (
         <button
-          onClick={() => handleSuspend(s, true)}
+          onClick={() => ask("suspend", s)}
           disabled={suspending === s.id}
           className="grid h-7 w-7 place-items-center rounded-full transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
           title="Suspend account"
@@ -285,7 +315,7 @@ export function StudentsTable({
         </button>
       )}
       <button
-        onClick={() => handleDelete(s.id, s.name)}
+        onClick={() => ask("delete", s)}
         disabled={deleting === s.id}
         className="grid h-7 w-7 place-items-center rounded-full transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
         title="Delete student"
@@ -505,6 +535,50 @@ export function StudentsTable({
           }}
         />
       )}
+
+      {/* Deleting a student deletes their enrollments too, and with them the
+          weekly classes and attendance (onDelete: Cascade in the schema) */}
+      {confirmAction?.kind === "delete" && (
+        <ConfirmDialog
+          title={`Delete ${confirmAction.student.name}?`}
+          confirmLabel="Delete student"
+          busy={actionBusy}
+          error={actionError}
+          onConfirm={() => handleDelete(confirmAction.student)}
+          onCancel={() => setConfirmAction(null)}
+        >
+          <span className="font-semibold text-foreground">{confirmAction.student.name}</span>&apos;s account will be
+          removed for good, with their enrollments, weekly classes and attendance. This can&apos;t be undone.
+        </ConfirmDialog>
+      )}
+      {confirmAction?.kind === "suspend" && (
+        <ConfirmDialog
+          title={`Suspend ${confirmAction.student.name}?`}
+          icon={Ban}
+          confirmLabel="Suspend"
+          busy={actionBusy}
+          error={actionError}
+          onConfirm={() => handleSuspend(confirmAction.student, true)}
+          onCancel={() => setConfirmAction(null)}
+        >
+          They are signed out and can&apos;t log in until you reactivate the account. Nothing is deleted; their
+          courses and classes stay as they are.
+        </ConfirmDialog>
+      )}
+      {confirmAction?.kind === "reactivate" && (
+        <ConfirmDialog
+          title={`Reactivate ${confirmAction.student.name}?`}
+          icon={ShieldCheck}
+          tone="primary"
+          confirmLabel="Try again"
+          busy={actionBusy}
+          error={actionError}
+          onConfirm={() => handleSuspend(confirmAction.student, false)}
+          onCancel={() => setConfirmAction(null)}
+        >
+          Once it goes through, they can log in again with their current password.
+        </ConfirmDialog>
+      )}
     </div>
   );
 }
@@ -590,180 +664,109 @@ function AddStudentModal({
     onCreated(data.student, data.password, data.course ?? null);
   }
 
+  const courseOptions: FormOption[] = [
+    { value: "", label: "No course yet" },
+    ...(newCourseName ? [{ value: NEW_COURSE, label: `${newCourseName} (new course)` }] : []),
+    ...allCourses.map((c) => ({ value: c.id, label: c.name })),
+  ];
+  const teacherOptions: FormOption[] = [
+    {
+      value: "",
+      label: !courseId ? "Pick a course first" : courseTeachers.length === 0 ? "No teachers on this course" : "Pick a teacher",
+    },
+    ...courseTeachers.map((t) => ({
+      value: t.id,
+      label: `${t.name}${t.gender ? ` (${t.gender === "MALE" ? "♂" : "♀"})` : ""}`,
+    })),
+  ];
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/40 backdrop-blur-sm animate-fade-in">
-      {/* adm-modal: white fields in the light admin (globals.css) */}
-      <div className="adm-modal w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl border border-border bg-card shadow-2xl">
-        <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-card z-10">
-          <div>
-            <h2 className="text-lg font-bold">Add Student</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Create the account, then share the login with the student
-            </p>
-          </div>
-          <button onClick={onClose} className="grid h-9 w-9 place-items-center rounded-full hover:bg-muted">
-            <X className="h-4 w-4" />
+    <AdminModal
+      icon={UserPlus}
+      title="Add student"
+      sub="Create the account, then share the login with the student"
+      onClose={onClose}
+      onSubmit={handleSubmit}
+      closeOnBackdrop={false}
+      maxWidth="max-w-[560px]"
+      footer={
+        <ModalSubmit busy={loading} icon={UserPlus}>
+          Create &amp; get login
+        </ModalSubmit>
+      }
+    >
+      {error && <ModalError>{error}</ModalError>}
+
+      <div className="grid gap-[16px] sm:grid-cols-2">
+        <TextField label="Full name" required value={name} onChange={setName} placeholder="e.g. Hina Ahmed" />
+        <TextField
+          label="Email"
+          required
+          type="email"
+          value={email}
+          onChange={setEmail}
+          placeholder="student@email.com"
+        />
+      </div>
+      <div className="grid gap-[16px] sm:grid-cols-2">
+        <TextField label="WhatsApp / Phone" value={phone} onChange={setPhone} placeholder="+44 7700 900000" />
+        <TextField label="Country" value={country} onChange={setCountry} placeholder="United Kingdom" />
+      </div>
+
+      <div className="grid gap-[16px] sm:grid-cols-2">
+        <div>
+          <label htmlFor="add-student-course" className={MODAL_LABEL}>
+            Enroll in course {prefill?.courseId || newCourseName ? "(from website)" : "(optional)"}
+          </label>
+          <FormSelect id="add-student-course" value={courseId} onChange={setCourseId} options={courseOptions} />
+        </div>
+        <div>
+          <label htmlFor="add-student-teacher" className={MODAL_LABEL}>
+            Assign teacher
+          </label>
+          <FormSelect
+            id="add-student-teacher"
+            value={teacherId}
+            onChange={setTeacherId}
+            options={teacherOptions}
+            disabled={!courseId || courseTeachers.length === 0}
+          />
+        </div>
+      </div>
+      {courseId && courseTeachers.length === 0 && (
+        <p className="flex items-start gap-[8px] rounded-xl bg-amber-500/10 px-[12px] py-[10px] text-[12.5px] leading-[18px] text-amber-700">
+          <AlertTriangle className="mt-[1px] h-4 w-4 shrink-0" />
+          This course has no teachers yet. Add them on the Courses page first.
+        </p>
+      )}
+
+      <div>
+        <label htmlFor="add-student-password" className={MODAL_LABEL}>
+          Login password<span className="text-destructive"> *</span>
+        </label>
+        <div className="flex items-center gap-[8px]">
+          <input
+            id="add-student-password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className={`${MODAL_FIELD} font-mono`}
+          />
+          <button
+            type="button"
+            onClick={() => setPassword(genPassword(10))}
+            title="Generate a new password"
+            aria-label="Generate a new password"
+            className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-xl border-[1px] border-border bg-background/70 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <RefreshCw className="h-4 w-4" />
           </button>
         </div>
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {error && (
-            <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
-              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" /> {error}
-            </div>
-          )}
-
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-                Full Name *
-              </label>
-              <input
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Hina Ahmed"
-                className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-                Email *
-              </label>
-              <input
-                required
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="student@email.com"
-                className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-          </div>
-
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-                WhatsApp / Phone
-              </label>
-              <input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+44 7700 900000"
-                className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-                Country
-              </label>
-              <input
-                value={country}
-                onChange={(e) => setCountry(e.target.value)}
-                placeholder="United Kingdom"
-                className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-          </div>
-
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-                Enroll in course {prefill?.courseId || newCourseName ? "(from website)" : "(optional)"}
-              </label>
-              <select
-                value={courseId}
-                onChange={(e) => setCourseId(e.target.value)}
-                className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              >
-                <option value="">No course yet</option>
-                {newCourseName && (
-                  <option value={NEW_COURSE}>{newCourseName} (new course)</option>
-                )}
-                {allCourses.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-                Assign teacher{courseId ? "" : " (pick a course first)"}
-              </label>
-              <select
-                value={teacherId}
-                onChange={(e) => setTeacherId(e.target.value)}
-                disabled={!courseId || courseTeachers.length === 0}
-                className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
-              >
-                <option value="">
-                  {!courseId
-                    ? "—"
-                    : courseTeachers.length === 0
-                    ? "No teachers on this course"
-                    : "Pick a teacher"}
-                </option>
-                {courseTeachers.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                    {t.gender ? ` (${t.gender === "MALE" ? "♂" : "♀"})` : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          {courseId && courseTeachers.length === 0 && (
-            <p className="text-[11px] text-[hsl(var(--gold))]">
-              ⚠ This course has no teachers assigned. Assign teachers in the Courses tab first.
-            </p>
-          )}
-
-          <div>
-            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-              Login Password *
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="flex-1 rounded-xl border border-border bg-background px-4 py-2.5 text-sm font-mono focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-              <button
-                type="button"
-                onClick={() => setPassword(genPassword(10))}
-                title="Generate new password"
-                className="grid h-10 w-10 place-items-center rounded-xl border border-border hover:bg-muted shrink-0"
-              >
-                <RefreshCw className="h-4 w-4" />
-              </button>
-            </div>
-            <p className="text-[10px] text-muted-foreground mt-1">
-              Auto-generated. You can edit it. Min 8 characters.
-            </p>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-full border border-border px-5 py-2 text-sm font-semibold hover:bg-muted"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-accent px-6 py-2 text-sm font-semibold text-primary-foreground shadow-md disabled:opacity-60"
-            >
-              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-              Create & Get Login
-            </button>
-          </div>
-        </form>
+        <p className="mt-[6px] text-[11.5px] leading-[16px] text-muted-foreground">
+          Made for you; you can change it. At least 8 characters.
+        </p>
       </div>
-    </div>
+    </AdminModal>
   );
 }
 
@@ -784,9 +787,11 @@ function EditStudentModal({
   const [email, setEmail] = React.useState(student.email);
   const [phone, setPhone] = React.useState(student.phone ?? "");
   const [country, setCountry] = React.useState(student.country ?? "");
-  const [rows, setRows] = React.useState(() =>
-    student.courses.map((c) => ({ courseId: c.id, teacherId: c.teacherId ?? "" }))
+  const savedRows = React.useMemo(
+    () => student.courses.map((c) => ({ courseId: c.id, teacherId: c.teacherId ?? "" })),
+    [student]
   );
+  const [rows, setRows] = React.useState(savedRows);
   const [addCourseId, setAddCourseId] = React.useState("");
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -807,18 +812,37 @@ function EditStudentModal({
     setAddCourseId("");
   }
 
+  // Taking off a course the student is enrolled in asks first (its schedule
+  // and attendance go when the form is saved); a course added in this
+  // pop-up and not saved yet just goes
+  const [confirmRemove, setConfirmRemove] = React.useState<string | null>(null);
+
+  function removeRow(courseId: string) {
+    if (current(courseId)) setConfirmRemove(courseId);
+    else setRows((prev) => prev.filter((x) => x.courseId !== courseId));
+  }
+
+  // Anything changed since the pop-up opened: Cancel becomes Discard changes,
+  // which puts the saved details and courses back (the pop-up stays open)
+  const dirty =
+    name !== student.name ||
+    email !== student.email ||
+    phone !== (student.phone ?? "") ||
+    country !== (student.country ?? "") ||
+    JSON.stringify(rows) !== JSON.stringify(savedRows);
+
+  function discard() {
+    setName(student.name);
+    setEmail(student.email);
+    setPhone(student.phone ?? "");
+    setCountry(student.country ?? "");
+    setRows(savedRows);
+    setAddCourseId("");
+    setError(null);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const removed = student.courses.filter((c) => !rows.some((r) => r.courseId === c.id));
-    if (
-      removed.length > 0 &&
-      !confirm(
-        `Remove ${removed.map((c) => c.name).join(", ")} from ${student.name}? ` +
-          `Their class schedule and attendance for ${removed.length === 1 ? "this course" : "these courses"} will be deleted.`
-      )
-    )
-      return;
-
     setError(null);
     setSaving(true);
     const res = await fetch(`/api/admin/students/${student.id}`, {
@@ -841,157 +865,170 @@ function EditStudentModal({
     onSaved(data.student);
   }
 
-  const inputCls =
-    "w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20";
-  const labelCls = "block text-xs font-semibold text-muted-foreground mb-1.5";
+  const addOptions: FormOption[] = addable.map((c) => ({ value: c.id, label: c.name }));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/40 backdrop-blur-sm animate-fade-in">
-      <div className="adm-modal w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl border border-border bg-card shadow-2xl">
-        <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-card z-10">
-          <div>
-            <h2 className="text-lg font-bold">Edit Student</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Update details and courses. Use the key button to change the password.
-            </p>
-          </div>
-          <button onClick={onClose} className="grid h-9 w-9 place-items-center rounded-full hover:bg-muted">
-            <X className="h-4 w-4" />
-          </button>
+    <>
+      <AdminModal
+        icon={Pencil}
+        title="Edit student"
+        sub="Details and courses. The key button in the list changes the password."
+        onClose={onClose}
+        onSubmit={handleSubmit}
+        closeOnBackdrop={false}
+        maxWidth="max-w-[560px]"
+        cancel={
+          dirty ? (
+            <ModalSecondary onClick={discard} icon={RotateCcw}>
+              Discard changes
+            </ModalSecondary>
+          ) : undefined
+        }
+        footer={
+          <ModalSubmit busy={saving} icon={Save}>
+            Save changes
+          </ModalSubmit>
+        }
+      >
+        {error && <ModalError>{error}</ModalError>}
+
+        <div className="grid gap-[16px] sm:grid-cols-2">
+          <TextField label="Full name" required value={name} onChange={setName} />
+          <TextField label="Email" required type="email" value={email} onChange={setEmail} />
+        </div>
+        <div className="grid gap-[16px] sm:grid-cols-2">
+          <TextField label="WhatsApp / Phone" value={phone} onChange={setPhone} />
+          <TextField label="Country" value={country} onChange={setCountry} />
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {error && (
-            <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
-              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" /> {error}
+        <div>
+          <span className={MODAL_LABEL}>Courses</span>
+          {rows.length === 0 ? (
+            <p className="rounded-xl border-[1px] border-dashed border-border px-[14px] py-[12px] text-[13px] leading-[18px] text-muted-foreground">
+              Not enrolled in any course
+            </p>
+          ) : (
+            <ul className="space-y-[8px]">
+              {rows.map((r) => {
+                const teachers = courseById.get(r.courseId)?.teachers ?? [];
+                const keepCurrent =
+                  r.teacherId && !teachers.some((t) => t.id === r.teacherId)
+                    ? { id: r.teacherId, name: current(r.courseId)?.teacherName ?? "Current teacher" }
+                    : null;
+                const options = keepCurrent ? [keepCurrent, ...teachers] : teachers;
+                return (
+                  // phones: the teacher field drops to its own line under the course
+                  // (order-[99], not order-last: Bootstrap has an !important .order-last)
+                  <li
+                    key={r.courseId}
+                    className="flex flex-wrap items-center gap-[10px] rounded-xl border-[1px] border-border bg-muted/40 p-[10px]"
+                  >
+                    <span className="adm-icon grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-primary/15 to-accent/15 text-primary">
+                      <BookOpen className="h-4 w-4" />
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-[14px] font-semibold leading-[20px]">
+                      {courseName(r.courseId)}
+                    </span>
+                    <div className="order-[99] w-full sm:order-[0] sm:w-[180px]">
+                      <FormSelect
+                        compact
+                        label={`Teacher for ${courseName(r.courseId)}`}
+                        value={r.teacherId}
+                        onChange={(v) => setTeacher(r.courseId, v)}
+                        disabled={options.length === 0}
+                        options={[
+                          { value: "", label: options.length === 0 ? "No teachers" : "No teacher yet" },
+                          ...options.map((t) => ({ value: t.id, label: t.name })),
+                        ]}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeRow(r.courseId)}
+                      title={`Remove ${courseName(r.courseId)}`}
+                      aria-label={`Remove ${courseName(r.courseId)}`}
+                      className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {addable.length > 0 && (
+            <div className="mt-[8px] flex items-center gap-[8px]">
+              <FormSelect
+                label="Add a course"
+                placeholder="Add a course…"
+                value={addCourseId}
+                onChange={setAddCourseId}
+                options={addOptions}
+              />
+              <button
+                type="button"
+                onClick={addCourse}
+                disabled={!addCourseId}
+                className="inline-flex h-[42px] shrink-0 items-center gap-[6px] rounded-full border-[1px] border-border bg-background/70 px-[16px] text-[13.5px] font-semibold leading-[18px] transition-colors hover:bg-muted disabled:opacity-50"
+              >
+                <Plus className="h-4 w-4" /> Add
+              </button>
             </div>
           )}
+        </div>
+      </AdminModal>
 
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Full Name *</label>
-              <input required value={name} onChange={(e) => setName(e.target.value)} className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls}>Email *</label>
-              <input
-                required
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className={inputCls}
-              />
-            </div>
-          </div>
+      {confirmRemove && (
+        <ConfirmDialog
+          title={`Remove ${courseName(confirmRemove)}?`}
+          confirmLabel="Remove course"
+          onConfirm={() => {
+            setRows((prev) => prev.filter((x) => x.courseId !== confirmRemove));
+            setConfirmRemove(null);
+          }}
+          onCancel={() => setConfirmRemove(null)}
+        >
+          <span className="font-semibold text-foreground">{courseName(confirmRemove)}</span> comes off{" "}
+          <span className="font-semibold text-foreground">{student.name}</span> when you save, and their class
+          schedule and attendance for it are deleted then. Until you save, Discard changes brings it back.
+        </ConfirmDialog>
+      )}
+    </>
+  );
+}
 
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>WhatsApp / Phone</label>
-              <input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls}>Country</label>
-              <input value={country} onChange={(e) => setCountry(e.target.value)} className={inputCls} />
-            </div>
-          </div>
-
-          <div>
-            <label className={labelCls}>Courses</label>
-            {rows.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-border px-4 py-3 text-xs text-muted-foreground">
-                Not enrolled in any course
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {rows.map((r) => {
-                  const teachers = courseById.get(r.courseId)?.teachers ?? [];
-                  const keepCurrent =
-                    r.teacherId && !teachers.some((t) => t.id === r.teacherId)
-                      ? { id: r.teacherId, name: current(r.courseId)?.teacherName ?? "Current teacher" }
-                      : null;
-                  const options = keepCurrent ? [keepCurrent, ...teachers] : teachers;
-                  return (
-                    <div
-                      key={r.courseId}
-                      className="flex items-center gap-2 rounded-xl border border-border bg-background p-2.5"
-                    >
-                      <BookOpen className="h-4 w-4 shrink-0 text-muted-foreground" />
-                      <span className="flex-1 min-w-0 truncate text-sm font-semibold">
-                        {courseName(r.courseId)}
-                      </span>
-                      <select
-                        value={r.teacherId}
-                        onChange={(e) => setTeacher(r.courseId, e.target.value)}
-                        disabled={options.length === 0}
-                        aria-label={`Teacher for ${courseName(r.courseId)}`}
-                        className="w-40 rounded-lg border border-border bg-card px-2 py-1.5 text-xs focus:border-primary focus:outline-none disabled:opacity-60"
-                      >
-                        <option value="">{options.length === 0 ? "No teachers" : "No teacher yet"}</option>
-                        {options.map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.name}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        type="button"
-                        onClick={() => setRows((prev) => prev.filter((x) => x.courseId !== r.courseId))}
-                        title={`Remove ${courseName(r.courseId)}`}
-                        className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            {addable.length > 0 && (
-              <div className="mt-2 flex items-center gap-2">
-                <select
-                  value={addCourseId}
-                  onChange={(e) => setAddCourseId(e.target.value)}
-                  aria-label="Add a course"
-                  className={inputCls}
-                >
-                  <option value="">Add a course…</option>
-                  {addable.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={addCourse}
-                  disabled={!addCourseId}
-                  className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-muted disabled:opacity-50"
-                >
-                  <Plus className="h-4 w-4" /> Add
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-full border border-border px-5 py-2 text-sm font-semibold hover:bg-muted"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-accent px-6 py-2 text-sm font-semibold text-primary-foreground shadow-md disabled:opacity-60"
-            >
-              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-              Save changes
-            </button>
-          </div>
-        </form>
-      </div>
+// A labelled text field of the pop-ups above
+function TextField({
+  label,
+  value,
+  onChange,
+  type = "text",
+  placeholder,
+  required,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  type?: string;
+  placeholder?: string;
+  required?: boolean;
+}) {
+  const id = React.useId();
+  return (
+    <div>
+      <label htmlFor={id} className={MODAL_LABEL}>
+        {label}
+        {required && <span className="text-destructive"> *</span>}
+      </label>
+      <input
+        id={id}
+        type={type}
+        required={required}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className={MODAL_FIELD}
+      />
     </div>
   );
 }

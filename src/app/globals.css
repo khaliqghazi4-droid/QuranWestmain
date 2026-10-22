@@ -355,6 +355,17 @@ html.dark .admin-dashboard {
   }
 }
 
+@keyframes adm-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .adm-tip {
   transform: translateY(-50%);
 }
@@ -709,8 +720,52 @@ html:not(.dark) .admin-brand .adm-modal textarea::placeholder {
   color: rgb(11 26 55 / 0.38);
 }
 html:not(.dark) .admin-brand .adm-modal input:hover:not(:focus),
-html:not(.dark) .admin-brand .adm-modal textarea:hover:not(:focus) {
+html:not(.dark) .admin-brand .adm-modal textarea:hover:not(:focus),
+html:not(.dark) .admin-brand .adm-modal .adm-field:hover:not([aria-expanded="true"], :disabled) {
   border-color: rgb(11 26 55 / 0.28);
+}
+
+html:not(.dark) .admin-brand .adm-player-bar {
+  background-image: linear-gradient(
+    to top,
+    rgb(255 255 255 / 0.94),
+    rgb(255 255 255 / 0.78) 60%,
+    rgb(255 255 255 / 0)
+  );
+  color: #0b1a37 !important;
+}
+html:not(.dark) .admin-brand .adm-player-bar button:hover:not(:disabled) {
+  background-color: rgb(11 26 55 / 0.08);
+}
+html:not(.dark) .admin-brand .adm-player-dim {
+  color: rgb(11 26 55 / 0.55);
+}
+html:not(.dark) .admin-brand .adm-player-track {
+  background-color: rgb(11 26 55 / 0.16);
+}
+html:not(.dark) .admin-brand .adm-player-buffered {
+  background-color: rgb(11 26 55 / 0.16);
+}
+html:not(.dark) .admin-brand .adm-player-fill {
+  background-color: #0b1a37;
+  background-image: linear-gradient(90deg, #0b1a37, #2b4a8c);
+}
+html:not(.dark) .admin-brand .adm-player-thumb {
+  background-color: #0b1a37;
+  box-shadow:
+    0 0 0 3px #fff,
+    0 2px 8px rgb(11 26 55 / 0.35);
+}
+html:not(.dark) .admin-brand .adm-player-tip {
+  background-color: #0b1a37;
+  color: #fff;
+}
+html:not(.dark) .admin-brand .adm-player-volume {
+  accent-color: #0b1a37;
+}
+html:not(.dark) .admin-brand .adm-player-big {
+  background-color: rgb(11 26 55 / 0.82);
+  --tw-ring-color: rgb(255 255 255 / 0.35);
 }
 
 html:not(.dark) .admin-brand .adm-fade-line {
@@ -1034,12 +1089,16 @@ html.dark
   :is(
     input:not([type="checkbox"], [type="radio"], .adm-search),
     select,
-    textarea
+    textarea,
+    .adm-field
   ) {
   background-color: rgb(255 255 255 / 0.05);
   border-color: rgb(255 255 255 / 0.1) !important;
   color-scheme: dark;
 }
+html.dark
+  .admin-brand:has(.adm-night)
+  .adm-field[aria-expanded="true"],
 html.dark
   .admin-brand:has(.adm-night)
   :is(

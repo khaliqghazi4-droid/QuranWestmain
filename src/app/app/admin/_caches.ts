@@ -18,7 +18,8 @@ export const getCachedDashboard = unstable_cache(
         prisma.user.findMany({
           where: { role: { in: ["STUDENT", "TEACHER"] } },
           orderBy: { createdAt: "desc" },
-          take: 5,
+          // the dashboard's Recent Signups shows 5 at a time and scrolls the rest
+          take: 20,
           select: { id: true, name: true, email: true, role: true, country: true, createdAt: true },
         }),
         prisma.enrollment.findMany({ include: { course: { select: { price: true } } } }),

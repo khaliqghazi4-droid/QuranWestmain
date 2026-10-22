@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { PlayCircle, Play, Download, Clock, X, Film, Eye } from "lucide-react";
 import { RecordingThumbnail } from "@/components/recording-thumbnail";
 import { ShareRecordingButton } from "@/components/admin/share-recording-button";
+import { RecordingVideo } from "@/components/recording-video";
 
 export type StudentRecordingItem = {
   id: string;
@@ -150,7 +151,7 @@ export function StudentRecordings({ items }: { items: StudentRecordingItem[] }) 
                   <X className="h-4 w-4" />
                 </button>
               </div>
-              <video src={playing.url} controls autoPlay className="max-h-[75vh] w-full bg-black" />
+              <RecordingVideo src={playing.url} durationSec={playing.durationSec} className="max-h-[75vh]" />
             </div>
           </div>,
           document.querySelector(".admin-dashboard") ?? document.body
